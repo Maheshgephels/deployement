@@ -1,0 +1,42 @@
+{
+  "name": "bakend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon --watch server.js --ignore node_modules --ext js,json server.js"
+  },
+  "watch": true,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-email/components": "^0.0.19",
+    "@react-email/render": "^0.0.15",
+    "@sendgrid/mail": "^8.1.3",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "express-queue": "^0.0.13",
+    "firebase-admin": "^12.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.5.45",
+    "multer": "^1.4.5-lts.1",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.9.2",
+    "node-qrcode-generator": "^1.0.4",
+    "nodemailer": "^6.9.15",
+    "qr-image": "^3.2.0",
+    "qrcode": "^1.5.3",
+    "razorpay": "^2.9.5",
+    "react-tooltip": "^5.28.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
