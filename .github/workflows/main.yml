@@ -38,17 +38,10 @@ jobs:
 
     # Deploy frontend build to CPanel via FTP
     - name: Deploy frontend to CPanel
-      uses: SamKirkland/FTP-Deploy-Action@v4
+      uses: SamKirkland/FTP-Deploy-Action@v5
       with:
         ftp-server: ${{ secrets.FTP_SERVER }}  # Your CPanel FTP server
         ftp-username: ${{ secrets.FTP_USERNAME }}  # Your CPanel FTP username
         ftp-password: ${{ secrets.FTP_PASSWORD }}  # Your CPanel FTP password
         local-dir: frontend/build  # Path to the build directory
         remote-dir: /home/gephelss/public_html/app  # Path on CPanel to deploy to
-
-    # Optionally, deploy backend (you may need to configure SSH or FTP for backend)
-    - name: Deploy backend to CPanel
-      run: |
-        # You can use SSH or FTP to upload the backend files
-        # Example: using SSH to copy files to the CPanel server (set up SSH keys in GitHub Secrets)
-        scp -r backend/* ${SSH_USER}@${SSH_HOST}:/home/gephelss/public_html/backend
