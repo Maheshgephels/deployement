@@ -36,12 +36,21 @@ jobs:
         cd backend
         npm install
 
-    # Deploy frontend build to CPanel via FTP
-    - name: Deploy frontend to CPanel
-      uses: SamKirkland/FTP-Deploy-Action@v5
-      with:
-        ftp-server: ${{ secrets.FTP_SERVER }}  # Your CPanel FTP server
-        ftp-username: ${{ secrets.FTP_USERNAME }}  # Your CPanel FTP username
-        ftp-password: ${{ secrets.FTP_PASSWORD }}  # Your CPanel FTP password
-        local-dir: frontend/build  # Path to the build directory
-        remote-dir: /home/gephelss/public_html/app  # Path on CPanel to deploy to
+    # Install lftp (FTP client for file transfer)
+    - name: Install lftp
+      run: sudo apt-get install lftp
+
+    # Deploy frontend build to CPanel via FTP using lftp
+    - name: Deploy frontend to CPanel using lftp
+      run: |
+        lftp -e "
+        mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
+        quit
+        " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }}
+        
+    # Deploy backend (optional, using SSH or other methods based on your backend setup)
+    - name: Deploy backend
+      run: |
+        cd backend
+        npm install
+        pm2 restart app-name  # Use PM2 or any other process manager to restart backend service
