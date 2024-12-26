@@ -1,0 +1,27 @@
+/* GjsEditor.css */
+
+/* Custom styles for GrapesJS editor */
+.gjs-pn-views-container {
+  background-color: #f4f4f9; /* Background color for the panels */
+}
+
+/* Style manager customization */
+.gjs-sm-sectors {
+  background-color: #fff; /* Background color for style manager */
+}
+
+.gjs-sm-sector .gjs-sm-title {
+  background-color: #e0e0e0; /* Background color for sector titles */
+  border-bottom: 1px solid #ccc;
+}
+
+/* Adjust the size of style manager fields */
+.gjs-sm-property {
+  padding: 5px;
+}
+
+/* Style for buttons and controls */
+.gjs-btn-prim {
+  background-color: #007bff;
+  color: #fff;
+}

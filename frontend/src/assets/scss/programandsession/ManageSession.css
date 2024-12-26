@@ -1,0 +1,138 @@
+
+  
+  /* .timeline {
+    width: 100%;
+    max-width: 200px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #ccc;
+    margin-right: 20px;
+  }
+  
+  .timeline-slot {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .content {
+    width: 100%;
+    flex-grow: 1;
+  }
+  
+  .scroll-buttons {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .scroll-buttons > * {
+    margin: 0 10px;
+  }
+  
+  .tab-content {
+    padding: 20px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 20px;
+  }
+  
+  .tab-content h4 {
+    margin-bottom: 20px;
+  }
+  
+  .tab-content .timeline-slot {
+    border: 0;
+    color: #333;
+    font-weight: bold;
+    font-size: 16px;
+  } */
+
+
+  .react-datepicker__day--highlighted {
+    background-color: #d3f9d8; /* Light green background */
+    color: #000; /* Text color */
+  }
+  .react-datepicker__day--highlighted:hover {
+    background-color: #b0e57c; /* Slightly darker green on hover */
+  }
+
+
+  .rbc-time-slot {
+    height: 60px !important; /* Adjust the height as needed */
+  }
+  
+  /* Optionally, you can adjust other timeline cell properties */
+  .rbc-time-slot-inner {
+    padding: 80px !important;  /* Adjust padding as needed */
+  }
+  
+  .custom-event-card {
+     height: 120px !important; /*Set the desired height */
+    text-overflow: ellipsis !important; /* Show ellipsis if content is too long */
+    white-space: nowrap !important; /* Prevent text wrapping */
+  }
+
+  .rbc-timeslot-group {
+    border-bottom: 1px solid #ddd !important; /* Add !important to override default styles */
+    min-height: 520px !important;            /* Set a minimum height with !important */
+    display: flex !important;                /* Use flexbox layout with !important */
+    flex-flow: column nowrap !important;     /* Arrange items in a column with !important */
+  }
+  .rbc-event-label {
+    display: none !important; /* Hide the event label */
+  }
+
+  .calendar-container {
+    position: relative;
+    height: 100%;
+  }
+  
+  .calendar-tooltip {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: none;
+  }
+  
+  .calendar-container:hover .calendar-tooltip {
+    display: block;
+  }
+
+  .hover-card{
+    display: none;
+  }
+  .session-detail-mdl{
+    display: none;
+  }
+  .session-card:hover {
+    border: 1px solid #3b0404;
+  }
+  /* .session-card:hover .hover-card {
+    display: block;
+  }
+  .session-card:hover .session-detail-mdl {
+    display: block;
+  } */
+  .rbc-event, .rbc-day-slot .rbc-background-event{
+    background-color: rgba(125, 115, 230, 0.835) !important; 
+  }
+  
+  @media (max-width: 767px) {
+    .rbc-time-view {
+      display: flex !important;
+      flex-direction: column !important;
+      flex: 1 1 !important;
+      width: 800px !important;
+      border: 1px solid #ddd !important;
+      overflow: scroll !important;
+      min-height: 0 !important;
+    }
+  }

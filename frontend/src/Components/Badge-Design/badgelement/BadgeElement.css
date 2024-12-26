@@ -1,0 +1,55 @@
+/* Remove unnecessary styles */
+.badge-element {
+  cursor: pointer;
+}
+
+/* Styles for selected components */
+.badge-element.selected,
+.badge-element.selected:hover,
+.badge-element.hovered {
+  border: 1px solid red;
+}
+
+/* Styles for unselected components */
+.badge-element:not(.selected):not(.hovered) {
+  border: none;
+}
+
+/* Styles for text area */
+.badge-element-textarea {
+  width: 100%;
+  height: 100%;
+  resize: none; /* Disable textarea resizing */
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Editable and non-editable styles */
+.editable {
+  pointer-events: auto; /* Enable pointer events on editable textareas */
+}
+
+.non-editable {
+  pointer-events: none; /* Disable pointer events on non-editable textareas */
+}
+
+.badge-element-remove {
+  position: absolute;
+  top: 0; /* Adjust position */
+  right: 0; /* Adjust position */
+  padding: 5px; /* Add some padding */
+  cursor: pointer;
+  font-size: 15px;
+  color: red; /* Change color to red */
+  /* background-color: white; Add background color */
+  border-radius: 50%; /* Make it circular */
+}
+
+
+.badge-element-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

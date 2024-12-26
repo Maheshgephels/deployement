@@ -1,0 +1,224 @@
+/* BadgeDesigner.css */
+
+/* Badge Designer Container Styling */
+.badge-designer-container {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.badge-settings {
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.badge-content-single{
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.badge-settings h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.badge-settings div {
+    margin-bottom: 10px;
+}
+
+.badge-settings label {
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.badge-settings input[type="number"],
+.badge-settings select,
+.badge-settings input[type="checkbox"] {
+    width: 100px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.badge-settings input[type="checkbox"] {
+    width: auto;
+}
+
+.badge-settings select {
+    width: 120px;
+}
+
+.container-col-wrap{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.badge-container {
+    position: relative;
+    border: 2px dotted #6B6666;
+    margin-right: 20px;
+    /* background-color: #D9D9D9; */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%; /* Ensures it takes up the full height */
+}
+
+/* Styling for the badge content area for Double badges */
+.badge-content-double {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+.badge-content-mirror {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+/* Badge front and back container styling */
+.badge-front,
+.badge-back {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+/* Front side default styling */
+.badge-front {
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* Back side default styling (no mirroring effect) */
+.badge-back {
+    background-color: #fff;
+    padding: 10px;
+    box-sizing: border-box;
+    /* opacity: 0.5; Make the back side non-interactive or read-only */
+}
+
+/* Divider line */
+.divider-line {
+    width: 100%;
+    border-bottom: 2px dotted black;
+    margin: 0 auto;
+}
+
+.badge-content-mirror .divider-line,
+.badge-content-double .divider-line {
+    margin: 0;
+    position: relative;
+}
+
+
+.badge-front,
+.badge-back {
+  position: relative;
+}
+
+/* Grid Styling (For editable sides) */
+.badge-container.grid-active,
+.badge-container.grid-active {
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+                      linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 10px 10px;
+    background-position: 0 0, 0 0;
+}
+
+
+/* Editable state styling (dashed border on editable sides) */
+.editable {
+    border: 1px dashed #333; /* Indicate editable areas with dashed border */
+}
+/* Badge element styling */
+.badge-element {
+    position: absolute;
+    border: 1px solid #000;
+    cursor: move;
+    background-color: #fff;
+}
+
+/* Styling for selected badge elements */
+.badge-element.selected {
+    border: 2px solid blue;
+    background-color: rgba(173, 216, 230, 0.3); /* Light blue background for selected */
+}
+
+/* Component Settings */
+.component-settings {
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.component-settings h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.component-settings div {
+    margin-bottom: 10px;
+}
+
+.component-settings label {
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.component-settings input[type="number"] {
+    width: 100px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+/* Buttons */
+.add-button-container {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.add-button, .preview-button, .export-button, .save-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.save-button {
+    background-color: #63af4c;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.add-button {
+    color: white;
+}
+
+.preview-button {
+    background-color: #008CBA;
+    color: white;
+}
+
+.export-button {
+    background-color: #f44336;
+    color: white;
+}
+.type-title{
+    opacity: 0.3;
+}

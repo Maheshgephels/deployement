@@ -1,0 +1,60 @@
+.badge-preview {
+    position: relative;
+  }
+  
+  .badge-card {
+    border: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  
+  .badge-card.Mirror {
+    position: relative;
+  }
+  
+  .badge-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+  
+  .badge-content.mirror {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .badge-content.mirror .front,
+  .badge-content.mirror .back {
+    width: 50%;
+    text-align: center;
+  }
+  
+  .badge-content.double-content {
+    text-align: center;
+  }
+  
+  .badge-content.single-content {
+    text-align: center;
+  }
+  
+  .badge-card.Horizontal {
+    /* Styles for horizontal orientation */
+  }
+  
+  .badge-card.Vertical {
+    /* Styles for vertical orientation */
+  }
+
+  .template-card {
+    border: 1px solid #ddd; /* Default border color */
+    transition: all 0.3s ease; /* Smooth transition for border and shadow */
+  }
+  
+  .template-card.selected {
+    border: 2px solid blue; /* Blue border for selected state */
+    box-shadow: 0 0 10px rgba(0, 0, 255, 0.5); /* Blue shadow for selected state */
+  }
+  

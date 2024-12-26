@@ -1,0 +1,52 @@
+.menu-card {
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 200px; /* Adjust based on your needs */
+    z-index: 1000; /* Ensure it appears above other elements */
+    overflow: hidden;
+}
+
+.menu-card-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-card-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    transition: background-color 0.3s, color 0.3s;
+    border-bottom: 1px solid #ddd;
+}
+
+.menu-card-item:last-child {
+    border-bottom: none; /* Remove border for the last item */
+}
+
+.menu-card-item:hover {
+    background-color: #f0f0f0;
+}
+
+/* Specific styles for different types of actions */
+.menu-card-item.warning {
+    color: #ffc107;
+}
+
+.menu-card-item.success {
+    color: #28a745;
+}
+
+.menu-card-item.info {
+    color: #17a2b8;
+}
+
+/* Styling for the icon if needed */
+.menu-card-item svg {
+    margin-right: 10px;
+}

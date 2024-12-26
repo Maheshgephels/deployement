@@ -1,0 +1,59 @@
+.menuCardWrapper {
+    position: relative; /* Keep the wrapper relative for absolute positioning inside */
+    overflow: visible; /* Ensure the menu card overflows properly */
+}
+
+.menuCard {
+    position: absolute;
+    top: -100%; /* Adjust the value to move it up as needed */
+    left: 0;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 1000; /* Ensure this is higher than other elements */
+    width: 200px;
+    padding: 10px;
+    white-space: nowrap; /* Prevent the card from breaking to the next line */
+}
+
+.menuCardContent {
+    display: flex;
+    flex-direction: column;
+}
+
+.menuCardItem {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    overflow: hidden; /* Keep the content inside and avoid overflow */
+}
+
+.menuCardItem:last-child {
+    border-bottom: none;
+}
+
+.menuCardItem.warning {
+    color: #ff6347;
+}
+
+.menuCardItem.success {
+    color: #28a745;
+}
+
+.menuCardItem.info {
+    color: #007bff;
+}
+
+.icon {
+    margin-right: 5px;
+}
+
+.menuCardItem:hover {
+    background-color: #f1f1f1;
+}
+
+/* Additional optional styling for wrapping */
+.menuContainer {
+    overflow-x: hidden; /* Optional: hide horizontal overflow */
+    overflow-y: auto; /* Optional: allow vertical scrolling if content is long */
+}

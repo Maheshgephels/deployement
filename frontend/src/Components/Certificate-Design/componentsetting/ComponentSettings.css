@@ -1,0 +1,12 @@
+/* ComponentSettings.css */
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px; /* Adjust as needed */
+}
+
+.setting-row label {
+    margin-right: 10px; /* Adjust as needed */
+    width: 150px; /* Adjust as needed */
+}
