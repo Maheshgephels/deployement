@@ -1,0 +1,49 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main  # Trigger action on pushes to the main branch
+  pull_request:
+    branches:
+      - main  # Trigger action on PRs to main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout code from GitHub
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Set up Node.js for the frontend and backend
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'  # Use Node.js v16
+
+    # Install dependencies and build frontend
+    - name: Install frontend dependencies and build
+      run: |
+        cd frontend
+        npm install
+        npm run build
+
+    # Install dependencies for backend (optional if backend needs building)
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm install
+
+    # Deploy frontend build to CPanel via FTP
+    - name: Deploy frontend to CPanel
+      uses: SamKirkland/FTP-Deploy-Action@v4
+      with:
+        ftp-server: ${{ secrets.65.181.111.227 }}  # Your CPanel FTP server
+        ftp-username: ${{ secrets.gephelss }}  # Your CPanel FTP username
+        ftp-password: ${{ secrets.F%ZIxWCrPK{2 }}  # Your CPanel FTP password
+        local-dir: frontend/build  # Path to the build directory
+        remote-dir: /home/gephelss/public_html/app  # Path on CPanel to deploy to
+
+
