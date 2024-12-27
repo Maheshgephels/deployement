@@ -31,13 +31,13 @@ jobs:
       - name: Upload file to CPanel
         run: |
           echo "Testing FTP connection and uploading file"
-          lftp -e "
+          lftp -d -e "
             open ${{ secrets.FTP_SERVER }};
             set ftp:ssl-allow yes;
             set ftp:ssl-force yes;
+            set ftp:passive-mode yes;   # Enable passive mode
             put frontend/build/testfile.txt -o /home/gephelss/public_html/app/testfile.txt;
             quit
             " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
-
 
       # Optionally, add more steps if needed
