@@ -31,6 +31,18 @@ jobs:
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
+      # Verify File Creation
+      - name: Verify File Creation
+        run: |
+          echo "Verifying file creation"
+          ls -l frontend/build
+
+      # Debug Workspace Structure
+      - name: Debug Workspace Structure
+        run: |
+          echo "Listing all files in the workspace"
+          ls -R
+
       # Test FTP connection and upload file
       - name: Upload file to CPanel
         run: |
@@ -40,12 +52,7 @@ jobs:
           set ftp:ssl-allow yes;
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
-          set ftp:transfer-type binary;  # Correct option for binary transfer mode
-          cd /home/gephelss/public_html/app;  # Navigate to the target directory
-          put frontend/build/testfile.txt;  # Upload the file
+          cd /home/gephelss/public_html/app;
+          put frontend/build/testfile.txt;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
-
-      - name: Debug workspace
-        run: ls -R
-        
