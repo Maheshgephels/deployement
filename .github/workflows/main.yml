@@ -41,7 +41,7 @@ jobs:
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
           set ftp:transfer-mode binary;  # Force binary transfer mode
-          put frontend/build/testfile.txt -o /home/gephelss/public_html/app/testfile.txt;
+            put testfile.txt -o /home/gephelss/public_html/app/testfile.txt;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
