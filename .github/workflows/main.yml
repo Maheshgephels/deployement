@@ -27,16 +27,16 @@ jobs:
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
-      # Deploy frontend to CPanel (FTP test)
+      # Test FTP connection
       - name: Test FTP connection to CPanel
         run: |
           echo "Testing FTP connection"
-          lftp -e "
-          open ${{ secrets.FTP_SERVER }};
+          lftp -d -e "
+          open 65.181.111.227;  # Use the FTP server IP directly
           set ftp:ssl-allow yes;    # Allow SSL/TLS connections
           set ftp:ssl-force yes;    # Force SSL/TLS connection (explicit TLS)
+          set net:timeout 30;      # Timeout after 30 seconds if no response
+          debug 3;                 # Increase verbosity of logs
           mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
-
-      # Optionally add more steps if needed
