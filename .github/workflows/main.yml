@@ -27,7 +27,7 @@ jobs:
       - name: Upload file to CPanel
         run: |
           lftp -d -e "
-            open ${{ secrets.FTP_SERVER }}; 
+            open ftp://ftp.gephelssystems.com:21;  # Use FTP instead of SFTP
             user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }}; 
             cd /home/gephelss/public_html/app; 
             put frontend/build/testfile.txt; 
