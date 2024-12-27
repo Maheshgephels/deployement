@@ -3,54 +3,62 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - main  # Trigger action on pushes to the main branch
+      - main
   pull_request:
     branches:
-      - main  # Trigger action on PRs to main branch
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout code from GitHub
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Checkout code from GitHub
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # Set up Node.js for the frontend and backend
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'  # Use Node.js v16
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
 
-    # Install dependencies and build frontend
-    - name: Install frontend dependencies and build
-      run: |
-        cd frontend
-        npm install
-        npm run build
+      # Cache Node.js modules
+      - name: Cache Node.js modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-    # Install dependencies for backend (optional if backend needs building)
-    - name: Install backend dependencies
-      run: |
-        cd backend
-        npm install
+      # Build frontend
+      - name: Build frontend
+        run: |
+          echo "Installing and building frontend"
+          cd frontend
+          npm ci
+          npm run build
+        env:
+          CI: true
 
-    # Install lftp (FTP client for file transfer)
-    - name: Install lftp
-      run: sudo apt-get install lftp
+      # Install lftp
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
 
-    # Deploy frontend build to CPanel via FTP using lftp
-    - name: Deploy frontend to CPanel using lftp
-      run: |
-        lftp -e "
-        mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
-        quit
-        " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }}
-        
-    # Deploy backend (optional, using SSH or other methods based on your backend setup)
-    - name: Deploy backend
-      run: |
-        cd backend
-        npm install
-        pm2 restart app-name  # Use PM2 or any other process manager to restart backend service
+      # Deploy frontend to CPanel
+      - name: Deploy frontend to CPanel
+        run: |
+          echo "Deploying frontend to CPanel"
+          lftp -e "
+          mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
+          quit
+          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }}
+
+      # Build backend and deploy (Optional)
+      - name: Deploy backend
+        run: |
+          echo "Deploying backend"
+          cd backend
+          npm ci
+          pm2 restart app-name
