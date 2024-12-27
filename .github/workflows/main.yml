@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
+      # Get the public IP address of GitHub Actions runner
       - name: Get public IP
         run: curl -s https://ifconfig.me
 
@@ -40,8 +40,9 @@ jobs:
           set ftp:ssl-allow yes;
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
-          set ftp:transfer-mode binary;  # Force binary transfer mode
-            put testfile.txt -o /home/gephelss/public_html/app/testfile.txt;
+          set ftp:transfer-type binary;  # Correct option for binary transfer mode
+          cd /home/gephelss/public_html/app;  # Navigate to the target directory
+          put frontend/build/testfile.txt;  # Upload the file
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
