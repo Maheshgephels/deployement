@@ -45,3 +45,6 @@ jobs:
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
+      - name: Debug workspace
+        run: ls -R
+        
