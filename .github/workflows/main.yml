@@ -17,22 +17,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Node.js (skipped for now)
-      # - name: Set up Node.js
-      #   uses: actions/setup-node@v3
-      #   with:
-      #     node-version: '20'
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-      # Cache Node.js modules (skipped for now)
-      # - name: Cache Node.js modules
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.npm
-      #     key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-node-
+      # Cache Node.js modules
+      - name: Cache Node.js modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      # Build frontend (skipped for now)
+      # Build frontend
       # - name: Build frontend
       #   run: |
       #     echo "Installing and building frontend"
@@ -46,18 +46,19 @@ jobs:
       - name: Install lftp
         run: sudo apt-get install -y lftp
 
-      # Deploy frontend to CPanel (FTP test)
-      - name: Test FTP connection to CPanel
+      # Deploy frontend to CPanel
+      - name: Deploy frontend to CPanel
         run: |
-          echo "Testing FTP connection"
+          echo "Deploying frontend to CPanel"
           lftp -e "
           open ${{ secrets.FTP_SERVER }};
           set ftp:ssl-allow yes;    # Allow SSL/TLS connections
           set ftp:ssl-force yes;    # Force SSL/TLS connection (explicit TLS)
+          mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
-      # Build backend and deploy (Optional)
+      # # Build backend and deploy (Optional)
       # - name: Deploy backend
       #   run: |
       #     echo "Deploying backend"
