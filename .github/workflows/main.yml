@@ -31,17 +31,32 @@ jobs:
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
-      # Verify File Creation
-      - name: Verify File Creation
+      # Check current directory
+      - name: Check Current Directory
         run: |
-          echo "Verifying file creation"
-          ls -l frontend/build
+          echo "Checking current FTP directory"
+          lftp -d -e "
+          open ${{ secrets.FTP_SERVER }};
+          set ftp:ssl-allow yes;
+          set ftp:ssl-force yes;
+          set ftp:passive-mode yes;
+          pwd;
+          quit
+          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
-      # Debug Workspace Structure
-      - name: Debug Workspace Structure
+      # List files in public_html
+      - name: List files in public_html
         run: |
-          echo "Listing all files in the workspace"
-          ls -R
+          echo "Listing files in public_html"
+          lftp -d -e "
+          open ${{ secrets.FTP_SERVER }};
+          set ftp:ssl-allow yes;
+          set ftp:ssl-force yes;
+          set ftp:passive-mode yes;
+          cd /public_html;
+          ls;
+          quit
+          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
       # Test FTP connection and upload file
       - name: Upload file to CPanel
@@ -52,7 +67,7 @@ jobs:
           set ftp:ssl-allow yes;
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
-          cd /home/gephelss/public_html/app;
+          cd /public_html/app;
           put frontend/build/testfile.txt;
           ls;  # List files after upload
           quit
