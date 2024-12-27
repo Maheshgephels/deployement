@@ -24,21 +24,21 @@ jobs:
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
-      - name: Upload file to CPanel
-        run: |
-          lftp -d -e "
-              open ftps://ftp.gephelssystems.com:21;
-              set ftp:ssl-allow yes;
-              set ftp:ssl-force no;
-              set ftp:passive-mode yes;
-              set ssl:verify-certificate no;
-              set net:timeout 10;
-              set net:max-retries 3;
-              user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }};
-              cd /home/gephelss/public_html/app;
-              put frontend/build/testfile.txt;
-              bye
-          "
+            lftp -d -e "
+                open ftps://ftp.gephelssystems.com:21;
+                set ftp:ssl-allow yes;
+                set ftp:ssl-force no;
+                set ssl:verify-certificate no;
+                set ftp:passive-mode yes;
+                set ftp:ssl-protect-data yes;
+                set net:timeout 10;
+                set net:max-retries 3;
+                user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }};
+                cd /home/gephelss/public_html/app;
+                put frontend/build/testfile.txt;
+                bye
+            "
+
 
 
       - name: Debug Workspace Structure (Optional)
