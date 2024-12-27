@@ -24,6 +24,8 @@ jobs:
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
+      - name: Upload file to CPanel
+        run: |
             lftp -d -e "
                 open ftps://ftp.gephelssystems.com:21;
                 set ftp:ssl-allow yes;
