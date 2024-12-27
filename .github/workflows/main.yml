@@ -13,6 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      - name: Get public IP
+        run: curl -s https://ifconfig.me
+
       # Checkout code from GitHub
       - name: Checkout code
         uses: actions/checkout@v3
