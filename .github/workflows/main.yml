@@ -52,7 +52,7 @@ jobs:
           set ftp:ssl-allow yes;
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
-          cd /home/gephelss/public_html/app;
+          cd /public_html/app;
           put frontend/build/testfile.txt;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
