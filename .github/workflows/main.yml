@@ -54,5 +54,6 @@ jobs:
           set ftp:passive-mode yes;
           cd /public_html/app;
           put frontend/build/testfile.txt;
+          ls;  # List files after upload
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
