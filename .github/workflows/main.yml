@@ -42,6 +42,8 @@ jobs:
           set ftp:ssl-force yes;    # Force SSL/TLS connection (explicit TLS)
           set net:timeout 30;      # Timeout after 30 seconds if no response
           debug 3;                 # Increase verbosity of logs
+          set ftp:passive-mode yes; # Enable passive mode if needed
           mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
+    
