@@ -51,9 +51,12 @@ jobs:
         run: |
           echo "Deploying frontend to CPanel"
           lftp -e "
-          mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
+          open ${{ secrets.FTP_SERVER }};
+          set ftp:ssl-allow yes;    # Allow SSL/TLS connections
+          set ftp:ssl-force yes;    # Force SSL/TLS connection (explicit TLS)
+          mirror -R frontend/build /home/username/public_html/app --ignore-time --parallel=10;
           quit
-          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }}
+          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
       # Build backend and deploy (Optional)
       - name: Deploy backend
