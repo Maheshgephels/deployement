@@ -13,46 +13,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Get the public IP address of GitHub Actions runner
-      - name: Get public IP
-        run: curl -s https://ifconfig.me
-
-      # Checkout code from GitHub
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Install lftp
       - name: Install lftp
-        run: sudo apt-get install -y lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
 
-      # Create a test file to upload
       - name: Create a test file
         run: |
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
-      # Verify File Creation
-      - name: Verify File Creation
-        run: |
-          echo "Verifying file creation"
-          ls -l frontend/build
-
-      # Test FTP connection and upload file
       - name: Upload file to CPanel
         run: |
-          echo "Testing FTP connection and uploading file"
           lftp -d -e "
-          open ftp://ftp.gephelssystems.com:21;  # Connect to the FTP server
-          set ftp:ssl-allow yes;
-          set ftp:ssl-force no;  # Explicit FTPS
-          set ftp:passive-mode yes;  # Use passive mode
-          cd /home/gephelss/public_html/app;  # Navigate to the target directory
-          put frontend/build/testfile.txt;  # Upload the test file
-          quit
-          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
+            open sftp://ftp.gephelssystems.com:21; 
+            user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }}; 
+            cd /home/gephelss/public_html/app; 
+            put frontend/build/testfile.txt; 
+            bye
+          "
 
-      # Debug Workspace Structure
-      - name: Debug Workspace Structure
+      - name: Debug Workspace Structure (Optional)
         run: |
           echo "Listing all files in the workspace"
           ls -R
