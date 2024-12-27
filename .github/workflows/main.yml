@@ -27,12 +27,17 @@ jobs:
       - name: Upload file to CPanel
         run: |
           lftp -d -e "
-            open ftp://ftp.gephelssystems.com:21;  # Use FTP instead of SFTP
-            user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }}; 
-            cd /home/gephelss/public_html/app; 
-            put frontend/build/testfile.txt; 
+            open ftps://ftp.gephelssystems.com:21;  # Use ftps for Explicit TLS if avaailable connection
+            set ftp:ssl-allow yes;
+            set ftp:ssl-force yes;  # Explicit FTPS
+            set ftp:passive-mode yes;  # Use passive mode for data transfer
+            set ssl:verify-certificate no;  # Disable certificate verification (use only for testing)
+            user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }};
+            cd /home/gephelss/public_html/app;
+            put frontend/build/testfile.txt;
             bye
           "
+
 
       - name: Debug Workspace Structure (Optional)
         run: |
