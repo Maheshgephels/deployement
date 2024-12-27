@@ -27,6 +27,11 @@ jobs:
           mkdir -p frontend/build
           echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
 
+      # Verify frontend/build contents
+      - name: Verify frontend/build contents
+        run: |
+          ls -al frontend/build
+
       # Test FTP connection
       - name: Test FTP connection to CPanel
         run: |
