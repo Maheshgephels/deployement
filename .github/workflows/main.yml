@@ -32,11 +32,12 @@ jobs:
         run: |
           echo "Testing FTP connection and uploading file"
           lftp -e "
-          open ${{ secrets.FTP_SERVER }};  # FTP server address
-          set ftp:ssl-allow yes;    # Allow SSL/TLS connections
-          set ftp:ssl-force yes;    # Force SSL/TLS connection (explicit TLS)
-          mirror -R frontend/build /home/gephelss/public_html/app --ignore-time --parallel=10;
-          quit
-          " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
+            open ${{ secrets.FTP_SERVER }};
+            set ftp:ssl-allow yes;
+            set ftp:ssl-force yes;
+            put frontend/build/testfile.txt -o /home/gephelss/public_html/app/testfile.txt;
+            quit
+            " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
+
 
       # Optionally, add more steps if needed
