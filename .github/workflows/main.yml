@@ -53,7 +53,7 @@ jobs:
           set ftp:ssl-allow yes;
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
-          cd /public_html;
+          cd /home/gephelss/public_html;
           ls;
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
@@ -67,7 +67,7 @@ jobs:
           set ftp:ssl-allow yes;
           set ftp:ssl-force yes;
           set ftp:passive-mode yes;
-          cd /public_html/app;
+          cd /home/gephelss/public_html/app;
           put frontend/build/testfile.txt;
           ls;  # List files after upload
           quit
