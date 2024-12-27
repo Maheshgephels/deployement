@@ -17,39 +17,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      # Cache Node.js modules
-      - name: Cache Node.js modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      # Build frontend
-      # - name: Build frontend
-      #   run: |
-      #     echo "Installing and building frontend"
-      #     cd frontend
-      #     npm ci
-      #     npm run build
-      #   env:
-      #     CI: false
-
       # Install lftp
       - name: Install lftp
         run: sudo apt-get install -y lftp
 
-      # Deploy frontend to CPanel
-      - name: Deploy frontend to CPanel
+      # Create a test file to upload
+      - name: Create a test file
         run: |
-          echo "Deploying frontend to CPanel"
+          mkdir -p frontend/build
+          echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
+
+      # Deploy frontend to CPanel (FTP test)
+      - name: Test FTP connection to CPanel
+        run: |
+          echo "Testing FTP connection"
           lftp -e "
           open ${{ secrets.FTP_SERVER }};
           set ftp:ssl-allow yes;    # Allow SSL/TLS connections
@@ -58,10 +39,4 @@ jobs:
           quit
           " -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}
 
-      # # Build backend and deploy (Optional)
-      # - name: Deploy backend
-      #   run: |
-      #     echo "Deploying backend"
-      #     cd backend
-      #     npm ci
-      #     pm2 restart app-name
+      # Optionally add more steps if needed
