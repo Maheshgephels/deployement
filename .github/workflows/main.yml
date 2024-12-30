@@ -27,7 +27,7 @@ jobs:
         echo "Test file content" > testfile.txt
         lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} -e "
           open ${{ secrets.FTP_SERVER }};
-          put testfile.txt -o /home/gephelss/public_html/consoft-module/testfile.txt;
+          put testfile.txt -o /home/allevent/public_html/consoft-module/testfile.txt;
           bye
         "
       env:
@@ -35,27 +35,27 @@ jobs:
         FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         FTP_SERVER: ${{ secrets.FTP_SERVER }}
 
-    # # Step 4: Install Backend Dependencies
-    # - name: Install Backend Dependencies
-    #   working-directory: ./backend
-    #   run: |
-    #     npm install --production
+    # Step 4: Install Backend Dependencies
+    - name: Install Backend Dependencies
+      working-directory: ./backend
+      run: |
+        npm install --production
 
-    # # Step 5: Deploy Backend
-    # - name: Deploy Backend
-    #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-    #   with:
-    #     server: ${{ secrets.FTP_SERVER }}
-    #     username: ${{ secrets.FTP_USERNAME }}
-    #     password: ${{ secrets.FTP_PASSWORD }}
-    #     local-dir: ./backend
-    #     remote-dir: /home/gephelss/public_html/backend
+    # Step 5: Deploy Backend
+    - name: Deploy Backend
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./backend/
+        remote-dir: /home/allevent/public_html/consoft-module/backend
 
-    # # Step 6: Restart Node.js App on cPanel
-    # - name: Restart Node.js App
-    #   run: |
-    #     ssh -o StrictHostKeyChecking=no -i ${{ secrets.CPANEL_SSH_PRIVATE_KEY }} ${{ secrets.CPANEL_SSH_USER }}@${{ secrets.CPANEL_SSH_HOST }} "
-    #     cd /home/gephelss/public_html/backend &&
-    #     pm2 restart app.js"
-    #   env:
-    #     SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+    # Step 6: Restart Node.js App on cPanel
+    - name: Restart Node.js App
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ${{ secrets.CPANEL_SSH_PRIVATE_KEY }} ${{ secrets.CPANEL_SSH_USER }}@${{ secrets.CPANEL_SSH_HOST }} "
+        cd /home/allevent/public_html/consoft-module/backend &&
+        pm2 restart app.js"
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
