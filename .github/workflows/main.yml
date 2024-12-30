@@ -21,20 +21,6 @@ jobs:
       with:
         node-version: 20 # Replace with the required Node.js version
 
-    # Step 3: Test FTP Connection and Upload Test File
-    - name: Test FTP Connection and Upload Test File
-      run: |
-        echo "Test file content" > testfile.txt
-        lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} -e "
-          open ${{ secrets.FTP_SERVER }};
-          put testfile.txt -o /home/allevent/public_html/consoft-module/testfile.txt;
-          bye
-        "
-      env:
-        FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-        FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        FTP_SERVER: ${{ secrets.FTP_SERVER }}
-
     # Step 4: Install Backend Dependencies
     - name: Install Backend Dependencies
       working-directory: ./backend
