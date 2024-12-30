@@ -62,11 +62,3 @@ jobs:
               sudo systemctl start your_app_service  # Fallback to systemctl start
             fi
 
-env:
-  # Store sensitive credentials (FTP server, username, password, SSH host, user, private key) as GitHub Secrets
-  FTP_SERVER: ${{ secrets.FTP_SERVER }}
-  FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-  FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-  CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
-  CPANEL_SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
-  CPANEL_SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
