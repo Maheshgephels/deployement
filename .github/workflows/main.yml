@@ -1,50 +1,24 @@
-name: Build and Deploy
+name: Publish Website to CPanel
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  build-and-deploy:
+  FTP-Deploy-Action:
+    name: FTP Deploy Action
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v2.1.0
+      with:
+        fetch-depth: 2
 
-      - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
-
-      - name: Create a test file
-        run: |
-          mkdir -p frontend/build
-          echo "This is a test file to check FTP connection" > frontend/build/testfile.txt
-
-      - name: Upload file to CPanel
-        run: |
-          lftp -d -e "
-              open ftp://ftp.gephelssystems.com:21;
-              set ftp:ssl-allow yes;
-              set ftp:ssl-force yes;
-              set ssl:verify-certificate no;
-              set ftp:passive-mode yes;
-              set ftp:ssl-protect-data yes;
-              set net:timeout 10;
-              set net:max-retries 3;
-              user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }};
-              cd /home/gephelss/public_html/app;
-              put frontend/build/testfile.txt;
-              bye
-          " | tee lftp-log.txt
-
-
-
-
-      - name: Debug Workspace Structure (Optional)
-        run: |
-          echo "Listing all files in the workspace"
-          ls -R
+    - name: FTP Deploy Action
+      uses: Sankirkland/FTP-Deploy-Action@v3.1.1
+      with:
+        ftp-server: ${{ secrets.FTP_SERVER }}
+        ftp-username: ${{ secrets.FTP_USERNAME }}
+        ftp-password: ${{ secrets.FTP_PASSWORD }}
