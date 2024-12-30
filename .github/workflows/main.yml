@@ -11,37 +11,62 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the Code
-    - name: Checkout Code
-      uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    # Step 2: Setup Node.js 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20 # Replace with the required Node.js version
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'  # Replace with your desired Node.js version
 
-    # Step 4: Install Backend Dependencies
-    - name: Install Backend Dependencies
-      working-directory: ./backend
-      run: |
-        npm install --production
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm install --production
 
-    # Step 5: Deploy Backend
-    - name: Deploy Backend
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./backend/
-        remote-dir: /home/allevent/reacttest.gephelssystems.com/backend
+      - name: Build Frontend (if applicable)
+        # Add this step if you have a separate build process for your React frontend
+        working-directory: ./frontend
+        run: npm run build  # Replace with your build command
 
-    # Step 6: Restart Node.js App on cPanel 
-    - name: Restart Node.js App
-      run: |
-        ssh -o StrictHostKeyChecking=no -i ${{ secrets.CPANEL_SSH_PRIVATE_KEY }} ${{ secrets.CPANEL_SSH_USER }}@${{ secrets.CPANEL_SSH_HOST }} "
-        cd /home/allevent/reacttest.gephelssystems.com/backend &&
-        pm2 restart app.js"
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+      - name: Deploy Backend (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./backend  # Deploy only the backend files
+          remote-dir: /home/allevent/reacttest.gephelssystems.com
+
+      - name: Deploy Frontend (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        # Consider using a separate remote directory for frontend assets
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./frontend/build  # Assuming build output is in ./frontend/build
+          remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Adjust as needed
+
+      - name: Restart Node.js Application (SSH)
+        uses: appleboy/ssh-action@v0.2.6
+        with:
+          host: ${{ secrets.CPANEL_SSH_HOST }}  # Replace with your SSH host
+          username: ${{ secrets.CPANEL_SSH_USER }}  # Replace with your SSH username
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}  # Replace with your SSH private key (stored securely)
+          script: |
+            cd /home/allevent/reacttest.gephelssystems.com  # Replace with your app directory
+            if [ -f "pm2.config.js" ]; then  # Check for PM2 configuration
+              pm2 reload all  # Use pm2 reload for graceful restart
+            else
+              sudo systemctl stop your_app_service  # Fallback to systemctl stop
+              sudo systemctl start your_app_service  # Fallback to systemctl start
+            fi
+
+env:
+  # Store sensitive credentials (FTP server, username, password, SSH host, user, private key) as GitHub Secrets
+  FTP_SERVER: ${{ secrets.FTP_SERVER }}
+  FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+  FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+  CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+  CPANEL_SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+  CPANEL_SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
