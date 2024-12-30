@@ -26,7 +26,9 @@ jobs:
       - name: Build Frontend (if applicable)
         # Add this step if you have a separate build process for your React frontend
         working-directory: ./frontend
-        run: npm run build  # Replace with your build command
+        run: |
+          npm install --production
+          npm run build  # Replace with your build command
 
       - name: Deploy Backend (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
