@@ -17,6 +17,7 @@ jobs:
           host: ${{ secrets.CPANEL_SSH_HOST }}
           username: ${{ secrets.CPANEL_SSH_USER }}
           key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          port: 2083
           passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }} 
 
       - name: Stop Node.js application
