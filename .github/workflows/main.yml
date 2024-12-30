@@ -1,77 +1,27 @@
-name: Deploy React and Node.js to cPanel
+name: Stop Node.js Application
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy React and Node.js to cPanel
+  stop_app:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'  # Replace with your desired Node.js version
-
-      - name: Install Backend Dependencies
-        working-directory: ./backend
-        run: npm install --production
-
-      - name: Build Frontend (if applicable)
-        # Add this step if you have a separate build process for your React frontend
-        env:
-          CI: false  # Override the CI environment variable
-        working-directory: ./frontend
-        run: |
-          npm install --production
-          npm run build  # Replace with your build command
-
-      - name: Deploy Backend (FTP)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./backend/  # Deploy only the backend files
-          remote-dir: /home/allevent/reacttest.gephelssystems.com
-
-      - name: Deploy Frontend (FTP)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        # Consider using a separate remote directory for frontend assets
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./frontend/build/  # Assuming build output is in ./frontend/build
-          remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Adjust as needed
-
-      - name: Restart Node.js Application (SSH)
+      - name: Stop Node.js application
         uses: appleboy/ssh-action@v1.2.0 # Use the latest stable version
-        env:
-          CI: false  # Override the CI environment variable
         with:
-          host: ${{ secrets.CPANEL_SSH_HOST }}  # Replace with your SSH host
-          username: ${{ secrets.CPANEL_SSH_USER }}  # Replace with your SSH username
-          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}  # Replace with your SSH private key (stored securely)
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_PRIVATE_KEY }}
           script: |
-            cd /home/allevent/reacttest.gephelssystems.com  # Replace with your app directory
-      
-            # Check for PM2 configuration and handle potential errors
+            cd /home/allevent/reacttest.gephelssystems.com
             if [ -f "pm2.config.js" ]; then
-              pm2 reload all  # Use pm2 reload for graceful restart
+              pm2 stop all
             else
-              echo "PM2 configuration not found. Falling back to systemctl..."
-              # Check if systemctl is available and handle potential errors
-              if command -v systemctl >/dev/null 2>&1; then
-                sudo systemctl stop your_app_service  # Fallback to systemctl stop
-                sudo systemctl start your_app_service  # Fallback to systemctl start
-              else
-                echo "Systemctl not found. Skipping service restart."
-              fi
+              echo "PM2 configuration not found. Skipping PM2 stop."
+              # You can add a fallback for other process managers here, if needed
             fi
