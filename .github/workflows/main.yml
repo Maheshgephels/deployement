@@ -48,17 +48,24 @@ jobs:
           remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Adjust as needed
 
       - name: Restart Node.js Application (SSH)
-        uses: appleboy/ssh-action@v0.2.6
+        uses: appleboy/ssh-action@v1.2.0 # Use the latest stable version
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}  # Replace with your SSH host
           username: ${{ secrets.CPANEL_SSH_USER }}  # Replace with your SSH username
           key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}  # Replace with your SSH private key (stored securely)
           script: |
             cd /home/allevent/reacttest.gephelssystems.com  # Replace with your app directory
-            if [ -f "pm2.config.js" ]; then  # Check for PM2 configuration
+      
+            # Check for PM2 configuration and handle potential errors
+            if [ -f "pm2.config.js" ]; then
               pm2 reload all  # Use pm2 reload for graceful restart
             else
-              sudo systemctl stop your_app_service  # Fallback to systemctl stop
-              sudo systemctl start your_app_service  # Fallback to systemctl start
+              echo "PM2 configuration not found. Falling back to systemctl..."
+              # Check if systemctl is available and handle potential errors
+              if command -v systemctl >/dev/null 2>&1; then
+                sudo systemctl stop your_app_service  # Fallback to systemctl stop
+                sudo systemctl start your_app_service  # Fallback to systemctl start
+              else
+                echo "Systemctl not found. Skipping service restart."
+              fi
             fi
-
