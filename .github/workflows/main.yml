@@ -27,7 +27,7 @@ jobs:
       - name: Upload file to CPanel
         run: |
             lftp -d -e "
-                open ftps://ftp.gephelssystems.com:21;
+                open ftpes://ftp.gephelssystems.com:21;
                 set ftp:ssl-allow yes;
                 set ftp:ssl-force no;
                 set ssl:verify-certificate no;
