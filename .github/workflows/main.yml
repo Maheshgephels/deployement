@@ -11,17 +11,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Add SSH Key to the agent
+        uses: shivammathur/setup-ssh@v2
+        with:
+          known_hosts: ~/.ssh/known_hosts
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }} 
+          passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }} 
+
       - name: Stop Node.js application
-        uses: appleboy/ssh-action@v1.2.0 # Use the latest stable version
+        uses: appleboy/ssh-action@v3
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}
-          username: ${{ secrets.CPANEL_SSH_USER }}
-          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          username: ${{ secrets.CPANEL_SSH_USER }} 
           script: |
-            cd /home/allevent/reacttest.gephelssystems.com
+            cd /home/allevent/reacttest.gephelssystems.com 
             if [ -f "pm2.config.js" ]; then
               pm2 stop all
             else
               echo "PM2 configuration not found. Skipping PM2 stop."
-              # You can add a fallback for other process managers here, if needed
             fi
