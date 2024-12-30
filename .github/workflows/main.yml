@@ -25,6 +25,8 @@ jobs:
 
       - name: Build Frontend (if applicable)
         # Add this step if you have a separate build process for your React frontend
+        env:
+          CI: false  # Override the CI environment variable
         working-directory: ./frontend
         run: |
           npm install --production
@@ -51,6 +53,8 @@ jobs:
 
       - name: Restart Node.js Application (SSH)
         uses: appleboy/ssh-action@v1.2.0 # Use the latest stable version
+        env:
+          CI: false  # Override the CI environment variable
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}  # Replace with your SSH host
           username: ${{ secrets.CPANEL_SSH_USER }}  # Replace with your SSH username
