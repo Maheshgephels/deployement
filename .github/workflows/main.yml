@@ -16,7 +16,7 @@ jobs:
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}
           username: ${{ secrets.CPANEL_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }} 
 
       - name: Stop Node.js application
@@ -24,7 +24,7 @@ jobs:
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}
           username: ${{ secrets.CPANEL_SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
           script: |
             cd /home/allevent/reacttest.gephelssystems.com
             if [ -f "pm2.config.js" ]; then
