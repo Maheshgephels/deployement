@@ -24,7 +24,6 @@ jobs:
         run: npm install --production
 
       - name: Build Frontend (if applicable)
-        # Add this step if you have a separate build process for your React frontend
         env:
           CI: false  # Override the CI environment variable
         working-directory: ./frontend/
@@ -39,20 +38,19 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./backend/  # Deploy only the backend files
-          remote-dir: /home/allevent/reacttest.gephelssystems.com
+          remote-dir: /home/allevent/reacttest.gephelssystems.com/backend  # Deploy to a subdirectory
 
       - name: Deploy Frontend (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        # Consider using a separate remote directory for frontend assets
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./frontend/build/  # Assuming build output is in ./frontend/build
-          remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Adjust as needed
+          remote_dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Deploy to a subdirectory
 
       - name: Restart Node.js Application (SSH)
-        uses: appleboy/ssh-action@v1.2.0 # Use the latest stable version
+        uses: appleboy/ssh-action@v1.2.0  # Use the latest stable version
         env:
           CI: false  # Override the CI environment variable
         with:
@@ -61,12 +59,13 @@ jobs:
           key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}  # Replace with your SSH private key (stored securely)
           script: |
             cd /home/allevent/reacttest.gephelssystems.com  # Replace with your app directory
-      
+
             # Check for PM2 configuration and handle potential errors
             if [ -f "pm2.config.js" ]; then
               pm2 reload all  # Use pm2 reload for graceful restart
             else
               echo "PM2 configuration not found. Falling back to systemctl..."
+
               # Check if systemctl is available and handle potential errors
               if command -v systemctl >/dev/null 2>&1; then
                 sudo systemctl stop your_app_service  # Fallback to systemctl stop
