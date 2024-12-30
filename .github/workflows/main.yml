@@ -35,7 +35,7 @@ jobs:
               set ftp:ssl-protect-data yes;
               set net:timeout 10;
               set net:max-retries 3;
-              user *** ***;
+              user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }};
               cd /home/gephelss/public_html/app;
               put frontend/build/testfile.txt;
               bye
