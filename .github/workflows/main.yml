@@ -38,7 +38,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./backend  # Deploy only the backend files
+          local-dir: ./backend/  # Deploy only the backend files
           remote-dir: /home/allevent/reacttest.gephelssystems.com
 
       - name: Deploy Frontend (FTP)
@@ -48,7 +48,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./frontend/build  # Assuming build output is in ./frontend/build
+          local-dir: ./frontend/build/  # Assuming build output is in ./frontend/build
           remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Adjust as needed
 
       - name: Restart Node.js Application (SSH)
