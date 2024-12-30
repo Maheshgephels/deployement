@@ -35,13 +35,13 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./backend/
-        remote-dir: /home/allevent/public_html/consoft-module/backend
+        remote-dir: /home/allevent/reacttest.gephelssystems.com/backend
 
     # Step 6: Restart Node.js App on cPanel
     - name: Restart Node.js App
       run: |
         ssh -o StrictHostKeyChecking=no -i ${{ secrets.CPANEL_SSH_PRIVATE_KEY }} ${{ secrets.CPANEL_SSH_USER }}@${{ secrets.CPANEL_SSH_HOST }} "
-        cd /home/allevent/public_html/consoft-module/backend &&
+        cd /home/allevent/reacttest.gephelssystems.com/backend &&
         pm2 restart app.js"
       env:
         SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
