@@ -37,7 +37,7 @@ jobs:
         local-dir: ./backend/
         remote-dir: /home/allevent/reacttest.gephelssystems.com/backend
 
-    # Step 6: Restart Node.js App on cPanel
+    # Step 6: Restart Node.js App on cPanel 
     - name: Restart Node.js App
       run: |
         ssh -o StrictHostKeyChecking=no -i ${{ secrets.CPANEL_SSH_PRIVATE_KEY }} ${{ secrets.CPANEL_SSH_USER }}@${{ secrets.CPANEL_SSH_HOST }} "
