@@ -26,20 +26,21 @@ jobs:
 
       - name: Upload file to CPanel
         run: |
-            lftp -d -e "
-                open ftpes://ftp.gephelssystems.com:21;
-                set ftp:ssl-allow yes;
-                set ftp:ssl-force no;
-                set ssl:verify-certificate no;
-                set ftp:passive-mode yes;
-                set ftp:ssl-protect-data yes;
-                set net:timeout 10;
-                set net:max-retries 3;
-                user ${{ secrets.FTP_USERNAME }} ${{ secrets.FTP_PASSWORD }};
-                cd /home/gephelss/public_html/app;
-                put frontend/build/testfile.txt;
-                bye
-            "
+          lftp -d -e "
+              open ftp://ftp.gephelssystems.com:21;
+              set ftp:ssl-allow yes;
+              set ftp:ssl-force yes;
+              set ssl:verify-certificate no;
+              set ftp:passive-mode yes;
+              set ftp:ssl-protect-data yes;
+              set net:timeout 10;
+              set net:max-retries 3;
+              user *** ***;
+              cd /home/gephelss/public_html/app;
+              put frontend/build/testfile.txt;
+              bye
+          " | tee lftp-log.txt
+
 
 
 
