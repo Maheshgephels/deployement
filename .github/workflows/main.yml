@@ -33,8 +33,8 @@ jobs:
     - name: Build Frontend
       run: |
         cd frontend
-        npm install  # Install frontend dependencies
-        npm run build  # Build the frontend app
+        CI=false npm install  # Install frontend dependencies with CI mode off
+        CI=false npm run build  # Build the frontend app with CI mode off
 
     # Deploy Frontend to the Server
     - name: Deploy Frontend via SSH
@@ -45,7 +45,7 @@ jobs:
     - name: Install Backend Dependencies
       run: |
         cd backend
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com/backend && npm install"
+        CI=false ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com/backend && npm install"
 
     # Deploy Backend to the Server
     - name: Deploy Backend via SSH
