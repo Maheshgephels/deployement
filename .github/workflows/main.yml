@@ -71,8 +71,8 @@ jobs:
       if: env.backend_changes != ''
       run: |
         ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
-          cd /home/allevent/reacttest.gephelssystems.com/server.js &&
-          npm install
+          cd /home/allevent/reacttest.gephelssystems.com/ &&
+          run npm install
         "
       
 
