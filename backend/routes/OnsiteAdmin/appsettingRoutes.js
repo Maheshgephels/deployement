@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-
+  
 //updated code
 
 router.get('/getSetting', verifyToken, async (req, res) => {
