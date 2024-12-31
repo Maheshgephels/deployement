@@ -61,30 +61,20 @@ jobs:
         echo "backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)" >> $GITHUB_ENV
       continue-on-error: true
 
-    # Install Backend Dependencies if changes are detected
-    - name: Install Backend Dependencies
-      if: env.backend_changes != ''
-      run: |
-        cd backend
-        CI=false ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
-          cd /home/allevent/reacttest.gephelssystems.com && 
-          # Install Node.js and npm if not installed, only on Debian-based systems
-          if ! command -v node &>/dev/null; then
-            if [ -f /etc/debian_version ]; then
-              curl -sL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
-            else
-              echo 'This script is not supported on non-Debian systems. Please install Node.js manually.'
-            fi
-          fi &&
-          npm install
-        "
-
-
     # Deploy Backend if changes are detected
     - name: Deploy Backend via SSH
       if: env.backend_changes != ''
       run: |
         scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
+
+    # Install Backend Dependencies if changes are detected
+    - name: Install Backend Dependencies
+      if: env.backend_changes != ''
+      run: |
+        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
+          cd /home/allevent/reacttest.gephelssystems.com && 
+          npm install
+        "
 
     # Restart Node.js Application if backend changes are detected
     - name: Restart Node.js Application
