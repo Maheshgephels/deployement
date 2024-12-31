@@ -39,7 +39,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./backend/  # Deploy only the backend files
-          remote-dir: /home/allevent/reacttest.gephelssystems.com/backend
+          remote-dir: /home/allevent/reacttest.gephelssystems.com/backend/
 
       - name: Deploy Frontend (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -49,7 +49,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./frontend/build/  # Assuming build output is in ./frontend/build
-          remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend  # Adjust as needed
+          remote-dir: /home/allevent/reacttest.gephelssystems.com/frontend/  # Adjust as needed
 
       - name: Restart Node.js Application (SSH)
         uses: appleboy/ssh-action@v1.2.0 # Use the latest stable version
