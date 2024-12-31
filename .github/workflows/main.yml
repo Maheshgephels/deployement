@@ -13,6 +13,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # Set up SSH with New Key
     - name: Set up SSH with New Key
       run: |
         set -e
@@ -23,15 +24,35 @@ jobs:
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
 
+    # Test SSH Connection
     - name: Test SSH Connection
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
-  
-    - name: Deploy Files via SSH
-      run: |
-        scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/ allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
-      
 
-    - name: Verify Deployment
+    # Build Frontend
+    - name: Build Frontend
       run: |
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "ls -l /home/allevent/reacttest.gephelssystems.com/frontend/create-testfile.txt"
+        cd frontend
+        npm install  # Install frontend dependencies
+        npm run build  # Build the frontend app
+
+    # Deploy Frontend to the Server
+    - name: Deploy Frontend via SSH
+      run: |
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
+
+    # Install Backend Dependencies
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com/backend && npm install"
+
+    # Deploy Backend to the Server
+    - name: Deploy Backend via SSH
+      run: |
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
+
+    # Restart Node.js Application on cPanel
+    - name: Restart Node.js Application
+      run: |
+        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com && pm2 restart all"  # Assuming PM2 is being used to manage the Node.js app
