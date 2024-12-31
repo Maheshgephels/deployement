@@ -66,7 +66,14 @@ jobs:
       if: env.backend_changes != ''
       run: |
         cd backend
-        CI=false ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com/ && npm install"
+        CI=false ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
+          cd /home/allevent/reacttest.gephelssystems.com && 
+          # Install Node.js and npm if not installed
+          if ! command -v node &>/dev/null; then
+            curl -sL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+          fi &&
+          npm install
+        "
 
     # Deploy Backend if changes are detected
     - name: Deploy Backend via SSH
