@@ -67,14 +67,15 @@ jobs:
       run: |
         scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
-    # Install Backend Dependencies if changes are detected
     - name: Install Backend Dependencies
       if: env.backend_changes != ''
       run: |
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com"
-          cd /home/allevent/reacttest.gephelssystems.com/ && 
+        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
+          cd /home/allevent/reacttest.gephelssystems.com/ &&
+          . /opt/cpanel/ea-nodejs20/bin/enable &&
           npm install
         "
+      
 
     # Restart Node.js Application if backend changes are detected
     - name: Restart Node.js Application
