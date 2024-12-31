@@ -93,7 +93,7 @@ jobs:
         port: 22
         script: |
           # Activate the Node.js environment using the set_env_vars.py script
-          . /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/set_env_vars.py || { echo "Node.js environment setup failed!"; exit 1; }
+          python3 /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/set_env_vars.py || { echo "Node.js environment setup failed!"; exit 1; }
           
           # Verify Node.js and npm are available
           node -v || { echo "Node.js not found!"; exit 1; }
@@ -107,4 +107,4 @@ jobs:
         
           # Restart the Node.js application using PM2
           pm2 restart all || { echo "PM2 restart failed!"; exit 1; }
-    
+   
