@@ -17,16 +17,16 @@ jobs:
       run: |
         set -e
         mkdir -p ~/.ssh
-        echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh
-        chmod 600 ~/.ssh/consoft_ssh
-        ssh-keyscan -H s1350.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
+        echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
+        chmod 600 ~/.ssh/consoft_ssh_new
+        ssh-keyscan -H s1346.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
         eval "$(ssh-agent -s)"
-        echo "${{ secrets.SSH_KEY_PASSWORD }}" | ssh-add ~/.ssh/consoft_ssh
+        echo "${{ secrets.SSH_KEY_PASSWORD }}" | ssh-add ~/.ssh/consoft_ssh_new
 
     - name: Deploy Files via SSH
       run: |
-        scp -r ./create-testfile.txt allevent@s1350.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
+        scp -r ./create-testfile.txt allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
 
     - name: Verify Deployment
       run: |
-        ssh allevent@s1350.use1.mysecurecloudhost.com "ls -l /home/allevent/reacttest.gephelssystems.com/frontend/create-testfile.txt"
+        ssh allevent@s1346.use1.mysecurecloudhost.com "ls -l /home/allevent/reacttest.gephelssystems.com/frontend/create-testfile.txt"
