@@ -51,7 +51,7 @@ jobs:
     - name: Deploy Frontend via SSH
       if: env.frontend_changes != ''
       run: |
-        scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend/
 
     # Check for Backend Changes
     - name: Check for Backend Changes
