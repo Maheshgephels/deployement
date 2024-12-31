@@ -67,19 +67,20 @@ jobs:
       run: |
         scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
-    - name: Install Backend Dependencies
+    - name: Restart Node.js Application Using npm start
       if: env.backend_changes != ''
       run: |
         ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
           source /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/activate && 
           cd /home/allevent/reacttest.gephelssystems.com &&
-          npm install
+          npm install &&
+          npm start
         "
       
       
 
-    # Restart Node.js Application if backend changes are detected
-    - name: Restart Node.js Application
-      if: env.backend_changes != ''
-      run: |
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com && pm2 restart all"  # Assuming PM2 is being used to manage the Node.js app
+    # # Restart Node.js Application if backend changes are detected
+    # - name: Restart Node.js Application
+    #   if: env.backend_changes != ''
+    #   run: |
+    #     ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com && pm2 restart all"  # Assuming PM2 is being used to manage the Node.js app

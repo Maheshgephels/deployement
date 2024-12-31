@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../../config/database');
 const multer = require('multer');
 const verifyToken = require('../api/middleware/authMiddleware');
-const queueMiddleware = require('../api/middleware/queueMiddleware');
+const queueMiddleware = require('../api/middleware/queueMiddleware'); 
   
 // Set up multer for file uploads
 const storage = multer.diskStorage({
