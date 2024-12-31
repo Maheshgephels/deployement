@@ -92,6 +92,9 @@ jobs:
         key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
         port: 22
         script: |
+          # Install the 'future' module
+          python3 -m pip install future || { echo "'future' module installation failed!"; exit 1; }
+    
           # Activate the Node.js environment using the set_env_vars.py script
           python3 /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/set_env_vars.py || { echo "Node.js environment setup failed!"; exit 1; }
           
@@ -107,4 +110,5 @@ jobs:
         
           # Restart the Node.js application using PM2
           pm2 restart all || { echo "PM2 restart failed!"; exit 1; }
+    
    
