@@ -61,11 +61,11 @@ jobs:
         echo "backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)" >> $GITHUB_ENV
       continue-on-error: true
 
-    # Deploy Backend if changes are detected
-    - name: Deploy Backend via SSH
-      if: env.backend_changes != ''
-      run: |
-        scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
+    # # Deploy Backend if changes are detected
+    # - name: Deploy Backend via SSH
+    #   if: env.backend_changes != ''
+    #   run: |
+    #     scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
     # - name: Install Backend Dependencies
     #   if: env.backend_changes != ''
@@ -77,8 +77,23 @@ jobs:
     #     "
       
 
-    # Restart Node.js Application if backend changes are detected
-    - name: Restart Node.js Application
-      if: env.backend_changes != ''
-      run: |
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com && pm2 restart all"  # Assuming PM2 is being used to manage the Node.js app
+    # # Restart Node.js Application if backend changes are detected
+    # - name: Restart Node.js Application
+    #   if: env.backend_changes != ''
+    #   run: |
+    #     ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com && pm2 restart all"  # Assuming PM2 is being used to manage the Node.js app
+
+     # Use the SSH action for deployment
+    - name: Deploy using SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.CPANEL_SSH_HOST }}
+        username: ${{ secrets.CPANEL_SSH_USER }}
+        key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          cd /home/allevent/reacttest.gephelssystems.com
+          . /opt/cpanel/ea-nodejs20/bin/enable  # Enable Node.js environment
+          git pull origin main  # Pull the latest changes
+          npm install --only=prod  # Install production dependencies
+          pm2 restart all  # Restart the Node.js application
