@@ -23,11 +23,14 @@ jobs:
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
 
+    - name: Test SSH Connection
+      run: |
+        ssh -v allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
+
     - name: Deploy Files via SSH
       run: |
-        scp -v -r ./frontend/ allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
-       
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/ allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
 
     - name: Verify Deployment
       run: |
-        ssh allevent@s1346.use1.mysecurecloudhost.com "ls -l /home/allevent/reacttest.gephelssystems.com/frontend/create-testfile.txt"
+        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "ls -l /home/allevent/reacttest.gephelssystems.com/frontend/create-testfile.txt"
