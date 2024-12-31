@@ -13,7 +13,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up SSH with Password
+    - name: Set up SSH with New Key
       run: |
         set -e
         mkdir -p ~/.ssh
@@ -21,7 +21,7 @@ jobs:
         chmod 600 ~/.ssh/consoft_ssh_new
         ssh-keyscan -H s1346.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
         eval "$(ssh-agent -s)"
-        echo "${{ secrets.SSH_KEY_PASSWORD }}" | ssh-add ~/.ssh/consoft_ssh_new
+        ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
 
     - name: Deploy Files via SSH
       run: |
