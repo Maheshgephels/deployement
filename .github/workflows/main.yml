@@ -45,7 +45,7 @@ jobs:
     - name: Install Backend Dependencies
       run: |
         cd backend
-        CI=false ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com/backend && npm install"
+        CI=false ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "cd /home/allevent/reacttest.gephelssystems.com/ && npm install"
 
     # Deploy Backend to the Server
     - name: Deploy Backend via SSH
