@@ -25,7 +25,8 @@ jobs:
 
     - name: Deploy Files via SSH
       run: |
-        scp -r ./create-testfile.txt allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
+        scp -r ./frontend/ allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/frontend
+       
 
     - name: Verify Deployment
       run: |
