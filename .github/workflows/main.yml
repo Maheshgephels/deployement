@@ -17,11 +17,11 @@ jobs:
       run: |
         set -e
         mkdir -p ~/.ssh
-        echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
+        echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh
+        chmod 600 ~/.ssh/consoft_ssh
         ssh-keyscan -H s1350.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
         eval "$(ssh-agent -s)"
-        echo "${{ secrets.SSH_KEY_PASSWORD }}" | ssh-add ~/.ssh/id_rsa
+        echo "${{ secrets.SSH_KEY_PASSWORD }}" | ssh-add ~/.ssh/consoft_ssh
 
     - name: Deploy Files via SSH
       run: |
