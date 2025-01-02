@@ -90,7 +90,6 @@ jobs:
         # Check if there are enough commits to use HEAD~1 (if not, compare with the initial commit)
         commit_count=$(git rev-list --count HEAD)
         if [ "$commit_count" -gt 1 ]; then
-          git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
           backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
         else
           echo "No previous commits to compare, assuming changes are detected."
