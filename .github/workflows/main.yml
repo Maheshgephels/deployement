@@ -38,12 +38,16 @@ jobs:
       id: check_changes
       run: |
         module_changes=$(git diff --name-only HEAD~1 HEAD -- ${{ matrix.module }})
-        echo "${{ matrix.module }}_changes=$module_changes" >> $GITHUB_ENV
         echo "Changes in ${{ matrix.module }}: $module_changes"
+        if [ -z "$module_changes" ]; then
+          echo "${{ matrix.module }}_changes=none" >> $GITHUB_ENV
+        else
+          echo "${{ matrix.module }}_changes=detected" >> $GITHUB_ENV
+        fi
 
     # Build the Module if Changes are Detected
     - name: Build Module
-      if: env.${{ matrix.module }}_changes != ''
+      if: env.${{ matrix.module }}_changes == 'detected'
       run: |
         cd ${{ matrix.module }}
         CI=false npm install  # Install dependencies with CI mode off
@@ -51,7 +55,7 @@ jobs:
 
     # Deploy the Module if Changes are Detected
     - name: Deploy Module via SSH
-      if: env.${{ matrix.module }}_changes != ''
+      if: env.${{ matrix.module }}_changes == 'detected'
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/${{ matrix.module }}/"
         scp -v -i ~/.ssh/consoft_ssh_new -r ./${{ matrix.module }}/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/${{ matrix.module }}/
@@ -74,7 +78,7 @@ jobs:
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
 
-    # Test SSH Connection
+    # Test SSH Connection for Backend
     - name: Test SSH Connection for Backend
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
@@ -93,8 +97,6 @@ jobs:
           backend_changes="backend changes"
         fi
         echo "backend_changes=$backend_changes" >> $GITHUB_ENV
-      continue-on-error: true
-
 
     # Deploy Backend if Changes are Detected
     - name: Deploy Backend via SSH
