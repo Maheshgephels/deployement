@@ -222,7 +222,7 @@ connectDB()
 //   console.log(`listening on port ${port} `);
 // });
 
-
+ 
 app.use('/api/user', userRouter);
 app.use('/api/role', rolesRoutes);
 app.use('/api/category', categoryRoutes);
