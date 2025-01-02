@@ -18,7 +18,7 @@ router.get('/getCategory', verifyToken, async (req, res) => {
     const columnToSortBy = validColumns.includes(sortColumn) ? sortColumn : 'cs_reg_cat_id';
 
     const columnsToFetch = ['*'];
-
+ 
     // Construct the SQL query to fetch specific columns with pagination and search
     let query = `
       SELECT ${columnsToFetch}
