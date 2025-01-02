@@ -83,10 +83,18 @@ jobs:
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
-        backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
+        # Check if there are enough commits to use HEAD~1 (if not, compare with the initial commit)
+        commit_count=$(git rev-list --count HEAD)
+        if [ "$commit_count" -gt 1 ]; then
+          git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
+          backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
+        else
+          echo "No previous commits to compare, assuming changes are detected."
+          backend_changes="backend changes"
+        fi
         echo "backend_changes=$backend_changes" >> $GITHUB_ENV
       continue-on-error: true
+
 
     # Deploy Backend if Changes are Detected
     - name: Deploy Backend via SSH
