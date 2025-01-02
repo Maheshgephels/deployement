@@ -31,12 +31,13 @@ jobs:
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
 
-    # Check for Admin Changes
-    - name: Check for Admin Changes
+    # Check for Frontend Changes
+    - name: Check for Frontend Changes
       id: check_frontend_changes
       run: |
         git diff --quiet HEAD~1 HEAD -- frontend || echo "Admin changes detected"
-        echo "frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)" >> $GITHUB_ENV
+        frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)
+        echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
       continue-on-error: true
 
     # Build Frontend if changes are detected
@@ -59,7 +60,8 @@ jobs:
       id: check_user_changes
       run: |
         git diff --quiet HEAD~1 HEAD -- user || echo "User Module changes detected"
-        echo "user_changes=$(git diff --name-only HEAD~1 HEAD -- user)" >> $GITHUB_ENV
+        user_changes=$(git diff --name-only HEAD~1 HEAD -- user)
+        echo "user_changes=$user_changes" >> $GITHUB_ENV
       continue-on-error: true
 
     # Build User Module if changes are detected
@@ -82,7 +84,8 @@ jobs:
       id: check_backend_changes
       run: |
         git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
-        echo "backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)" >> $GITHUB_ENV
+        backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
+        echo "backend_changes=$backend_changes" >> $GITHUB_ENV
       continue-on-error: true
 
     # Deploy Backend if changes are detected
