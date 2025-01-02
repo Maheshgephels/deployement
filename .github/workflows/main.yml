@@ -8,9 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        module: [frontend, user]  # Define frontend and user as two separate matrix jobs
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -33,82 +31,67 @@ jobs:
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
 
-    # Check for Changes in the Current Module (Frontend or User)
-    - name: Check for Changes in Module
-      id: check_changes
+    # Check for Frontend Changes
+    - name: Check for Frontend Changes
+      id: check_frontend_changes
       run: |
-        # Log the changes in the module directory
-        echo "Checking changes in ${{ matrix.module }}..."
-        module_changes=$(git diff --name-only HEAD~1 HEAD -- ${{ matrix.module }})
-        echo "Changes detected in ${{ matrix.module }}: $module_changes"
+        git diff --quiet HEAD~1 HEAD -- frontend || echo "Admin changes detected"
+        frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)
+        echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
+      continue-on-error: true
 
-        # If no changes are detected, it will echo none
-        if [ -z "$module_changes" ]; then
-          echo "${{ matrix.module }}_changes=none" >> $GITHUB_ENV
-        else
-          echo "${{ matrix.module }}_changes=detected" >> $GITHUB_ENV
-        fi
-
-    # Build the Module if Changes are Detected
-    - name: Build Module
-      if: env.${{ matrix.module }}_changes == 'detected'
+    # Build Frontend if changes are detected
+    - name: Build Frontend
+      if: env.frontend_changes != ''
       run: |
-        echo "Building the ${{ matrix.module }} module..."
-        cd ${{ matrix.module }}
-        CI=false npm install  # Install dependencies with CI mode off
-        CI=false npm run build  # Build the module with CI mode off
+        cd frontend
+        CI=false npm install  # Install frontend dependencies with CI mode off
+        CI=false npm run build  # Build the frontend app with CI mode off
 
-    # Deploy the Module if Changes are Detected
-    - name: Deploy Module via SSH
-      if: env.${{ matrix.module }}_changes == 'detected'
+    # Deploy Frontend if changes are detected
+    - name: Deploy Frontend via SSH
+      if: env.frontend_changes != ''
       run: |
-        echo "Deploying ${{ matrix.module }} module via SSH..."
-        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/${{ matrix.module }}/"
-        scp -v -i ~/.ssh/consoft_ssh_new -r ./${{ matrix.module }}/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/${{ matrix.module }}/
+        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/admin/"
+          scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/admin/
 
-  deploy_backend:
-    runs-on: ubuntu-latest
-    needs: deploy  # Ensure frontend and user builds are done before backend deploy
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    # Set up SSH with New Key for Backend
-    - name: Set up SSH with New Key for Backend
+    # Check for User Module Changes
+    - name: Check for User Module Changes
+      id: check_user_changes
       run: |
-        set -e
-        mkdir -p ~/.ssh
-        echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
-        chmod 600 ~/.ssh/consoft_ssh_new
-        ssh-keyscan -H s1346.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
-        eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+        git diff --quiet HEAD~1 HEAD -- user || echo "User Module changes detected"
+        user_changes=$(git diff --name-only HEAD~1 HEAD -- user)
+        echo "user_changes=$user_changes" >> $GITHUB_ENV
+      continue-on-error: true
 
-    # Test SSH Connection for Backend
-    - name: Test SSH Connection for Backend
+    # Build User Module if changes are detected
+    - name: Build User Module
+      if: env.user_changes != ''
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
+        cd user
+        CI=false npm install  # Install user dependencies with CI mode off
+        CI=false npm run build  # Build the user folder with CI mode off
+
+    # Deploy User Folder if changes are detected
+    - name: Deploy User Folder via SSH
+      if: env.user_changes != ''
+      run: |
+        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
 
     # Check for Backend Changes
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
-        # Check if there are enough commits to use HEAD~1 (if not, compare with the initial commit)
-        commit_count=$(git rev-list --count HEAD)
-        echo "commit_count=$commit_count"  # Log commit count for debugging
-        if [ "$commit_count" -gt 1 ]; then
-          backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
-        else
-          echo "No previous commits to compare, assuming changes are detected."
-          backend_changes="backend changes"
-        fi
+        git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
+        backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
         echo "backend_changes=$backend_changes" >> $GITHUB_ENV
+      continue-on-error: true
 
-    # Deploy Backend if Changes are Detected
+    # Deploy Backend if changes are detected
     - name: Deploy Backend via SSH
       if: env.backend_changes != ''
       run: |
-        echo "Deploying backend module via SSH..."
         scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
     - name: Restart Node.js Application Using npm start
