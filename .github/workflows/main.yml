@@ -92,8 +92,6 @@ jobs:
     - name: Deploy Backend via SSH
       if: env.backend_changes != ''
       run: |
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
-          mkdir -p /home/allevent/reacttest.gephelssystems.com/backend"
         rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" --relative ./backend/ allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
     # Restart Node.js Application Using npm start
