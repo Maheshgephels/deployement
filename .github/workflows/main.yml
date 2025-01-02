@@ -31,11 +31,11 @@ jobs:
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
 
-    # Check for Frontend Changes
-    - name: Check for Frontend Changes
+    # Check for Admin Changes
+    - name: Check for Admin Changes
       id: check_frontend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- frontend || echo "Frontend changes detected"
+        git diff --quiet HEAD~1 HEAD -- frontend || echo "Admin changes detected"
         echo "frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)" >> $GITHUB_ENV
       continue-on-error: true
 
@@ -53,6 +53,29 @@ jobs:
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/admin/"
           scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/admin/
+
+    # Check for User Module Changes
+    - name: Check for User Module Changes
+      id: check_user_changes
+      run: |
+        git diff --quiet HEAD~1 HEAD -- user || echo "User Module changes detected"
+        echo "user_changes=$(git diff --name-only HEAD~1 HEAD -- user)" >> $GITHUB_ENV
+      continue-on-error: true
+
+    # Build User Module if changes are detected
+    - name: Build User Module
+      if: env.user_changes != ''
+      run: |
+        cd user
+        CI=false npm install  # Install user dependencies with CI mode off
+        CI=false npm run build  # Build the user folder with CI mode off
+
+    # Deploy User Folder if changes are detected
+    - name: Deploy User Folder via SSH
+      if: env.user_changes != ''
+      run: |
+        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
 
     # Check for Backend Changes
     - name: Check for Backend Changes
