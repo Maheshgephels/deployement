@@ -79,7 +79,7 @@ jobs:
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
         scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
 
-        # Check for Backend Changes
+    # Check for Backend Changes
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
@@ -92,9 +92,8 @@ jobs:
     - name: Deploy Backend via SSH
       if: env.backend_changes != ''
       run: |
-        rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" ./backend/ allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
-    # Restart Node.js Application Using npm start
     - name: Restart Node.js Application Using npm start
       if: env.backend_changes != ''
       run: |
