@@ -181,7 +181,7 @@ const userdashboardroutes = require('./routes/User/Dashbaord');
 // const packageroutes =require('./routes/Registration/packageRoute')
 const UuserRoutes = require('./routes/User/userRoutes');
 
-const directuserRoutes = require('./routes/User/dIrectUserRoutes');
+const directuserRoutes = require('./routes/User/Directuserroutes');
 
 
 
