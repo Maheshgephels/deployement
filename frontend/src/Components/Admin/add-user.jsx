@@ -10,10 +10,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MdDelete, MdInfoOutline } from "react-icons/md";
 import Select from 'react-select';
 import { Field, Form } from 'react-final-form'; // Import Field and Form from react-final-form
-import { required, email, Img, PDF, option, number, Name, NAME,expiryDate } from '../Utils/validationUtils';
+import { required, email, Img, PDF, option, number, Name, NAME, expiryDate } from '../Utils/validationUtils';
 import { PermissionsContext } from '../../contexts/PermissionsContext';
 import useAuth from '../../Auth/protectedAuth';
 import { getToken } from '../../Auth/Auth';
+import moment from 'moment';
+
 
 
 //Utility function used to combine multiple validation functions into a single validation function
@@ -45,7 +47,7 @@ const AddUser = () => {
     const empty = '';
 
 
-
+    console.log("Field", data);
     console.log("Category", regCat);
 
 
@@ -125,7 +127,7 @@ const AddUser = () => {
             if (response.data.success) {
                 SweetAlert.fire({
                     title: 'Success!',
-                    html: `User <b>${username}</b> created successfully!`,
+                    html: `User ${username} created successfully!`,
                     icon: 'success',
                     timer: 3000,
                     showConfirmButton: false,
@@ -226,7 +228,7 @@ const AddUser = () => {
                                             <Row className="d-flex flex-wrap">
                                                 {/* Render multiple Field components based on the length of fieldLabels array */}
                                                 {fieldLabels.map((label, index) => {
-                                                    const isFieldRequired = requiredfield[index] === 1;
+                                                    const isFieldRequired = requiredfield[index] === '1';
                                                     return (
                                                         <Col
                                                             key={index}
@@ -586,33 +588,33 @@ const AddUser = () => {
                                                                 </Field>
                                                             )}
 
-{
-                                                                    fieldType[index] === 'Date' && (
-                                                                        <Field
-                                                                            name={`${fieldName[index]}`} // Use dynamic field name
-                                            
-                                                                            validate={requiredfield[index] === '1' ? composeValidators(expiryDate) : (value) => composeValidators()(value)}
-                                                                        >
-                                                                            {({ input, meta }) => (
-                                                                                <div>
-                                                                                    <Label className='form-label' for={`displayname${index}`}>
-                                                                                        <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
-                                                                                    </Label>
-                                                                                    <input
-                                                                                        {...input}
-                                                                                        className="form-control"
-                                                                                        id={`displayname${index}`}
-                                                                                        type="date"
-                                                                                        placeholder={`Enter ${label}`}
-                                                                                        // min={minDate}
-                                                                                        max="9999-12-31"
-                                                                                    />
-                                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                                                </div>
-                                                                            )}
-                                                                        </Field>
-                                                                    )
-                                                                }
+                                                            {
+                                                                fieldType[index] === 'Date' && (
+                                                                    <Field
+                                                                        name={`${fieldName[index]}`} // Use dynamic field name
+
+                                                                        validate={requiredfield[index] === '1' ? composeValidators(expiryDate) : (value) => composeValidators()(value)}
+                                                                    >
+                                                                        {({ input, meta }) => (
+                                                                            <div>
+                                                                                <Label className='form-label' for={`displayname${index}`}>
+                                                                                    <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                </Label>
+                                                                                <input
+                                                                                    {...input}
+                                                                                    className="form-control"
+                                                                                    id={`displayname${index}`}
+                                                                                    type="date"
+                                                                                    placeholder={`Enter ${label}`}
+                                                                                    // min={minDate}
+                                                                                    max="9999-12-31"
+                                                                                />
+                                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                            </div>
+                                                                        )}
+                                                                    </Field>
+                                                                )
+                                                            }
 
                                                             {fieldType[index] === 'Email' && (
                                                                 <Field

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {pool} = require('../../config/database'); // Import the database pool
+const { pool } = require('../../config/database'); // Import the database pool
 
 const verifyToken = require('./middleware/authMiddleware');
 
@@ -72,7 +72,7 @@ router.get('/widgetdata', verifyToken, async (req, res) => {
 });
 
 
-router.get('/eventWidgetData',verifyToken, async (req, res) => {
+router.get('/eventWidgetData', verifyToken, async (req, res) => {
   try {
     // Query to fetch categories and their counts from cs_users table
     const categoryQuery = `
@@ -137,19 +137,21 @@ router.get('/eventWidgetData',verifyToken, async (req, res) => {
 });
 
 
-router.get('/regWidgetData',verifyToken, async (req, res) => {
+router.get('/regWidgetData', verifyToken, async (req, res) => {
   try {
     // Query to fetch categories and their counts from cs_users table
     const categoryQuery = `
     SELECT 
-        c.cs_reg_category AS title, 
-        COUNT(u.cs_reg_category) AS total,
-        c.cs_reg_cat_id AS catID
-        FROM cs_os_category c
-        LEFT JOIN cs_os_users u ON u.cs_reg_cat_id = c.cs_reg_cat_id
-        WHERE c.cs_status = 1 
-        GROUP BY c.cs_reg_category, c.cs_reg_cat_id
-        ORDER BY c.cs_reg_cat_id;
+    c.cs_reg_category AS title, 
+    COUNT(u.cs_reg_category) AS total,
+    c.cs_reg_cat_id AS catID
+FROM cs_os_category c
+LEFT JOIN cs_os_users u 
+    ON u.cs_reg_cat_id = c.cs_reg_cat_id AND u.cs_isconfirm = 1
+WHERE c.cs_status = 1 
+GROUP BY c.cs_reg_category, c.cs_reg_cat_id
+ORDER BY c.cs_reg_cat_id;
+
     `;
 
     // Execute the category query using promises
@@ -251,47 +253,47 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
       if (/\d$/.test(title)) {
         title = title.replace(/(\d+)$/, ' Day $1'); // Append 'Day' to titles ending with a number
       }
-    
+
       const total = row.total ? row.total.toString() : '0'; // Handle null total counts
       let logo = row.logo;
       let TotalAllowCount = '0'; // Default value for TotalAllowCount
       if (sumResults[index][0][0]) {
         TotalAllowCount = sumResults[index][0][0].cs_sum ? sumResults[index][0][0].cs_sum.toString() : '0';
       }
-          
-    // Calculate the percentage
-    const percentage = total && TotalAllowCount && parseFloat(TotalAllowCount) !== 0
-    ? ((parseFloat(total) / parseFloat(TotalAllowCount)) * 100).toFixed(2)
-    : "0.00";
-  
 
-          return {
-            facilityType: row.facilityType,
-            title: title,
-            image: logo,
-            total: total,
-            TotalAllowCount: TotalAllowCount,
-            color: 'secondary', // Example color
-            chart: {
-              color: ["var(--theme-default)"],
-              series: [percentage], // Pass the percentage value to series parameter
-            },
-          };
-        });
-        
-        // Send the widget data as response
-        res.json(DataWidgetWithPercentage);
-      } catch (err) {
-        console.error('Error executing query:', err);
-        res.status(500).json({ error: 'Internal server error', message: err.message });
-      }
+      // Calculate the percentage
+      const percentage = total && TotalAllowCount && parseFloat(TotalAllowCount) !== 0
+        ? ((parseFloat(total) / parseFloat(TotalAllowCount)) * 100).toFixed(2)
+        : "0.00";
+
+
+      return {
+        facilityType: row.facilityType,
+        title: title,
+        image: logo,
+        total: total,
+        TotalAllowCount: TotalAllowCount,
+        color: 'secondary', // Example color
+        chart: {
+          color: ["var(--theme-default)"],
+          series: [percentage], // Pass the percentage value to series parameter
+        },
+      };
     });
 
-    
-    router.get('/widgetdatachart', verifyToken, async (req, res) => {
-      try {
-        // Query to fetch counts for all facilities from cs_os_facility_detail table
-        const query = `
+    // Send the widget data as response
+    res.json(DataWidgetWithPercentage);
+  } catch (err) {
+    console.error('Error executing query:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  }
+});
+
+
+router.get('/widgetdatachart', verifyToken, async (req, res) => {
+  try {
+    // Query to fetch counts for all facilities from cs_os_facility_detail table
+    const query = `
           SELECT 
             fd.cs_facility_name AS title, 
             SUM(CASE WHEN br.cs_type IS NOT NULL THEN 1 ELSE 0 END) AS total, 
@@ -305,110 +307,110 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
           GROUP BY 
             fd.cs_facility_name;
         `;
-    
-        // Execute the query using promises
-        const [result] = await pool.query(query);
-    
-        // Reduce the result into day-wise facility objects
-        const marketChartData = result.reduce((acc, row) => {
-          let title = row.title.replace(/^cs_/, ''); // Remove 'cs_' prefix
-          if (/\d$/.test(title)) {
-            title = title.replace(/(\d+)$/, ' Day $1'); // Append 'Day' to titles ending with a number
-          }
-    
-          const total = row.total ? row.total.toString() : '0'; // Handle null total counts
-    
-          const facility = {
-            facilityType: row.facilityType.replace(/^cs_/, ''), // Remove 'cs_' prefix from facilityType
-            title: title,
-            total: total,
-          };
-    
-          // Extract the day from the title
-          const dayMatch = title.match(/Day (\d+)$/);
-          if (dayMatch) {
-            const day = parseInt(dayMatch[1]);
-            if (!acc[day]) {
-              acc[day] = [];
-            }
-            acc[day].push(facility);
-          }
-    
-          return acc;
-        }, {});
-    
-        // Convert object to array and sort by day
-        const facilityArrays = Object.keys(marketChartData)
-          .map(day => ({
-            day: parseInt(day),
-            facilities: marketChartData[day],
-          }))
-          .sort((a, b) => a.day - b.day);
-    
-        // Check if all facilities have a total of 0
-        const allFacilitiesZero = facilityArrays.every(dayData =>
-          dayData.facilities.every(facility => parseInt(facility.total) === 0)
-        );
-    
-        // Send an empty array if all facilities' total values are 0
-        if (allFacilitiesZero) {
-          res.json([]);
-        } else {
-          res.json(facilityArrays);
-        }
-      } catch (err) {
-        console.error('Error executing query:', err);
-        res.status(500).json({ error: 'Internal server error', message: err.message });
+
+    // Execute the query using promises
+    const [result] = await pool.query(query);
+
+    // Reduce the result into day-wise facility objects
+    const marketChartData = result.reduce((acc, row) => {
+      let title = row.title.replace(/^cs_/, ''); // Remove 'cs_' prefix
+      if (/\d$/.test(title)) {
+        title = title.replace(/(\d+)$/, ' Day $1'); // Append 'Day' to titles ending with a number
       }
-    });
-    
 
-    // router.get('/widgetcommonscan', async (req, res) => {
-    //   try {
-    //     const query = `
-    //       SELECT 
-    //         REPLACE(br.cs_type, 'cs_', '') AS title, -- Remove 'cs_' prefix
-    //         DATE_FORMAT(STR_TO_DATE(br.cs_date, '%Y-%m-%d'), '%Y-%m-%d') AS date,
-    //         COUNT(*) AS total
-    //       FROM 
-    //         cs_os_badgerecords br
-    //       WHERE 
-    //         br.cs_type NOT REGEXP '[0-9]$'
-    //       GROUP BY 
-    //         br.cs_type, date;
-    //     `;
-    
-    //     const [result] = await pool.query(query);
-    
-    //     const widgetData = result.reduce((acc, row) => {
-    //       const { date, title, total } = row;
-    //       if (!date) return acc;
-    
-    //       if (!acc[date]) {
-    //         acc[date] = [];
-    //       }
-    
-    //       acc[date].push({ title, total: total.toString() });
-    
-    //       return acc;
-    //     }, {});
-    
-    //     const responseData = Object.keys(widgetData).map(date => ({
-    //       date,
-    //       facilities: widgetData[date],
-    //     }));
-    
-    //     res.json(responseData);
-    //   } catch (err) {
-    //     console.error('Error executing query:', err);
-    //     res.status(500).json({ error: 'Internal server error', message: err.message });
-    //   }
-    // });
-    
+      const total = row.total ? row.total.toString() : '0'; // Handle null total counts
 
-    router.get('/widgetcommonscan', verifyToken, async (req, res) => {
-      try {
-        const query = `
+      const facility = {
+        facilityType: row.facilityType.replace(/^cs_/, ''), // Remove 'cs_' prefix from facilityType
+        title: title,
+        total: total,
+      };
+
+      // Extract the day from the title
+      const dayMatch = title.match(/Day (\d+)$/);
+      if (dayMatch) {
+        const day = parseInt(dayMatch[1]);
+        if (!acc[day]) {
+          acc[day] = [];
+        }
+        acc[day].push(facility);
+      }
+
+      return acc;
+    }, {});
+
+    // Convert object to array and sort by day
+    const facilityArrays = Object.keys(marketChartData)
+      .map(day => ({
+        day: parseInt(day),
+        facilities: marketChartData[day],
+      }))
+      .sort((a, b) => a.day - b.day);
+
+    // Check if all facilities have a total of 0
+    const allFacilitiesZero = facilityArrays.every(dayData =>
+      dayData.facilities.every(facility => parseInt(facility.total) === 0)
+    );
+
+    // Send an empty array if all facilities' total values are 0
+    if (allFacilitiesZero) {
+      res.json([]);
+    } else {
+      res.json(facilityArrays);
+    }
+  } catch (err) {
+    console.error('Error executing query:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  }
+});
+
+
+// router.get('/widgetcommonscan', async (req, res) => {
+//   try {
+//     const query = `
+//       SELECT 
+//         REPLACE(br.cs_type, 'cs_', '') AS title, -- Remove 'cs_' prefix
+//         DATE_FORMAT(STR_TO_DATE(br.cs_date, '%Y-%m-%d'), '%Y-%m-%d') AS date,
+//         COUNT(*) AS total
+//       FROM 
+//         cs_os_badgerecords br
+//       WHERE 
+//         br.cs_type NOT REGEXP '[0-9]$'
+//       GROUP BY 
+//         br.cs_type, date;
+//     `;
+
+//     const [result] = await pool.query(query);
+
+//     const widgetData = result.reduce((acc, row) => {
+//       const { date, title, total } = row;
+//       if (!date) return acc;
+
+//       if (!acc[date]) {
+//         acc[date] = [];
+//       }
+
+//       acc[date].push({ title, total: total.toString() });
+
+//       return acc;
+//     }, {});
+
+//     const responseData = Object.keys(widgetData).map(date => ({
+//       date,
+//       facilities: widgetData[date],
+//     }));
+
+//     res.json(responseData);
+//   } catch (err) {
+//     console.error('Error executing query:', err);
+//     res.status(500).json({ error: 'Internal server error', message: err.message });
+//   }
+// });
+
+
+router.get('/widgetcommonscan', verifyToken, async (req, res) => {
+  try {
+    const query = `
             SELECT 
     REPLACE(br.cs_type, 'cs_', '') AS title, -- Remove 'cs_' prefix
   DATE_FORMAT(STR_TO_DATE(br.cs_date, '%d/%m/%Y'), '%Y-%m-%d') AS date,
@@ -420,38 +422,38 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
   GROUP BY 
     br.cs_type, date;
         `;
-    
-        const [result] = await pool.query(query);
-        console.log('Query result:', result); // Log the result for debugging
-    
-        const widgetData = result.reduce((acc, row) => {
-          const { date, title, total } = row;
-          if (!date) return acc;
-    
-          if (!acc[date]) {
-            acc[date] = [];
-          }
-    
-          acc[date].push({ title, total: total.toString() });
-    
-          return acc;
-        }, {});
-    
-        const responseData = Object.keys(widgetData).map(date => ({
-          date,
-          facilities: widgetData[date],
-        }));
-    
-        res.json(responseData);
-      } catch (err) {
-        console.error('Error executing query:', err);
-        res.status(500).json({ error: 'Internal server error', message: err.message });
+
+    const [result] = await pool.query(query);
+    console.log('Query result:', result); // Log the result for debugging
+
+    const widgetData = result.reduce((acc, row) => {
+      const { date, title, total } = row;
+      if (!date) return acc;
+
+      if (!acc[date]) {
+        acc[date] = [];
       }
-    });
-    
-    
-    
-    
+
+      acc[date].push({ title, total: total.toString() });
+
+      return acc;
+    }, {});
+
+    const responseData = Object.keys(widgetData).map(date => ({
+      date,
+      facilities: widgetData[date],
+    }));
+
+    res.json(responseData);
+  } catch (err) {
+    console.error('Error executing query:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  }
+});
+
+
+
+
 //     router.get('/widgetdatapie2', async (req, res) => {
 //       try {
 //         // Query to fetch counts for all facilities from cs_os_facility_detail table
@@ -468,13 +470,13 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
 //         fd.cs_status = 1 
 //     GROUP BY 
 //         title, date;
-    
-    
+
+
 //         `;
-    
+
 //         // Execute the query using promises
 //         const [result] = await pool.query(query);
-    
+
 // // Process the result to match the required JSON format
 // // Process the result to match the required JSON format
 // const widgetData = result.reduce((acc, row) => {
@@ -486,7 +488,7 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
 //   const date = row.date.toISOString().split('T')[0]; // Convert Date to YYYY-MM-DD string
 //   const title = row.title.replace(/^cs_/, ''); // Remove 'cs_' prefix from title
 //   const total = row.total ? row.total : 0; // Handle null total counts
-  
+
 //   // Get the common category (e.g., 'lunch') from the facility title without the numeric suffix
 //   const commonTitle = title.replace(/\d+$/, '');
 
@@ -519,19 +521,19 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
 // res.json(responseData);
 
 
-    
+
 //       } catch (err) {
 //         console.error('Error executing query:', err);
 //         res.status(500).json({ error: 'Internal server error', message: err.message });
 //       }
 //     });
-    
 
 
-    router.get('/widgetdatapie', verifyToken, async (req, res) => {
-      try {
-        // Query to fetch counts for all facilities from cs_os_facility_detail table
-        const query = `
+
+router.get('/widgetdatapie', verifyToken, async (req, res) => {
+  try {
+    // Query to fetch counts for all facilities from cs_os_facility_detail table
+    const query = `
         SELECT 
         REPLACE(REGEXP_REPLACE(fd.cs_facility_name, '\\d+$', ''), 'cs_', '') AS title, -- Remove 'cs_' prefix and numeric suffix
         CASE
@@ -548,62 +550,62 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(cs_badge_data, '$.${row.facilityType}')) != '0';
       GROUP BY 
         title, date;
         `;
-    
-        // Execute the query using promises
-        const [result] = await pool.query(query);
-    
-// Process the result to match the required JSON format
-// Process the result to match the required JSON format
-const widgetData = result.reduce((acc, row) => {
-  if (!row.date) {
-    // Skip rows without a valid date
-    return acc;
-  }
 
-  const date = row.date.toISOString().split('T')[0]; // Convert Date to YYYY-MM-DD string
-  const title = row.title.replace(/^cs_/, ''); // Remove 'cs_' prefix from title
-  const total = row.total ? row.total : 0; // Handle null total counts
-  
-  // Get the common category (e.g., 'lunch') from the facility title without the numeric suffix
-  const commonTitle = title.replace(/\d+$/, '');
+    // Execute the query using promises
+    const [result] = await pool.query(query);
 
-  // Ensure the date is in the object
-  if (!acc[date]) {
-    acc[date] = {};
-  }
-
-  // Ensure the common title is in the object
-  if (!acc[date][commonTitle]) {
-    acc[date][commonTitle] = 0;
-  }
-
-  // Add the total count to the common title
-  acc[date][commonTitle] += total;
-
-  return acc;
-}, {});
-
-// Convert object to array and format it for response
-const responseData = Object.keys(widgetData).map(date => ({
-  date: date,
-  facilities: Object.entries(widgetData[date]).map(([commonTitle, total]) => ({
-    title: commonTitle,
-    total: total.toString(),
-  })),
-}));
-
-// Send the formatted data as response
-res.json(responseData);
-
-
-    
-      } catch (err) {
-        console.error('Error executing query:', err);
-        res.status(500).json({ error: 'Internal server error', message: err.message });
+    // Process the result to match the required JSON format
+    // Process the result to match the required JSON format
+    const widgetData = result.reduce((acc, row) => {
+      if (!row.date) {
+        // Skip rows without a valid date
+        return acc;
       }
-    });
-    
-    // API WITH FACILITY IMAGES
+
+      const date = row.date.toISOString().split('T')[0]; // Convert Date to YYYY-MM-DD string
+      const title = row.title.replace(/^cs_/, ''); // Remove 'cs_' prefix from title
+      const total = row.total ? row.total : 0; // Handle null total counts
+
+      // Get the common category (e.g., 'lunch') from the facility title without the numeric suffix
+      const commonTitle = title.replace(/\d+$/, '');
+
+      // Ensure the date is in the object
+      if (!acc[date]) {
+        acc[date] = {};
+      }
+
+      // Ensure the common title is in the object
+      if (!acc[date][commonTitle]) {
+        acc[date][commonTitle] = 0;
+      }
+
+      // Add the total count to the common title
+      acc[date][commonTitle] += total;
+
+      return acc;
+    }, {});
+
+    // Convert object to array and format it for response
+    const responseData = Object.keys(widgetData).map(date => ({
+      date: date,
+      facilities: Object.entries(widgetData[date]).map(([commonTitle, total]) => ({
+        title: commonTitle,
+        total: total.toString(),
+      })),
+    }));
+
+    // Send the formatted data as response
+    res.json(responseData);
+
+
+
+  } catch (err) {
+    console.error('Error executing query:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  }
+});
+
+// API WITH FACILITY IMAGES
 
 // router.get('/widgetdataWithPercent', async (req, res) => {
 //   try {
@@ -740,7 +742,7 @@ router.get('/totalCounts', verifyToken, async (req, res) => {
 
 
 // Define your API endpoints
-router.get('/eventname',verifyToken, async (req, res) => {
+router.get('/eventname', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT `cs_value` FROM `cs_tbl_sitesetting` WHERE `cs_parameter` = 'Event Name'");
     res.json(rows);
@@ -750,7 +752,7 @@ router.get('/eventname',verifyToken, async (req, res) => {
   }
 });
 
-router.get('/eventdays',verifyToken, async (req, res) => {
+router.get('/eventdays', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT `cs_value` FROM `cs_tbl_sitesetting` WHERE `cs_parameter` = 'Event Days'");
     res.json(rows);
@@ -760,7 +762,7 @@ router.get('/eventdays',verifyToken, async (req, res) => {
   }
 });
 
-router.get('/timezone',verifyToken, async (req, res) => {
+router.get('/timezone', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT `cs_value` FROM `cs_tbl_sitesetting` WHERE `cs_parameter` = 'Time Zone'");
     res.json(rows);

@@ -222,3 +222,13 @@
 .type-title{
     opacity: 0.3;
 }
+
+.zoom-control {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 25px;
+    position: fixed;
+    right: 5%;
+    bottom: 3%;
+    z-index: 99999;
+  }

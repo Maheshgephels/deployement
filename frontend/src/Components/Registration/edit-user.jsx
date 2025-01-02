@@ -10,7 +10,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MdDelete, MdInfoOutline } from "react-icons/md";
 import Select from 'react-select';
 import { Field, Form } from 'react-final-form'; // Import Field and Form from react-final-form
-import { required, email, Img, PDF, option, number, Name, NAME, radio, expiryDate, shortbio, longbio, username1, password  } from '../Utils/validationUtils';
+import { required, email, Img, PDF, option, number, Name, NAME, radio, expiryDate, shortbio, longbio, username1, password } from '../Utils/validationUtils';
 import { PermissionsContext } from '../../contexts/PermissionsContext';
 import useAuth from '../../Auth/protectedAuth';
 import { getToken } from '../../Auth/Auth';
@@ -38,7 +38,7 @@ const EditRegUser = () => {
     const [fieldName, setFieldName] = useState([]);
     const navigate = useNavigate(); // Initialize useHistory
     const location = useLocation();
-    const { Data } = location.state || {};
+    const { Data, complimentary, cancel, inactive } = location.state || {};
     const [prefixes, setPrefixes] = useState([]);
     const [state, setState] = useState([]);
     const [country, setCountry] = useState([]);
@@ -109,6 +109,12 @@ const EditRegUser = () => {
     useEffect(() => {
         fetchDropdown(); // Corrected function name
     }, []);
+
+    
+    const toSentenceCase = (str) => {
+        if (!str) return ''; // Handle empty or undefined strings
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      };
 
     const validateUniqueUsername = async (value) => {
         if (value === Data.cs_username) {
@@ -246,7 +252,7 @@ const EditRegUser = () => {
     //                     }
     //                 });
     //             }
-            
+
     //     } catch (error) {
     //         console.error('Error creating user:', error.message);
     //     }
@@ -267,6 +273,17 @@ const EditRegUser = () => {
                     values[key] = formData[key].value !== undefined ? formData[key].value : formData[key] || '';
                 }
             }
+
+            if (values.cs_first_name) {
+                values.cs_first_name = toSentenceCase(values.cs_first_name);
+              }
+        
+              if (values.cs_last_name) {
+                values.cs_last_name = toSentenceCase(values.cs_last_name);
+              }
+
+
+
 
             // Ensure all expected fields are included, including empty ones
             expectedFields.forEach(field => {
@@ -297,7 +314,12 @@ const EditRegUser = () => {
                 allowEscapeKey: false
             }).then((result) => {
                 if (result.dismiss === SweetAlert.DismissReason.timer) {
-                    navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
+                    if (complimentary || cancel || inactive) {
+                        navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`, { state: { complimentary, cancel, inactive } });
+                    }
+                    else {
+                        navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
+                    }
                 }
             });
         } catch (error) {
@@ -478,7 +500,12 @@ const EditRegUser = () => {
 
 
     const handleNavigation = () => {
-        navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
+        if (complimentary || cancel || inactive) {
+            navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`, { state: { complimentary, cancel, inactive } });
+        }
+        else {
+            navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
+        }
     };
 
     const handleCheckboxChange = (e) => {
@@ -503,26 +530,7 @@ const EditRegUser = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle={
-                <>
-                    Edit User
-                    <MdInfoOutline
-                        id="addPopover"
-                        style={{
-                            cursor: 'pointer', position: 'absolute', marginLeft: '5px'
-                        }}
-                    />
-                    <UncontrolledPopover
-                        placement="bottom"
-                        target="addPopover"
-                        trigger="focus"
-                    >
-                        <PopoverBody>
-                            Use the <strong>Create User</strong> feature to register a new user and ensure all required information is accurately entered before creating.
-                        </PopoverBody>
-                    </UncontrolledPopover>
-                </>
-            } parent="Manage User" title="Create User" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Edit Confirm User" parent="Manage User" title="Create User" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
@@ -1037,10 +1045,10 @@ const EditRegUser = () => {
                                                                                         <Select
                                                                                             {...input}
                                                                                             options={requiredfield[index] === '1' ?
-                                                                                                matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option })) :
+                                                                                                matchedOptions.map(option => ({ value: option.cs_field_option, label: option.cs_field_option })) :
                                                                                                 [
                                                                                                     { value: '', label: 'Select' }, // Adding the "Select" option as the first item
-                                                                                                    ...matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option }))
+                                                                                                    ...matchedOptions.map(option => ({ value: option.cs_field_option, label: option.cs_field_option }))
                                                                                                 ]
                                                                                             }
 
@@ -1081,6 +1089,11 @@ const EditRegUser = () => {
                                                                                         className="form-control"
                                                                                         id={`displayname${index}`}
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1093,6 +1106,7 @@ const EditRegUser = () => {
                                                                     fieldType[index] === 'Number' && (
                                                                         <Field
                                                                             name={`${fieldName[index]}`} // Use dynamic field name
+                                                                            initialValue={Data?.[fieldName[index]] || ''}
                                                                             validate={requiredfield[index] === '1' ? composeValidators(number) : (value) => composeValidators()(value)}
                                                                         >
                                                                             {({ input, meta }) => (
@@ -1106,6 +1120,11 @@ const EditRegUser = () => {
                                                                                         id={`displayname${index}`}
                                                                                         type="number"
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1133,6 +1152,11 @@ const EditRegUser = () => {
                                                                                         type="text"
                                                                                         value={input.value || ''}
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1161,6 +1185,11 @@ const EditRegUser = () => {
                                                                                         id={`displayname${index}`}
                                                                                         type="text"
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1232,54 +1261,54 @@ const EditRegUser = () => {
                                                                     )
                                                                 }
 
-{fieldType[index] === 'Username' && (
-                                                                <Field
-                                                                    name={`${fieldName[index]}`} // Use dynamic field name
-                                                                    initialValue={Data[fieldName[index]] || ''}
-                                                                    validate={requiredfield[index] === '1' ? composeValidators(username1, validateUniqueUsername) : (value) => composeValidators()(value)}
-                                                                >
-                                                                    {({ input, meta }) => (
-                                                                        <div>
-                                                                            <Label className='form-label' for={`displayname${index}`}>
-                                                                                <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
-                                                                            </Label>
-                                                                            <input
-                                                                                {...input}
-                                                                                className="form-control"
-                                                                                id={`displayname${index}`}
-                                                                                type="text"
-                                                                                placeholder={`Enter ${label}`}
-                                                                            />
-                                                                            {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                                        </div>
-                                                                    )}
-                                                                </Field>
-                                                            )}
+                                                                {fieldType[index] === 'Username' && (
+                                                                    <Field
+                                                                        name={`${fieldName[index]}`} // Use dynamic field name
+                                                                        initialValue={Data[fieldName[index]] || ''}
+                                                                        validate={requiredfield[index] === '1' ? composeValidators(username1, validateUniqueUsername) : (value) => composeValidators()(value)}
+                                                                    >
+                                                                        {({ input, meta }) => (
+                                                                            <div>
+                                                                                <Label className='form-label' for={`displayname${index}`}>
+                                                                                    <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                </Label>
+                                                                                <input
+                                                                                    {...input}
+                                                                                    className="form-control"
+                                                                                    id={`displayname${index}`}
+                                                                                    type="text"
+                                                                                    placeholder={`Enter ${label}`}
+                                                                                />
+                                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                            </div>
+                                                                        )}
+                                                                    </Field>
+                                                                )}
 
-                                                            {fieldType[index] === 'Password' && (
-                                                                <Field
-                                                                    name={`${fieldName[index]}`} // Use dynamic field name
-                                                                    initialValue={Data[fieldName[index]] || ''}
-                                                                    validate={requiredfield[index] === '1' ? composeValidators(password) : (value) => composeValidators()(value)}
-                                                                >
-                                                                    {({ input, meta }) => (
-                                                                        <div>
-                                                                            <Label className='form-label' for={`displayname${index}`}>
-                                                                                <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
-                                                                            </Label>
-                                                                            <input
-                                                                                {...input}
-                                                                                className="form-control"
-                                                                                id={`displayname${index}`}
-                                                                                type="text"
-                                                                                placeholder={`Enter ${label}`}
-                                                                            />
-                                                                            {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                                        </div>
-                                                                    )}
-                                                                </Field>
-                                                            )}
-                                                   
+                                                                {fieldType[index] === 'Password' && (
+                                                                    <Field
+                                                                        name={`${fieldName[index]}`} // Use dynamic field name
+                                                                        initialValue={Data[fieldName[index]] || ''}
+                                                                        validate={requiredfield[index] === '1' ? composeValidators(password) : (value) => composeValidators()(value)}
+                                                                    >
+                                                                        {({ input, meta }) => (
+                                                                            <div>
+                                                                                <Label className='form-label' for={`displayname${index}`}>
+                                                                                    <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                </Label>
+                                                                                <input
+                                                                                    {...input}
+                                                                                    className="form-control"
+                                                                                    id={`displayname${index}`}
+                                                                                    type="text"
+                                                                                    placeholder={`Enter ${label}`}
+                                                                                />
+                                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                            </div>
+                                                                        )}
+                                                                    </Field>
+                                                                )}
+
 
                                                             </Col>
                                                         );
@@ -1341,13 +1370,14 @@ const EditRegUser = () => {
                                                 </Row>
                                             )} */}
 
-                                
+
                                             {/* Back and Submit buttons when the third row is shown */}
                                             {(!showNextStep || isChecked) && (
                                                 <Row className="d-flex justify-content-between align-items-center">
                                                     <Col xs="auto">
-                                                        <Button color='warning' onClick={handleCancel} className="me-2 mt-3">Cancel</Button>
                                                         <Button color='primary' type='submit' className="me-2 mt-3">Update</Button>
+                                                        <Button color='warning' onClick={handleCancel} className="me-2 mt-3">Cancel</Button>
+
                                                     </Col>
                                                 </Row>
 

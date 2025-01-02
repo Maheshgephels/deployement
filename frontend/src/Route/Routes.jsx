@@ -170,7 +170,7 @@ import AddDiscount from "../Components/Registration/add-discount.jsx";
 import Editaddon from "../Components/Registration/edit-addon.jsx";
 import EditDiscount from "../Components/Registration/edit-discount.jsx";
 import ManagePayment from "../Components/Registration/manage-payment.jsx";
-import ConfirmUser from "../Components/Registration/basic-to-confirm.jsx";
+import AdminConfirmUser from "../Components/Registration/temp-to-confirm.jsx";
 import ConfirmUserListing from "../Components/Registration/confirm-user-listing.jsx";
 import TempUserListing from "../Components/Registration/temp-online-user-listing.jsx";
 import NonConfirmUserListing from "../Components/Registration/nonconfirm-user-listing.jsx";
@@ -188,6 +188,9 @@ import RegWorkshoptype from "../Components/Registration/manage-workshoptype.jsx"
 import AddRegWorkshopType from "../Components/Registration/add-workshoptype.jsx";
 import EditRegWorkshopType from "../Components/Registration/edit-workshoptype.jsx";
 import RegBulkEmail from "../Components/Registration/reg-bulk-mail.jsx";
+
+import Twinsharinglist from "../Components/Registration/twin-sharing-listing.jsx";
+import AddTwinSharing from "../Components/Registration/allocate-room.jsx";
 
 
 
@@ -377,7 +380,7 @@ export const routes = [
 { path: `${process.env.PUBLIC_URL}/registration/edit-discount/:layout`, Component: <EditDiscount/> },
 { path: `${process.env.PUBLIC_URL}/registration/manage-payment/:layout`, Component: <ManagePayment/> },
 { path: `${process.env.PUBLIC_URL}/registration/add-payment/:layout`, Component: <AddPayment/> },
-{ path: `${process.env.PUBLIC_URL}/registration/admin-confirm-user/:layout`, Component: <ConfirmUser/> },
+{ path: `${process.env.PUBLIC_URL}/registration/admin-confirm-user/:layout`, Component: <AdminConfirmUser/> },
 { path: `${process.env.PUBLIC_URL}/registration/confirm-user-listing/:layout`, Component: <ConfirmUserListing/> },
 { path: `${process.env.PUBLIC_URL}/registration/temp-user-listing/:layout`, Component: <TempUserListing/> },
 { path: `${process.env.PUBLIC_URL}/registration/non-confirm-user-listing/:layout`, Component: <NonConfirmUserListing/> },
@@ -392,6 +395,8 @@ export const routes = [
 { path: `${process.env.PUBLIC_URL}/registration/add-reg-workshoptype/:layout`, Component: <AddRegWorkshopType/> },
 { path: `${process.env.PUBLIC_URL}/registration/edit-reg-workshoptype/:layout`, Component: <EditRegWorkshopType/> },
 { path: `${process.env.PUBLIC_URL}/registration/reg-bulk-email/:layout`, Component: <RegBulkEmail/> },
+{ path: `${process.env.PUBLIC_URL}/registration/twin-sharing-listing/:layout`, Component: <Twinsharinglist/> },
+{ path: `${process.env.PUBLIC_URL}/registration/Add-TwinSharing-room/:layout`, Component: <AddTwinSharing/> },
 
 
 

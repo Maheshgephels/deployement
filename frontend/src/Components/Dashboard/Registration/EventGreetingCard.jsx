@@ -4,6 +4,7 @@ import { H4, P, Btn, Image } from '../../../AbstractElements';
 import CarToon from '../../../assets/images/dashboard/cartoon.svg';
 import axios from 'axios';
 import { BackendAPI, BackendPath } from '../../../api';
+import moment from 'moment';
 
 // Icons
 import { CiCalendarDate } from "react-icons/ci";
@@ -11,10 +12,13 @@ import { IoLocationOutline } from "react-icons/io5";
 
 const EventGreetingCard = () => {
   const [eventDetails, setEventDetails] = useState([]);
+  const [startDate, setStartdate] = useState('');
+  const [endDate, setEnddate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-
+  console.log("Event", eventDetails);
+  console.log("Start", startDate);
   useEffect(() => {
     fetchEventData();
   }, []);
@@ -23,6 +27,14 @@ const EventGreetingCard = () => {
     try {
       const response = await axios.get(`${BackendAPI}/eventdata/eventDetails`);
       if (response.data && response.data.eventDetails) {
+        const Data = response.data.eventDetails;
+        const startDate = Data.find((item) => item.cs_parameter === 'Event Start Date')?.cs_value;
+        const endDate = Data.find((item) => item.cs_parameter === 'event_end_date')?.cs_value;
+        const formattedStartDate = startDate ? moment(startDate).format('DD-MM-YYYY') : '';
+        const formattedEndDate = endDate ? moment(endDate).format('DD-MM-YYYY') : '';
+
+        setStartdate(formattedStartDate);
+        setEnddate(formattedEndDate);
         setEventDetails(response.data.eventDetails);
       } else {
         setError('No event data available');
@@ -55,22 +67,21 @@ const EventGreetingCard = () => {
           <Media>
             <Media body>
               <div className="d-flex">
-              <div className='pe-4'>
-              <img className='rounded' src={`${BackendPath}${event['event_image_url']}`} alt="Current Exhibitor image" style={{ maxHeight: '120px' }} />
+                <div className='pe-4'>
+                  <img className='rounded' src={`${BackendPath}${event['event_image_url']}`} alt="Current Exhibitor image" style={{ maxHeight: '120px' }} />
                 </div>
                 <div className='greeting-user'>
                   <H4 attrH4={{ className: 'f-w-600 text-white' }}>
                     {event['Event Name'] || 'No Event'}
                   </H4>
                   <span className='text-white'>
-                    <CiCalendarDate /> <strong>Event DateTime:</strong>{' '}
-                    {event['Event Start Date'] && event['event_time'] 
-                      ? `${event['Event Start Date']} ${event['event_time']}` 
-                      : 'No Event'}
+                    <CiCalendarDate /> <strong>Event Date:</strong>{' '}
+                    {startDate ? startDate : 'No Event'} - {endDate ? endDate : 'No Event'}
                   </span>
+
                   <span className='text-white d-block'>
                     <IoLocationOutline /> <strong>Event Venue:</strong>{' '}
-                    {event['event_venue'] || 'No Event'}
+                    {event['event_venue'] || 'No Event'}  
                   </span>
                   <div className='whatsnew-btn'>
                     {/* <Btn attrBtn={{ color: 'transparent', outline: true, className: 'btn btn-outline-white' }}>
@@ -85,9 +96,9 @@ const EventGreetingCard = () => {
               <div className='badge f-10 p-0' id='txt'></div>
             </div>
           </Media>
-          <div className='cartoon'>
+          {/* <div className='cartoon'>
             <Image attrImage={{ src: CarToon, alt: 'vector women with laptop' }} />
-          </div>
+          </div> */}
         </CardBody>
       </Card>
     </Col>

@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState, useContext } from 'react';
 import { Container, Row, Col, Button, Card, CardBody, CardHeader, FormFeedback, Input, FormGroup, Label, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
 import { Form, Field } from 'react-final-form';
 import { required, Name } from '../Utils/validationUtils';
@@ -8,10 +8,13 @@ import axios from 'axios';
 import { BackendAPI } from '../../api/index';
 import { getToken } from '../../Auth/Auth';
 import Select from 'react-select';
+import { FaLock, FaUnlock } from "react-icons/fa";
 import 'react-datepicker/dist/react-datepicker.css';
 import SweetAlert from 'sweetalert2';
+import { PermissionsContext } from '../../contexts/PermissionsContext';
 import { Link, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { Tooltip } from 'react-tooltip';
 import { Divider } from 'antd';
 
 const composeValidators = (...validators) => value =>
@@ -26,7 +29,7 @@ const PaymentSetup = () => {
     const [priceInclusion, setPriceInclusion] = useState('Included');
     const [percentageValue, setPercentageValue] = useState('');
     const [amountValue, setAmountValue] = useState('');
-
+    const { permissions } = useContext(PermissionsContext);
     const [currencydata, setCurrencydata] = useState([]);
     const [paymentMode, setPaymentMode] = useState(null);
     const [showGateways, setShowGateways] = useState(false);
@@ -40,6 +43,10 @@ const PaymentSetup = () => {
     const [gstInclude, setGstInclude] = useState(paymentDetails["GST_Include"] || 'No'); // State for GST Include
     const [feeType, setFeeType] = useState(paymentDetails["processing_fees_in"] || '');
     const [currency, setCurrency] = useState(null); // Initially null or a default value
+    const [isLocked, setIsLocked] = useState(false); // Default state for lock status
+    const [alertModalOpen, setalertModalOpen] = useState(false);
+
+    const Paymentpermissions = permissions['RegFields'];
 
     console.log("Fee Type", feeType);
     console.log("Payment Data", paymentDetails);
@@ -84,7 +91,7 @@ const PaymentSetup = () => {
 
         if (paymentDetails.processing_fees_in) {
             setFeeType(paymentDetails.processing_fees_in);
-        } 
+        }
 
         setProcessingFee(paymentDetails["processing_fees"] || '');
 
@@ -95,7 +102,7 @@ const PaymentSetup = () => {
             });
         }
         setPaymentMode(paymentDetails["Payment_mode"])
-        if (paymentDetails["Payment_mode"] == "Both" || paymentDetails["Payment_mode"] == "Online") {
+        if (paymentDetails["Payment_mode"] == "Both" || paymentDetails["Payment_mode"] == "online") {
             setShowGateways(true)
         }
 
@@ -244,7 +251,29 @@ const PaymentSetup = () => {
 
     useEffect(() => {
         fetchDropdown();
+        fetchLockStatus();
     }, []);
+
+    const fetchLockStatus = async () => {
+        try {
+            const token = getToken();
+            const response = await axios.get(`${BackendAPI}/paymentRoutes/getLockStatus`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const lockData = response.data;
+            console.log("Lock Data:", lockData); // Log lockData to inspect its structure
+
+            // Assuming lockData.Lock is an array of locks
+            const isLocked = lockData.Lock.some(lock => lock.cs_value === '1');
+            setIsLocked(isLocked);
+        } catch (error) {
+            console.error('Error fetching lock status:', error);
+            // Handle error fetching status (e.g., show a message)
+        }
+    };
 
     const handleCancel = () => {
         setModal(true);
@@ -259,13 +288,67 @@ const PaymentSetup = () => {
         setCurrency(prev => ({ ...prev, [name]: value }));
     };
 
+    const closealertModal = () => {
+        setalertModalOpen(!alertModalOpen);
+    };
+
+    const Lock_Unlock = () => {
+        setalertModalOpen(!alertModalOpen);
+    };
+
+
+    const toggleLock = async () => {
+        try {
+            const newLockStatus = !isLocked ? 1 : 0; // Toggle lock status
+            const token = getToken();
+
+            // Example of updating lock status on the server
+            const response = await axios.post(`${BackendAPI}/paymentRoutes/updateLockStatus`, { cs_value: newLockStatus }, {
+                headers: {
+                    Authorization: `Bearer ${token}` // Include the token in the Authorization header
+                }
+            });
+
+            // Update local state based on server response
+            setIsLocked(!isLocked);
+            setalertModalOpen(false);
+
+        } catch (error) {
+            console.error('Error toggling lock status:', error);
+            // Handle error toggling lock (e.g., show a message)
+        }
+    };
+
     return (
         <Fragment>
-            <Breadcrumbs mainTitle="Payment Setup" parent="Registration Admin" title="Payment Setup" />
+            <Breadcrumbs mainTitle="Manage Payment Setup" parent="Registration Admin" title="Payment Setup" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="10">
                         <Card>
+                            <CardHeader className="d-flex justify-content-between align-items-center flex-column flex-md-row">
+                                <div>
+                                    <Tooltip id="tooltip" globalEventOff="click" />
+
+                                    <h2>Payment Setup</h2>
+                                    {/* <small className="form-text text-muted">
+                                        Note: To make a field mandatory, click on the Edit Field button.
+                                    </small> */}
+                                </div>
+
+                                {Paymentpermissions?.validate === 1 && (
+
+                                    <Button
+                                        color={isLocked ? "danger" : "success"}
+                                        onClick={Lock_Unlock}
+                                        data-tooltip-id="tooltip"
+                                        data-tooltip-content={isLocked ? "Unlock the payment setup" : "Lock the payment setup"}
+                                        data-tooltip-event="click focus"
+                                    >
+                                        {isLocked ? <><FaLock /> Unlock</> : <><FaUnlock /> Lock</>}
+                                    </Button>
+                                )}
+                            </CardHeader>
                             <CardBody>
                                 <Form onSubmit={onSubmit} render={({ handleSubmit }) => (
                                     <form onSubmit={handleSubmit}>
@@ -275,7 +358,7 @@ const PaymentSetup = () => {
                                                     {({ input, meta }) => (
                                                         <div className="form-group">
                                                             <label><strong>Organization Name</strong><span className="red-asterisk">*</span></label>
-                                                            <input {...input} type="text" placeholder="Enter Organization Name" className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
+                                                            <input {...input} type="text" disabled={isLocked} placeholder="Enter Organization Name" className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                         </div>
                                                     )}
@@ -286,7 +369,7 @@ const PaymentSetup = () => {
                                                     {({ input, meta }) => (
                                                         <div className="form-group">
                                                             <Label><strong>Identification Number</strong><span className="red-asterisk">*</span></Label>
-                                                            <input {...input} placeholder="Enter Identification Number" className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
+                                                            <input {...input} placeholder="Enter Identification Number" disabled={isLocked} className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                         </div>
                                                     )}
@@ -302,6 +385,7 @@ const PaymentSetup = () => {
                                                                 {...input}
                                                                 options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
                                                                 classNamePrefix="react-select"
+                                                                isDisabled={isLocked}
                                                                 onChange={(selectedOption) => {
                                                                     input.onChange(selectedOption);
                                                                     setGst(selectedOption.value); // Update GST state
@@ -327,6 +411,7 @@ const PaymentSetup = () => {
                                                                         {...input}
                                                                         options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
                                                                         classNamePrefix="react-select"
+                                                                        isDisabled={isLocked}
                                                                         onChange={(selectedOption) => {
                                                                             input.onChange(selectedOption);
                                                                             setGstInclude(selectedOption.value); // Update GST Include state
@@ -344,7 +429,7 @@ const PaymentSetup = () => {
                                                             {({ input, meta }) => (
                                                                 <div className="form-group">
                                                                     <Label><strong>Tax %</strong><span className="red-asterisk">*</span></Label>
-                                                                    <input {...input} placeholder="Enter in %" className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
+                                                                    <input {...input} placeholder="Enter in %" disabled={isLocked} className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                 </div>
                                                             )}
@@ -356,7 +441,7 @@ const PaymentSetup = () => {
                                                             {({ input, meta }) => (
                                                                 <div className="form-group">
                                                                     <Label className="d-flex justify-content-between align-items-center"><strong>CGST %</strong><small>(Applicable for INR)</small></Label>
-                                                                    <input {...input} placeholder="Enter in %" className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
+                                                                    <input {...input} placeholder="Enter in %" disabled={isLocked} className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                 </div>
                                                             )}
@@ -367,7 +452,7 @@ const PaymentSetup = () => {
                                                             {({ input, meta }) => (
                                                                 <div className="form-group">
                                                                     <Label className="d-flex justify-content-between align-items-center"><strong>SGST %</strong><small>(Applicable for INR)</small></Label>
-                                                                    <input {...input} placeholder="Enter in %" className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
+                                                                    <input {...input} placeholder="Enter in %" disabled={isLocked} className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`} />
                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                 </div>
                                                             )}
@@ -427,6 +512,7 @@ const PaymentSetup = () => {
                                                                     {...input}
                                                                     options={options}
                                                                     placeholder={`Select State`}
+                                                                    isDisabled={isLocked}
                                                                     isSearchable={true}
                                                                     onChange={(selectedOption) => {
                                                                         input.onChange(selectedOption ? selectedOption.value : '');
@@ -461,6 +547,7 @@ const PaymentSetup = () => {
                                                                         { value: 'No', label: 'No' }
                                                                     ]}
                                                                     classNamePrefix="react-select"
+                                                                    isDisabled={isLocked}
                                                                     onChange={(selectedOption) => {
                                                                         input.onChange(selectedOption); // Update the form field
                                                                         setProcessingFee(selectedOption.value); // Update component state
@@ -492,6 +579,7 @@ const PaymentSetup = () => {
                                                                         {...input}
                                                                         options={[{ value: 'Include', label: 'Include' }, { value: 'Exclude', label: 'Exclude' }]}
                                                                         classNamePrefix="react-select"
+                                                                        isDisabled={isLocked}
                                                                         onChange={(selectedOption) => {
                                                                             input.onChange(selectedOption);
                                                                             setFeeInclude(selectedOption.value);
@@ -517,6 +605,7 @@ const PaymentSetup = () => {
                                                                 name="feeIn"
                                                                 value="Percentage"
                                                                 checked={feeType === 'Percentage'}
+                                                                disabled={isLocked}
                                                                 onChange={handleFeeInChange}
                                                                 className="me-2"
                                                             /> Percentage
@@ -524,6 +613,7 @@ const PaymentSetup = () => {
                                                                 type="radio"
                                                                 name="feeIn"
                                                                 value="Amount"
+                                                                disabled={isLocked}
                                                                 checked={feeType === 'Amount'}
                                                                 onChange={handleFeeInChange}
                                                                 className="ms-3 me-2"
@@ -544,6 +634,7 @@ const PaymentSetup = () => {
                                                                 type="number"
                                                                 placeholder="Enter in %"
                                                                 name="Processing fee in %"
+                                                                disabled={isLocked}
                                                                 value={percentageValue}
                                                                 onChange={(e) => setPercentageValue(e.target.value)}
                                                             />
@@ -556,6 +647,7 @@ const PaymentSetup = () => {
                                                                 type="number"
                                                                 placeholder="Enter price"
                                                                 name="Processing fee in Amount"
+                                                                disabled={isLocked}
                                                                 value={amountValue}
                                                                 onChange={(e) => setAmountValue(e.target.value)}
                                                             />
@@ -575,6 +667,7 @@ const PaymentSetup = () => {
                                                     <Select
                                                         name="currency"
                                                         value={currency} // Set the selected value as an object
+                                                        isDisabled={isLocked}
                                                         onChange={(selectedOption) => setCurrency(selectedOption)} // Update currency with selected option
                                                         options={currencyOptions}
                                                         classNamePrefix="react-select"
@@ -586,9 +679,9 @@ const PaymentSetup = () => {
                                                     <strong>Payment Mode</strong>
 
                                                     <div className='mt-3'>
-                                                        <input type="radio" name="paymentMode" value="Offline" checked={paymentMode === 'Offline'} onChange={(e) => { setPaymentMode(e.target.value); setShowGateways(false); setGateway(''); }} className='me-2' /> Offline
-                                                        <input type="radio" name="paymentMode" value="Online" checked={paymentMode === 'Online'} onChange={(e) => { setPaymentMode(e.target.value); setShowGateways(true); }} className='ms-3 me-2' /> Online
-                                                        <input type="radio" name="paymentMode" value="Both" checked={paymentMode === 'Both'} onChange={(e) => { setPaymentMode(e.target.value); setShowGateways(true); }} className='ms-3 me-2' /> Both
+                                                        <input type="radio" name="paymentMode" value="offline" checked={paymentMode === 'offline'} onChange={(e) => { setPaymentMode(e.target.value); setShowGateways(false); setGateway(''); }} className='me-2' disabled={isLocked} /> Offline
+                                                        <input type="radio" name="paymentMode" value="online" checked={paymentMode === 'online'} onChange={(e) => { setPaymentMode(e.target.value); setShowGateways(true); }} className='ms-3 me-2' disabled={isLocked} /> Online
+                                                        <input type="radio" name="paymentMode" value="Both" checked={paymentMode === 'Both'} onChange={(e) => { setPaymentMode(e.target.value); setShowGateways(true); }} className='ms-3 me-2' disabled={isLocked} /> Both
                                                     </div>
                                                 </div>
                                             </Col>
@@ -602,8 +695,10 @@ const PaymentSetup = () => {
                                                             options={[
                                                                 { value: 'PayU', label: 'PayU' },
                                                                 { value: 'PayPal', label: 'PayPal' },
-                                                                { value: 'CCAvenue', label: 'CCAvenue' }
+                                                                { value: 'CCAvenue', label: 'CCAvenue' },
+                                                                { value: 'Razorpay', label: 'Rozarpay' }
                                                             ]}
+                                                            isDisabled={isLocked}
                                                             placeholder="Select Payment Gateway"
                                                             classNamePrefix="react-select"
                                                         />
@@ -622,11 +717,14 @@ const PaymentSetup = () => {
                                             </Col> */}
 
 
+                                            {!isLocked && (
+                                                <div className="d-flex justify-content-end mt-3">
+                                                    <Button color='warning' onClick={handleCancel} className="ms-3">Cancel</Button>
+                                                    <Button type="submit" color="primary" className='ms-3'>Save</Button>
+                                                </div>
 
-                                            <div className="d-flex justify-content-end mt-3">
-                                                <Button color='warning' onClick={handleCancel} className="ms-3">Cancel</Button>
-                                                <Button type="submit" color="primary" className='ms-3'>Save</Button>
-                                            </div>
+                                            )}
+
                                         </Row>
                                     </form>
                                 )} />
@@ -646,6 +744,27 @@ const PaymentSetup = () => {
                 <ModalFooter>
                     <Button onClick={handleNavigation} color='warning'>Yes</Button>
                     <Button color="primary" onClick={() => setModal(!modal)}>No</Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* Modal for Warning Lock and Unlock */}
+            <Modal isOpen={alertModalOpen} toggle={closealertModal} centered size="md">
+                <ModalHeader toggle={closealertModal}>Confirmation</ModalHeader>
+                <ModalBody>
+                    <div style={{ marginBottom: '20px' }}>
+                        <p><strong>Alert: Impact on Mobile Application & Forms</strong></p>
+                        <p>
+                            Changes to this form will affect all registration forms. Please ensure you
+                            have uploaded offline data (if any) from the Onsite app to the server before
+                            changing form fields. After making changes, you will need to reinstall the
+                            Consoft Onsite app.
+                        </p>
+                        <p>Are you sure you want to continue?</p>
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="primary" onClick={toggleLock}>Yes</Button>
+                    <Button color="warning" onClick={closealertModal}>No</Button>
                 </ModalFooter>
             </Modal>
         </Fragment>

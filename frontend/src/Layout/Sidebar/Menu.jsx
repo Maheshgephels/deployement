@@ -203,6 +203,14 @@ export const MENUITEMS = [
         permission: "ManagePayment"
       },
       {
+        title: "Allocate Room Partner",
+        path: `${process.env.PUBLIC_URL}/registration/twin-sharing-listing`,
+        icon: "user",
+        type: "link",
+        active: false,
+        permission: "Twinsharinglist"
+      },
+      {
         title: "Report",
         icon: "user",
         type: "sub",
@@ -615,7 +623,7 @@ export const MENUITEMS = [
         type: "link",
         active: false,
         title: "Roles & Permission",
-        permission: "Roles & Permission"
+        permission: "AdminRolesPermission"
       },
       {
         path: `${process.env.PUBLIC_URL}/onsite/manage-app-user`,

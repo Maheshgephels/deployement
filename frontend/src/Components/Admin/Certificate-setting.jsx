@@ -29,6 +29,10 @@ const CertificateSetting = () => {
 
     const [settings, setSettings] = useState();
     const [certificate, setCertificate] = useState({ value: "No", label: "No" });
+    const [userpanel, setuserpanel] = useState({ value: "No", label: "No" });
+    const [multipleuser, setmultipleuser] = useState({ value: "No", label: "No" });
+    const [Discountcoupon, setDiscountcoupon] = useState({ value: "No", label: "No" });
+    const [isInternational, setIsInternational] = useState({ value: "No", label: "No" });
     const [certificateWithFeedback, setCertificateWithFeedback] = useState({
         value: "No",
         label: "No",
@@ -83,6 +87,27 @@ const CertificateSetting = () => {
                     value: fetchedSettings.feedback_form || "No",
                     label: fetchedSettings.feedback_form || "No",
                 });
+
+                setuserpanel({
+                    value: fetchedSettings.user_panel || "No",
+                    label: fetchedSettings.user_panel || "No",
+                })
+
+                setmultipleuser({
+                    value: fetchedSettings.Multipleuser || "No",
+                    label: fetchedSettings.Multipleuser || "No",
+                })
+
+                setDiscountcoupon({
+                    value: fetchedSettings.Discountcoupon || "No",
+                    label: fetchedSettings.Discountcoupon || "No",
+                })
+
+                setIsInternational({
+                    value: fetchedSettings.is_international || "No",
+                    label: fetchedSettings.is_international || "No",
+                })
+    
     
                 setLoading(false);
             } else {
@@ -102,6 +127,10 @@ const CertificateSetting = () => {
             certificate: certificate.value,
             certificateWithFeedback: certificateWithFeedback.value,
             feedbackForm: feedbackForm.value,
+            userpanel : userpanel.value,
+            multipleuser :multipleuser.value,
+            Discountcoupon :Discountcoupon.value,
+            IsInternatioanl: isInternational.value
         };
 
         try {
@@ -147,14 +176,50 @@ const CertificateSetting = () => {
                     <Col sm="12">
                         <Card>
                             <CardHeader>
-                                <h5 className="mb-0">Certificate Settings</h5>
+                                <h5 className="mb-0">Certificate & User Panel Settings</h5>
                             </CardHeader>
                             <CardBody>
                                 <form onSubmit={handleSubmit}>
                                     {/* Certificate Field */}
                                     <Row>
                                         <Col md="4" className="mb-3">
-                                            <label>Certificate</label>
+                                            <label><strong>User Panel</strong></label>
+                                            <Select
+                                                options={yesNoOptions}
+                                                value={userpanel}
+                                                classNamePrefix="react-select"
+                                                onChange={(selected) => setuserpanel(selected)}
+                                            />
+                                        </Col>
+                                    </Row>
+
+                                    <Row>
+                                        <Col md="4" className="mb-3">
+                                            <label><strong>Discount coupon</strong></label>
+                                            <Select
+                                                options={yesNoOptions}
+                                                value={Discountcoupon}
+                                                classNamePrefix="react-select"
+                                                onChange={(selected) => setDiscountcoupon(selected)}
+                                            />
+                                        </Col>
+                                    </Row>
+                                    {userpanel.value === "No" && (
+                                    <Row>
+                                        <Col md="4" className="mb-3">
+                                            <label><strong>Can Add Multiple User</strong></label>
+                                            <Select
+                                                options={yesNoOptions}
+                                                value={multipleuser}
+                                                classNamePrefix="react-select"
+                                                onChange={(selected) => setmultipleuser(selected)}
+                                            />
+                                        </Col>
+                                    </Row>
+                                     )}
+                                    <Row>
+                                        <Col md="4" className="mb-3">
+                                            <label><strong>Certificate</strong></label>
                                             <Select
                                                 options={yesNoOptions}
                                                 value={certificate}
@@ -168,7 +233,7 @@ const CertificateSetting = () => {
                                     {certificate.value === "Yes" && (
                                         <Row>
                                             <Col md="4" className="mb-3">
-                                                <label>Certificate with Feedback</label>
+                                                <label><strong>Certificate with Feedback</strong></label>
                                                 <Select
                                                     options={yesNoOptions}
                                                     value={certificateWithFeedback}
@@ -186,7 +251,7 @@ const CertificateSetting = () => {
                                         certificateWithFeedback.value === "No") && (
                                         <Row>
                                             <Col md="4" className="mb-3">
-                                                <label>Feedback Form</label>
+                                                <label><strong>Feedback Form</strong></label>
                                                 <Select
                                                     options={yesNoOptions}
                                                     value={feedbackForm}
@@ -198,6 +263,17 @@ const CertificateSetting = () => {
                                             </Col>
                                         </Row>
                                     )}
+                                    <Row>
+                                        <Col md="4" className="mb-3">
+                                            <label><strong>Is Event International</strong></label>
+                                            <Select
+                                                options={yesNoOptions}
+                                                value={isInternational}
+                                                classNamePrefix="react-select"
+                                                onChange={(selected) => setIsInternational(selected)}
+                                            />
+                                        </Col>
+                                    </Row>
 
                                     {/* Save and Cancel Buttons */}
                                     <div>

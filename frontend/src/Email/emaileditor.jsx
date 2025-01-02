@@ -4,7 +4,7 @@ import { Breadcrumbs } from '../AbstractElements';
 import EmailEditor from 'react-email-editor';
 import axios from 'axios';
 import { Field, Form } from 'react-final-form';
-import { Container, Row, Col, Button, Card, CardHeader, Modal, ModalHeader, ModalFooter, ModalBody, Label, Input } from 'reactstrap';
+import { Container, Row, Col, Button, Card, CardHeader, Modal, ModalHeader, ModalFooter, ModalBody, Label, Input, FormText } from 'reactstrap';
 import { Tooltip } from 'react-tooltip';
 import { BackendAPI, BackendPath } from '../api';
 import { getToken } from '../Auth/Auth';
@@ -35,12 +35,13 @@ const EmailTemplate = (props) => {
   const [fieldName, setFieldName] = useState([]);
   const [modal, setModal] = useState(false);
   const [testmodal, setTestModal] = useState(false);
-  const [email, setEmail] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const [temp, setTemp] = useState(false);
   const [tempName, setTempName] = useState('');
   const [tempSubject, setTempSubject] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState(''); // State to hold validation error message
   const { template } = location.state || {};
 
   // Create the mergeTags object
@@ -80,6 +81,12 @@ const EmailTemplate = (props) => {
     sample: "Current Date"
   };
 
+  mergeTags["cs_regno"] = {
+    name: "Registration Number",
+    value: "{{cs_regno}}",
+    sample: "Registration Number"
+  };
+
   // mergeTags["paymenttype_name"] = {
   //   name: "Payment Mode",
   //   value: "{{paymenttype_name}}",
@@ -116,7 +123,13 @@ const EmailTemplate = (props) => {
   //   sample: "Amount In word"
   // };
 
-    mergeTags["ticket_message"] = {
+  mergeTags["ticket_title"] = {
+    name: "Ticket title",
+    value: "{{ticket_title}}",
+    sample: "Ticket title"
+  };
+
+  mergeTags["ticket_message"] = {
     name: "Ticket Message will appear here",
     value: "{{ticket_message}}",
     sample: "Ticket Message will appear here"
@@ -248,7 +261,25 @@ const EmailTemplate = (props) => {
   const toggleModal = () => setTestModal(!testmodal);
 
   // Function to handle email input change
-  const handleEmailChange = (e) => setEmail(e.target.value);
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    setError(''); // Clear error when user starts typing
+  };
+
+  const validateEmail = (email) => {
+    // Basic email regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSendEmail = () => {
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address.'); // Set error message
+      return;
+    }
+    setError(''); // Clear error if email is valid
+    testcontent(email); // Call your testcontent function here
+  };
 
   const testcontent = async () => {
     emailEditorRef.current.editor.exportHtml(async (data) => {
@@ -292,13 +323,16 @@ const EmailTemplate = (props) => {
   const drafcontent = async () => {
     emailEditorRef.current.editor.exportHtml(async (data) => {
       const { design, html } = data;
+      const temp_id = template?.template_id || "New";
 
       try {
         const token = getToken();
         const response = await axios.post(`${BackendAPI}/editor/drafttemplate`, {
           design: JSON.stringify(design), // Convert design to JSON string
           html,
-          temp_id: template.template_id
+          temp_id,
+          tempName,
+          tempSubject
         }, {
           headers: {
             'Content-Type': 'application/json',
@@ -459,7 +493,7 @@ const EmailTemplate = (props) => {
 
   return (
     <Fragment>
-      <Breadcrumbs mainTitle="Manage Templates" parent="Email" title="Templates" />
+      <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Manage Templates" parent="Manage Template" title="Templates" />
       <Container>
         <Card className="my-4 p-3 shadow-sm border-0">
           <Row className="align-items-center">
@@ -693,11 +727,13 @@ const EmailTemplate = (props) => {
                 placeholder="Enter recipient's email"
                 value={email}
                 onChange={handleEmailChange}
+                invalid={!!error} // Mark the input as invalid if there's an error
               />
+              {error && <FormText color="danger">{error}</FormText>} {/* Error message */}
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="primary" onClick={testcontent}>
+            <Button color="primary" onClick={handleSendEmail}>
               Send Email
             </Button>{' '}
             <Button color="warning" onClick={toggleModal}>

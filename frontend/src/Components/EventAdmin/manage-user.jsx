@@ -442,6 +442,8 @@ const ManageUser = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        setSelectedItems([]);
     };
 
 
@@ -481,6 +483,8 @@ const ManageUser = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, 'User_Data.xlsx');
+
+        setSelectedItems([]);
     };
 
     const items = [
@@ -771,6 +775,7 @@ const ManageUser = () => {
                                                         <input
                                                             type="checkbox"
                                                             onChange={handleSelectAll} // Function to handle 'select all' checkbox
+                                                            checked={selectedItems.length === data.length && data.length > 0} // Dynamically set checked status
                                                         />
                                                     </th>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
@@ -908,6 +913,7 @@ const ManageUser = () => {
                         }))}
                         onChange={handleColumnChange}
                         isClearable={false}
+                        classNamePrefix="react-select"
                         components={{
                             MultiValueRemove: MultiValueRemoveWithCondition // Use custom MultiValueRemove component
                         }}

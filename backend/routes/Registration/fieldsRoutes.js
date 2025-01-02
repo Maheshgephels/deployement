@@ -18,7 +18,7 @@ router.get('/getBasicFields', verifyToken, async (req, res) => {
     let query = `
     SELECT ${columnsToFetch}
     FROM cs_os_field_data
-    WHERE cs_status NOT IN (0)
+      WHERE cs_status IN (1, 3)
   `;
 
 
@@ -65,8 +65,6 @@ router.post('/updateLockStatus', verifyToken, async (req, res) => {
   try {
     const { cs_value } = req.body; // Assuming lockValue is passed in the request body
 
-    const id = 45;
-
     console.log("Status", cs_value)
 
     // // Validate lockValue (optional)
@@ -78,11 +76,11 @@ router.post('/updateLockStatus', verifyToken, async (req, res) => {
     const query = `
       UPDATE cs_tbl_sitesetting
       SET cs_value = ?
-      WHERE id = ? 
+      WHERE cs_parameter = 'Lock'
     `;
 
     // Execute the update query
-    const [pagesData] = await pool.query(query, [cs_value, id]);
+    const [pagesData] = await pool.query(query, [cs_value]);
 
     // Send the pages data as a response
     res.json(pagesData);
@@ -104,7 +102,7 @@ router.get('/getFormfield', verifyToken, async (req, res) => {
     let query = `
     SELECT ${columnsToFetch}
     FROM cs_os_field_data
-    WHERE  cs_visible_add_user = 1
+    WHERE  cs_visible_add_user = 1 AND cs_status IN (1, 3)
     ORDER by cs_field_order
   `;
 
@@ -141,8 +139,10 @@ router.get('/getData', verifyToken, async (req, res) => {
     let query1 = `
     SELECT ${columnsToFetch}
     FROM cs_os_field_type
-    WHERE cs_status = 1
+    WHERE cs_status = 1 
+      AND cs_field_type NOT IN ('11', '12', '13')
   `;
+  
 
 
     // Execute the query to fetch field data from the table
@@ -291,7 +291,7 @@ router.post('/editField', async (req, res) => {
 
   try {
     // Extract data from the request body
-    const { id, label, onspot, required, option_data, deletedOptionIds, new_option, basic, userpan } = req.body;
+    const { id, label, onspot, required, option_data, deletedOptionIds, new_option, basic, userpan, status } = req.body;
 
     // Ensure option_data is an array and filter out null values
     const filteredOptionData = option_data.filter(option => option && option.optionId !== null && option.optionVal !== null);
@@ -307,11 +307,11 @@ router.post('/editField', async (req, res) => {
     // Construct the SQL query for updating the fields
     const updateQuery = `
       UPDATE cs_os_field_data 
-      SET cs_field_label = ?, cs_visible_onspot = ?, cs_is_required = ?, cs_visible_reg_userform = ?, cs_visible_reg_basicform = ?
+      SET cs_field_label = ?, cs_visible_onspot = ?, cs_is_required = ?, cs_visible_reg_userform = ?, cs_visible_reg_basicform = ?, cs_status = ?
       WHERE cs_field_id = ?`;
 
     // Execute the query to update the fields
-    await pool.query(updateQuery, [label, onspot, required, userpan, basic, id]);
+    await pool.query(updateQuery, [label, onspot, required, userpan, basic, status, id]);
 
     // Update existing options
     for (let i = 0; i < filteredOptionData.length; i++) {

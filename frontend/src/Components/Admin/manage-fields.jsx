@@ -150,6 +150,7 @@ const Fields = () => {
         fetchFormFields();
         fetchData();
         fetchLockStatus();
+        fetchCat();
     }, []);
 
 
@@ -201,6 +202,21 @@ const Fields = () => {
             setProdData(response.data.prodData)
         } catch (error) {
             console.error('Error fetching form fields:', error);
+        }
+    };
+
+    const fetchCat = async () => {
+        try {
+            const token = getToken();
+            const response = await axios.get(`${BackendAPI}/category/getCat`, {
+                headers: {
+                    Authorization: `Bearer ${token}` // Include the token in the Authorization header
+                }
+            });
+
+            setProdData(response.data.prodData)
+        } catch (error) {
+            console.error('Error fetching types:', error);
         }
     };
 
@@ -617,7 +633,7 @@ const Fields = () => {
             const updatedDropdownData = [...dropdownData];
             updatedDropdownData[index] = { ...updatedDropdownData[index], name: newName };
             setDropdownData(updatedDropdownData);
-    
+
             // Check if the option is in newdropdownData, if yes, update it there too
             const isNewOption = newdropdownData.some(item => item.option_id === optionId);
             if (isNewOption) {
@@ -627,7 +643,7 @@ const Fields = () => {
                 );
                 setNewdropdownData(updatedNewDropdownData);
             }
-    
+
             // Update optionData as before
             const newOptionData = [...optionData];
             const optionIndex = newOptionData.findIndex(data => data.optionId === optionId);
@@ -639,45 +655,45 @@ const Fields = () => {
             setOptionData(newOptionData);
         }
     };
-    
+
 
 
     const handleDeleteOption = (optionId) => {
         // Filter out the dropdown option with the specified optionId
         const updatedDropdownData = dropdownData.filter(item => item.option_id !== optionId);
-    
+
         // Update the state with the modified dropdownData
         setDropdownData(updatedDropdownData);
-    
+
         // Update newdropdownData to remove the deleted option
         const updatedNewDropdownData = newdropdownData.filter(item => item.option_id !== optionId);
         setNewdropdownData(updatedNewDropdownData);
-    
+
         // Update the state for deleted optionIds
         setDeletedOptionIds(prev => [...prev, optionId]);
     };
-    
+
 
     const handleAddOption = () => {
-        const maxOptionId = dropdownData.length > 0 
-            ? Math.max(...dropdownData.map(item => item.option_id)) 
+        const maxOptionId = dropdownData.length > 0
+            ? Math.max(...dropdownData.map(item => item.option_id))
             : 0;
-    
+
         const newOption = {
             option_id: maxOptionId + 1,
             name: 'New Option',
             field_id: selectedItem.id
         };
-    
+
         console.log("New Option", newOption);
-    
+
         // Update dropdownData
         setDropdownData(prevDropdownData => [...prevDropdownData, newOption]);
-    
+
         // Update newdropdownData with only new options
         setNewdropdownData(prevNewDropdownData => [...prevNewDropdownData, newOption]);
     };
-    
+
 
 
 
@@ -985,17 +1001,21 @@ const Fields = () => {
                             <strong>Visible in app registration form</strong>
                         </Label>
                     </div>
-                    <div className="form">
-                        <input
-                            id="regExclude"
-                            type="checkbox"
-                            onChange={(e) => setRegExclude(e.target.checked)}
-                            checked={regExclude}
-                        />
-                        <Label className="form-check-label ms-2" htmlFor="regExclude">
-                            <strong>Do you wanna exclude this field from Registration module ?</strong>
-                        </Label>
-                    </div>
+                    { selectedItem && selectedItem.custom === 1 && prodData && prodData.some(item => item.product_id === 1 && item.cs_status === 1) && (
+
+                        <div className="form">
+                            <input
+                                id="regExclude"
+                                type="checkbox"
+                                onChange={(e) => setRegExclude(e.target.checked)}
+                                checked={regExclude}
+                            />
+                            <Label className="form-check-label ms-2" htmlFor="regExclude">
+                                <strong>Do you wanna exclude this field from Registration module ?</strong>
+                            </Label>
+                        </div>
+                    )}
+
                     {selectedItem && selectedItem.custom === 1 && selectedItem.dropdown === '5' && (
                         <Fragment>
                             <div className="d-flex flex-wrap justify-content-center">

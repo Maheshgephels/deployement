@@ -75,6 +75,7 @@ const Manageaddon = () => {
     };
     const handleSearch = (value) => {
         setSearchText(value);
+        setCurrentPage(1);
     };
 
     useEffect(() => {
@@ -164,7 +165,7 @@ const Manageaddon = () => {
             // Show confirmation dialog
             const result = await Swal.fire({
                 title: 'Are you sure?',
-                text: visibilityStatus ?  'Do you want to hide this addon?' : 'Do you want to show this addon?',
+                text: visibilityStatus ? 'Do you want to hide this addon?' : 'Do you want to show this addon?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, update it!',
@@ -257,7 +258,7 @@ const Manageaddon = () => {
         try {
             const { ticketId } = deleteticketDetails; // Extract the ticketId or addonId (adjust based on naming)
             const token = getToken(); // Get the authentication token
-    
+
             // Make the DELETE request to the backend
             await axios.delete(`${BackendAPI}/addonRoutes/deleteaddon`, {
                 headers: {
@@ -265,7 +266,7 @@ const Manageaddon = () => {
                 },
                 data: { ticketId } // Send ticketId (or addonId) as payload
             });
-    
+
             // Success alert
             SweetAlert.fire({
                 title: 'Success!',
@@ -282,10 +283,10 @@ const Manageaddon = () => {
                 }
             });
 
-    
+
         } catch (error) {
             console.error('Error deleting addon:', error);
-    
+
             // Handle specific errors
             if (error.response && error.response.status === 400) {
                 SweetAlert.fire({
@@ -306,7 +307,7 @@ const Manageaddon = () => {
             setModal(false); // Ensure the modal is closed
         }
     };
-    
+
 
     const [openItemId, setOpenItemId] = useState(null);
 
@@ -350,6 +351,12 @@ const Manageaddon = () => {
         // Add more options if needed
     ];
 
+    const addonwiseNavigation = (addonId) => {
+        const URL = '/registration/confirm-user-listing/';
+        navigate(`${process.env.PUBLIC_URL}${URL}${layoutURL}`, { state: { addonId } });
+
+    };
+
 
 
     return (
@@ -379,20 +386,20 @@ const Manageaddon = () => {
                                             //     Create Addon
                                             // </Button>
                                             <>
-                                            <Button
-                                                color=""
-                                                className='circular'
-                                                onClick={handleNavigation} data-tooltip-id="create"
-                                            >
-                                                <FaPlus
-                                                    className='buttonStyle'
-                                                />
+                                                <Button
+                                                    color=""
+                                                    className='circular'
+                                                    onClick={handleNavigation} data-tooltip-id="create"
+                                                >
+                                                    <FaPlus
+                                                        className='buttonStyle'
+                                                    />
 
-                                            </Button>
-                                            <Tooltip id="create" place="top" effect="solid">
-                                                Create Add-on
-                                            </Tooltip>
-                                        </>
+                                                </Button>
+                                                <Tooltip id="create" place="top" effect="solid">
+                                                    Create Add-on
+                                                </Tooltip>
+                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -412,21 +419,25 @@ const Manageaddon = () => {
                                                 <tr className='border-bottom-primary'>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
                                                     <th scope='col' className='text-start' onClick={() => handleSort('addon_title')}>
-                                                        {'Addon Title'}
+                                                        {'Add-on Title'}
                                                         {getSortIndicator('addon_title')}
                                                     </th>
-                                                    <th scope='col' className='text-start' onClick={() => handleSort('ticket_ispaid')}>
+                                                    <th scope='col' className='text-start' onClick={() => handleSort('addon_ispaid')}>
                                                         {'Price'}
-                                                        {getSortIndicator('ticket_ispaid')}
+                                                        {getSortIndicator('addon_ispaid')}
                                                     </th>
-                                                    <th scope='col' className='text-start' onClick={() => handleSort('ticket_count')}>
+                                                    <th scope='col' className='text-start' onClick={() => handleSort('addon_type')}>
                                                         {'Seats'}
-                                                        {getSortIndicator('ticket_count')}
+                                                        {getSortIndicator('addon_type')}
+                                                    </th>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('userCount')}>
+                                                        {'Usage Count'}
+                                                        {getSortIndicator('userCount')}
                                                     </th>
                                                     {/* <th scope='col' className='text-start'>{'ticket Name'}</th> */}
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('ticket_status')}>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('addon_status')}>
                                                         {'Status'}
-                                                        {getSortIndicator('ticket_status')}
+                                                        {getSortIndicator('addon_status')}
                                                     </th>
                                                     {/* <th scope='col' className='text-center'>{'Status'}</th> */}
                                                     {ManageaddonPermissions?.edit === 1 || ManageaddonPermissions?.delete === 1 ? (
@@ -439,12 +450,15 @@ const Manageaddon = () => {
                                                     <tr key={index} className="border-bottom-primary">
                                                         <td className='text-start'>{(currentPage - 1) * pageSize + index + 1}</td>
                                                         <td className='text-start'>{item.addon_title}</td>
-                                                        <td className='text-start'>{item.ticket_ispaid === '0' ? 'Free' : 'Paid'}</td>
+                                                        <td className='text-start'>{item.addon_ispaid === 0 ? 'Free' : 'Paid'}</td>
 
 
                                                         <td className='text-start'>
-                                                            {item.addon_type === 'Unlimited' ? 'Unlimited' : item.addon_count}
+                                                            {item.addon_type === 'Unlimited'
+                                                                ? 'Unlimited'
+                                                                : `${item.addon_type} (${item.addon_count})`}
                                                         </td>
+
 
                                                         {/* <td className='text-center'>
                                                             {item.cs_status === 0 ? (
@@ -467,6 +481,20 @@ const Manageaddon = () => {
                                                             )}
                                                             <Tooltip id="tooltip" globalEventOff="click" />
                                                         </td> */}
+                                                        <td className='text-center'>
+                                                            <Button
+                                                                color='link' // Makes it look like a link
+                                                                className='p-0' // Removes padding
+                                                                style={{ textDecoration: 'none' }} // Inline style to remove underline
+                                                                onClick={() => {
+                                                                    if (item.userCount > 0) { // Check if userCount is greater than 0
+                                                                        addonwiseNavigation(item.addon_id);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {item.userCount}
+                                                            </Button>
+                                                        </td>
 
                                                         <td className="text-center">
                                                             {item.addon_status === 'Open' ? (

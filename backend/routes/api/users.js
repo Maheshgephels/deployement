@@ -973,180 +973,180 @@ router.get('/getfacility', verifyToken, async (req, res) => {
 
 
 router.put('/UpdateStatus', verifyToken, async (req, res) => {
-  try {
-    const { id, status, Name } = req.body;
-    console.log('status', status);
+  // try {
+  //   const { id, status, Name } = req.body;
+  //   console.log('status', status);
 
    
-    // Update cs_os_workshop
-    const updateQuery5 = `UPDATE cs_os_workshop SET cs_status = ? WHERE cs_workshop_name = ?`;
-    await pool.query(updateQuery5, [status, Name]);
+  //   // Update cs_os_workshop
+  //   const updateQuery5 = `UPDATE cs_os_workshop SET cs_status = ? WHERE cs_workshop_name = ?`;
+  //   await pool.query(updateQuery5, [status, Name]);
 
-    // Update cs_os_facilitytype
-    const updateQuery1 = `UPDATE cs_os_facilitytype SET cs_status = ? WHERE cs_facility_id = ?`;
-    await pool.query(updateQuery1, [status, id]);
+  //   // Update cs_os_facilitytype
+  //   const updateQuery1 = `UPDATE cs_os_facilitytype SET cs_status = ? WHERE cs_facility_id = ?`;
+  //   await pool.query(updateQuery1, [status, id]);
 
-    // Retrieve cs_facility_detail_id from cs_os_facility_detail
-    const selectQuery = `SELECT cs_facility_detail_id FROM cs_os_facility_detail WHERE cs_facility_id = ?`;
-    const [detailIdResults] = await pool.query(selectQuery, [id]);
-    const csFacilityDetailIds = detailIdResults.map(result => result.cs_facility_detail_id);
+  //   // Retrieve cs_facility_detail_id from cs_os_facility_detail
+  //   const selectQuery = `SELECT cs_facility_detail_id FROM cs_os_facility_detail WHERE cs_facility_id = ?`;
+  //   const [detailIdResults] = await pool.query(selectQuery, [id]);
+  //   const csFacilityDetailIds = detailIdResults.map(result => result.cs_facility_detail_id);
 
-    // Update cs_os_facility_detail and cs_os_facility_category
-    const updateQuery2 = `UPDATE cs_os_facility_detail SET cs_status = ? WHERE cs_facility_id = ?`;
-    const updateQuery3 = `UPDATE cs_os_facility_category SET cs_status = ? WHERE cs_facility_detail_id = ?`;
+  //   // Update cs_os_facility_detail and cs_os_facility_category
+  //   const updateQuery2 = `UPDATE cs_os_facility_detail SET cs_status = ? WHERE cs_facility_id = ?`;
+  //   const updateQuery3 = `UPDATE cs_os_facility_category SET cs_status = ? WHERE cs_facility_detail_id = ?`;
 
-    for (const csFacilityDetailId of csFacilityDetailIds) {
-      await pool.query(updateQuery2, [status, id]);
-      await pool.query(updateQuery3, [status, csFacilityDetailId]);
-    }
+  //   for (const csFacilityDetailId of csFacilityDetailIds) {
+  //     await pool.query(updateQuery2, [status, id]);
+  //     await pool.query(updateQuery3, [status, csFacilityDetailId]);
+  //   }
 
-    // Get facility names and types
-    const facilityNameQuery = 'SELECT cs_facility_detail_id, cs_facility_name FROM cs_os_facility_detail WHERE cs_facility_id = ?';
-    const [facilityNameResult] = await pool.query(facilityNameQuery, [id]);
+  //   // Get facility names and types
+  //   const facilityNameQuery = 'SELECT cs_facility_detail_id, cs_facility_name FROM cs_os_facility_detail WHERE cs_facility_id = ?';
+  //   const [facilityNameResult] = await pool.query(facilityNameQuery, [id]);
 
-    const facilityTypeQuery = 'SELECT cs_type FROM cs_os_facilitytype WHERE cs_facility_id = ?';
-    const [facilityTypeResult] = await pool.query(facilityTypeQuery, [id]);
-    const facilityType = facilityTypeResult[0]?.cs_type;
-    console.log("facilityType" , facilityType);
+  //   const facilityTypeQuery = 'SELECT cs_type FROM cs_os_facilitytype WHERE cs_facility_id = ?';
+  //   const [facilityTypeResult] = await pool.query(facilityTypeQuery, [id]);
+  //   const facilityType = facilityTypeResult[0]?.cs_type;
+  //   console.log("facilityType" , facilityType);
 
-    if (facilityNameResult.length > 0) {
-      for (const row of facilityNameResult) {
-        const { cs_facility_name: facilityName, cs_facility_detail_id: csFacilityDetailId } = row;
+  //   if (facilityNameResult.length > 0) {
+  //     for (const row of facilityNameResult) {
+  //       const { cs_facility_name: facilityName, cs_facility_detail_id: csFacilityDetailId } = row;
 
-        // Update badge data
-        const badgeDataQuery = 'SELECT cs_regno, cs_reg_cat_id, cs_badge_data FROM cs_os_badges';
-        const [badgeDataResult] = await pool.query(badgeDataQuery);
+  //       // Update badge data
+  //       const badgeDataQuery = 'SELECT cs_regno, cs_reg_cat_id, cs_badge_data FROM cs_os_badges';
+  //       const [badgeDataResult] = await pool.query(badgeDataQuery);
 
-        for (const badgeEntry of badgeDataResult) {
-          const { cs_regno, cs_reg_cat_id, cs_badge_data } = badgeEntry;
-          const parsedBadgeData = JSON.parse(cs_badge_data);
+  //       for (const badgeEntry of badgeDataResult) {
+  //         const { cs_regno, cs_reg_cat_id, cs_badge_data } = badgeEntry;
+  //         const parsedBadgeData = JSON.parse(cs_badge_data);
 
-          // const userQuery = `SELECT cs_reg_type, cs_workshop_category FROM cs_os_users WHERE cs_regno = ?`;
-          // const [userResults] = await pool.query(userQuery, [cs_regno]);
-          const fieldQuery = `SELECT cs_field_name FROM cs_os_field_data WHERE cs_field_type = ?`;
-          const [fieldResults] = await pool.query(fieldQuery, ['13']);
-          console.log("fieldResults",fieldResults);
+  //         // const userQuery = `SELECT cs_reg_type, cs_workshop_category FROM cs_os_users WHERE cs_regno = ?`;
+  //         // const [userResults] = await pool.query(userQuery, [cs_regno]);
+  //         const fieldQuery = `SELECT cs_field_name FROM cs_os_field_data WHERE cs_field_type = ?`;
+  //         const [fieldResults] = await pool.query(fieldQuery, ['13']);
+  //         console.log("fieldResults",fieldResults);
       
-          // Extract field names from the query result
-          const additionalFields = fieldResults.map(row => row.cs_field_name);
-          console.log("additionalFields",additionalFields);
+  //         // Extract field names from the query result
+  //         const additionalFields = fieldResults.map(row => row.cs_field_name);
+  //         console.log("additionalFields",additionalFields);
       
-          const userQueryFields = ['cs_reg_type', 'cs_workshop_category', ...additionalFields].join(', ');
-          const userQuery = `SELECT ${userQueryFields} FROM cs_os_users WHERE cs_regno = ?`;
+  //         const userQueryFields = ['cs_reg_type', 'cs_workshop_category', ...additionalFields].join(', ');
+  //         const userQuery = `SELECT ${userQueryFields} FROM cs_os_users WHERE cs_regno = ?`;
       
-          // Execute the dynamically created query
-          const [userResults] = await pool.query(userQuery, [cs_regno]);
-          console.log("userResults", userResults);
+  //         // Execute the dynamically created query
+  //         const [userResults] = await pool.query(userQuery, [cs_regno]);
+  //         console.log("userResults", userResults);
 
-          if (userResults.length > 0) {
-            const { cs_reg_type, cs_workshop_category } = userResults[0];
+  //         if (userResults.length > 0) {
+  //           const { cs_reg_type, cs_workshop_category } = userResults[0];
 
-            const additionalFieldValues = {};
+  //           const additionalFieldValues = {};
 
-            // Loop through each field in additionalFields to retrieve its userData
-            additionalFields.forEach(field => {
-              additionalFieldValues[field] =parseInt(userResults[0][field], 10);
-            });
+  //           // Loop through each field in additionalFields to retrieve its userData
+  //           additionalFields.forEach(field => {
+  //             additionalFieldValues[field] =parseInt(userResults[0][field], 10);
+  //           });
             
-            console.log("additionalFieldValues", additionalFieldValues);
+  //           console.log("additionalFieldValues", additionalFieldValues);
 
-            if (status == 0) {
-              if (facilityName in parsedBadgeData) {
-                parsedBadgeData[facilityName] = '0';
-                const updatedBadgeData = JSON.stringify(parsedBadgeData);
-                const updateBadgeQuery = `UPDATE cs_os_badges SET cs_badge_data = ? WHERE cs_regno = ?`;
-                await pool.query(updateBadgeQuery, [updatedBadgeData, cs_regno]);
-              } else {
-                console.log(`Facility ${facilityName} not found in badge data`);
-              }
-            } else {
-              const selectAllowCountQuery = `
-                SELECT cs_allow_count
-                FROM cs_os_facility_category
-                WHERE cs_facility_detail_id = ? AND cs_reg_cat_id = ?
-              `;
-              const selectValues = [csFacilityDetailId, cs_reg_cat_id];
-              const [allowCountResults] = await pool.query(selectAllowCountQuery, selectValues);
+  //           if (status == 0) {
+  //             if (facilityName in parsedBadgeData) {
+  //               parsedBadgeData[facilityName] = '0';
+  //               const updatedBadgeData = JSON.stringify(parsedBadgeData);
+  //               const updateBadgeQuery = `UPDATE cs_os_badges SET cs_badge_data = ? WHERE cs_regno = ?`;
+  //               await pool.query(updateBadgeQuery, [updatedBadgeData, cs_regno]);
+  //             } else {
+  //               console.log(`Facility ${facilityName} not found in badge data`);
+  //             }
+  //           } else {
+  //             const selectAllowCountQuery = `
+  //               SELECT cs_allow_count
+  //               FROM cs_os_facility_category
+  //               WHERE cs_facility_detail_id = ? AND cs_reg_cat_id = ?
+  //             `;
+  //             const selectValues = [csFacilityDetailId, cs_reg_cat_id];
+  //             const [allowCountResults] = await pool.query(selectAllowCountQuery, selectValues);
 
-              if (allowCountResults.length > 0) {
-                allowCountResults.forEach(async (row) => {
-                  const { cs_allow_count } = row;
-                  const updatedAllowCount = cs_allow_count;
+  //             if (allowCountResults.length > 0) {
+  //               allowCountResults.forEach(async (row) => {
+  //                 const { cs_allow_count } = row;
+  //                 const updatedAllowCount = cs_allow_count;
 
-                  if (cs_reg_type && cs_reg_type !== "101") {
-                    const reg_daytype = cs_reg_type;
-                    console.log("cs_workshop_category" , cs_workshop_category);
-                    // const workshop = cs_workshop_category
+  //                 if (cs_reg_type && cs_reg_type !== "101") {
+  //                   const reg_daytype = cs_reg_type;
+  //                   console.log("cs_workshop_category" , cs_workshop_category);
+  //                   // const workshop = cs_workshop_category
               
-                    if (facilityType === 'workshop') {
-                      const workshopQuery = `SELECT cs_workshop_id FROM cs_os_workshop WHERE cs_facility_id = ?`;
-                      const [workshopRows] = await pool.query(workshopQuery, [id]);
-                      const workshopId = workshopRows[0]?.cs_workshop_id;
-                      console.log("workshopId", workshopId);
+  //                   if (facilityType === 'workshop') {
+  //                     const workshopQuery = `SELECT cs_workshop_id FROM cs_os_workshop WHERE cs_facility_id = ?`;
+  //                     const [workshopRows] = await pool.query(workshopQuery, [id]);
+  //                     const workshopId = workshopRows[0]?.cs_workshop_id;
+  //                     console.log("workshopId", workshopId);
 
-                      if (Object.values(additionalFieldValues).includes(workshopId)) {
-                        parsedBadgeData[facilityName] = updatedAllowCount;
-                        parsedBadgeData[`${facilityName}_status`] = "0";
-                      } else {
-                        parsedBadgeData[facilityName] = "0";
-                        parsedBadgeData[`${facilityName}_status`] = "0";
-                      }
-                    } else {
-                      if (facilityName.includes(reg_daytype) || !/\d$/.test(facilityName)) {
-                        parsedBadgeData[facilityName] = updatedAllowCount;
-                        parsedBadgeData[`${facilityName}_status`] = "0";
-                      } else {
-                        parsedBadgeData[facilityName] = "0";
-                        parsedBadgeData[`${facilityName}_status`] = "0";
-                      }
-                    }
+  //                     if (Object.values(additionalFieldValues).includes(workshopId)) {
+  //                       parsedBadgeData[facilityName] = updatedAllowCount;
+  //                       parsedBadgeData[`${facilityName}_status`] = "0";
+  //                     } else {
+  //                       parsedBadgeData[facilityName] = "0";
+  //                       parsedBadgeData[`${facilityName}_status`] = "0";
+  //                     }
+  //                   } else {
+  //                     if (facilityName.includes(reg_daytype) || !/\d$/.test(facilityName)) {
+  //                       parsedBadgeData[facilityName] = updatedAllowCount;
+  //                       parsedBadgeData[`${facilityName}_status`] = "0";
+  //                     } else {
+  //                       parsedBadgeData[facilityName] = "0";
+  //                       parsedBadgeData[`${facilityName}_status`] = "0";
+  //                     }
+  //                   }
                    
-                  } else {
-                    if (facilityType === 'workshop') {
-                      const workshopQuery = `SELECT cs_workshop_id FROM cs_os_workshop WHERE cs_facility_id = ?`;
-                      const workshop = cs_workshop_category;
-                      const [workshopRows] = await pool.query(workshopQuery, [id]);
-                      console.log("cs_workshop_category" , cs_workshop_category);
-                      const workshopId = workshopRows[0]?.cs_workshop_id;
-                      console.log("workshopId", workshopId);
+  //                 } else {
+  //                   if (facilityType === 'workshop') {
+  //                     const workshopQuery = `SELECT cs_workshop_id FROM cs_os_workshop WHERE cs_facility_id = ?`;
+  //                     const workshop = cs_workshop_category;
+  //                     const [workshopRows] = await pool.query(workshopQuery, [id]);
+  //                     console.log("cs_workshop_category" , cs_workshop_category);
+  //                     const workshopId = workshopRows[0]?.cs_workshop_id;
+  //                     console.log("workshopId", workshopId);
 
-                      // if (workshopId === workshop) {
-                        if (Object.values(additionalFieldValues).includes(workshopId)) {
-                        parsedBadgeData[facilityName] = updatedAllowCount;
-                        parsedBadgeData[`${facilityName}_status`] = "0";
-                      } else {
-                        parsedBadgeData[facilityName] = "0";
-                        parsedBadgeData[`${facilityName}_status`] = "0";
-                      }
-                    } else {
-                      parsedBadgeData[facilityName] = updatedAllowCount;
-                      parsedBadgeData[`${facilityName}_status`] = "0";
-                    }
+  //                     // if (workshopId === workshop) {
+  //                       if (Object.values(additionalFieldValues).includes(workshopId)) {
+  //                       parsedBadgeData[facilityName] = updatedAllowCount;
+  //                       parsedBadgeData[`${facilityName}_status`] = "0";
+  //                     } else {
+  //                       parsedBadgeData[facilityName] = "0";
+  //                       parsedBadgeData[`${facilityName}_status`] = "0";
+  //                     }
+  //                   } else {
+  //                     parsedBadgeData[facilityName] = updatedAllowCount;
+  //                     parsedBadgeData[`${facilityName}_status`] = "0";
+  //                   }
                 
-                  }
-                  console.log("parsedBadgeData" , parsedBadgeData);
-                  const updatedBadgeData = JSON.stringify(parsedBadgeData);
-                  const updateBadgeQuery = `UPDATE cs_os_badges SET cs_badge_data = ? WHERE cs_regno = ?`;
-                  await pool.query(updateBadgeQuery, [updatedBadgeData, cs_regno]);
-                });
-              } else {
-                console.log(`No data found for facility ${facilityName} and cs_reg_cat_id ${cs_reg_cat_id}`);
-              }
-            }
-          } else {
-            console.log(`User not found with cs_regno ${cs_regno}`);
-          }
-        }
-      }
-    } else {
-      console.error('Facility names not found for the given id:', id);
-    }
+  //                 }
+  //                 console.log("parsedBadgeData" , parsedBadgeData);
+  //                 const updatedBadgeData = JSON.stringify(parsedBadgeData);
+  //                 const updateBadgeQuery = `UPDATE cs_os_badges SET cs_badge_data = ? WHERE cs_regno = ?`;
+  //                 await pool.query(updateBadgeQuery, [updatedBadgeData, cs_regno]);
+  //               });
+  //             } else {
+  //               console.log(`No data found for facility ${facilityName} and cs_reg_cat_id ${cs_reg_cat_id}`);
+  //             }
+  //           }
+  //         } else {
+  //           console.log(`User not found with cs_regno ${cs_regno}`);
+  //         }
+  //       }
+  //     }
+  //   } else {
+  //     console.error('Facility names not found for the given id:', id);
+  //   }
 
-    return res.status(200).json({ message: 'Status updated successfully' });
-  } catch (error) {
-    console.error('Error updating status:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+  //   return res.status(200).json({ message: 'Status updated successfully' });
+  // } catch (error) {
+  //   console.error('Error updating status:', error);
+  //   return res.status(500).json({ error: 'Internal server error' });
+  // }
 });
 
 

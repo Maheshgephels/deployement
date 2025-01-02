@@ -210,7 +210,7 @@ const AddEventCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
 
                                                                     <input
                                                                         {...input}
@@ -243,7 +243,7 @@ const AddEventCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
 
                                                                     <input
                                                                         {...input}

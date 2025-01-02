@@ -23,7 +23,7 @@ const EditRegCategory = () => {
     const [category, setCategory] = useState([]); // State to store category data
     const { layoutURL } = useContext(CustomizerContext);
     const location = useLocation();
-    const { catId, catName, onsite, prodData, registration} = location.state;
+    const { catId, catName, onsite, prodData, registration } = location.state;
     const navigate = useNavigate();
     const [designationName, setDesignationName] = useState('');
     const [newdesignations, setdesignations] = useState([]);
@@ -39,7 +39,7 @@ const EditRegCategory = () => {
 
 
     console.log("Data:", prodData);
-    console.log("Location",location.state);
+    console.log("Location", location.state);
 
     const handleShowTypeChange = (e, input) => {
         const isChecked = e.target.checked;
@@ -241,7 +241,7 @@ const EditRegCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
 
                                                                     <input
                                                                         {...input}
@@ -275,7 +275,7 @@ const EditRegCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
 
                                                                     <input
                                                                         {...input}

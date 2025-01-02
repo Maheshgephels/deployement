@@ -14,6 +14,7 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer'); // Import nodemailer
 const Razorpay = require('razorpay'); // Razorpay Gateway
+const { Console } = require('console');
 
 
 const transporter = nodemailer.createTransport({
@@ -146,6 +147,8 @@ router.get('/getField', verifyToken, async (req, res) => {
 
 
 router.get('/getDropdownData', verifyToken, async (req, res) => {
+
+  console.log("getDropdownData");
   try {
     // Specify the columns you want to fetch from each table
     const facilitytype = ['cs_type'];
@@ -155,7 +158,7 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const reg_cat = ['cs_reg_category', 'cs_reg_cat_id'];
     const work_cat = ['cs_workshop_name', 'cs_workshop_id'];
     const day_type = ['cs_reg_daytype_name', 'cs_reg_daytype_id'];
-    const ticket = ['ticket_id', 'ticket_title', 'ticket_type', 'ticket_category', 'ticket_ispaid', 'ticket_type', 'ticket_count'];
+    const ticket = ['ticket_id', 'ticket_title', 'ticket_type', 'ticket_category', 'ticket_ispaid', 'ticket_type', 'ticket_count', 'ticket_description'];
     const addon = ['addon_id', 'addon_title', 'addon_ticket_ids', 'addon_cat_type', 'addon_workshop_id', 'addon_accper_type', '	addon_accper_limit', 'addon_type', 'addon_count', 'addon_ispaid', 'addon_workshoprtype_id'];
     const paymenttype = ['paymenttype_id', 'paymenttype_name'];
     const paymentstatus = ['paymentstatus_id', 'paymentstatus_name'];
@@ -182,7 +185,13 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const [facilitytypeData] = await pool.query(`SELECT ${facilitytype.join(',')} FROM cs_os_facilitytype`);
     const [prefixData] = await pool.query(`SELECT ${prefix.join(',')} FROM cs_os_name_prefixes`);
     const [countryData] = await pool.query(`SELECT ${country.join(',')} FROM cs_tbl_country`);
-    const [statesData] = await pool.query(`SELECT ${states.join(',')} FROM cs_tbl_states`);
+    // const [statesData] = await pool.query(`SELECT ${states.join(',')} FROM cs_tbl_states`);
+    const [statesData] = await pool.query(
+      `SELECT ${states.join(',')} 
+       FROM cs_tbl_states 
+       WHERE cs_country_id = 101
+       ORDER BY cs_state_name ASC`
+    );
     // const [regCatData] = await pool.query(`SELECT ${reg_cat.join(',')} FROM cs_os_category WHERE cs_status = 1`);
     const [regCatData] = await pool.query(`SELECT ${reg_cat.join(',')} FROM cs_os_category WHERE cs_status = 1 AND cs_show_conference_form = 1`);
     const [workshopData] = await pool.query(`SELECT ${work_cat.join(',')} FROM cs_os_workshop WHERE cs_status = 1`);
@@ -193,13 +202,15 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const [paymentTypeData] = await pool.query(`SELECT ${paymenttype.join(',')} FROM cs_reg_payment_type WHERE status = 1`);
     const [paymentStatusData] = await pool.query(`SELECT ${paymentstatus.join(',')} FROM cs_reg_payment_status WHERE status = 1`);
     const [workshoptypeData] = await pool.query(`SELECT ${workshop_type.join(',')} FROM cs_os_workshop_type WHERE cs_status = 1`);
-    // const [ticketAmountData] = await pool.query(`SELECT ${ticketAmount.join(',')} FROM cs_reg_ticket_duration WHERE status = 1`);
+    const [timezoneData] = await pool.query(`SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter = "Time Zone"`);
     // Assuming `ticketAmount` is an array of columns you want to select
     const currentDate = new Date(); // Get the current date
-    const formattedCurrentDate = currentDate.toISOString().split('T')[0]; // Get the date in 'YYYY-MM-DD' format
+    const AdminTimezone = timezoneData[0]?.cs_value;
+    console.log("Timezone", AdminTimezone);
 
-
-    console.log("Formatted Current Date", formattedCurrentDate);
+    // Format current date in AdminTimezone
+    const formattedCurrentDate = moment().tz(AdminTimezone).format('YYYY-MM-DD');
+    console.log("Date", formattedCurrentDate);
 
     const [ticketAmountData] = await pool.query(`
       SELECT ${ticketAmount.join(', ')} 
@@ -209,7 +220,7 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
       AND Status = 1
     `, [formattedCurrentDate, formattedCurrentDate]);
 
-    console.log(ticketAmountData);
+    // console.log(ticketAmountData);
 
     // const [addonAmountData] = await pool.query(`SELECT ${addonAmount.join(',')} FROM cs_reg_addon_duration WHERE status = 1`);
 
@@ -235,7 +246,7 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const [paymentmodeData] = await pool.query(paymentmode);
 
 
-
+    console.log("regCatData", regCatData);
 
     // Construct the response object
     const responseData = {
@@ -396,7 +407,7 @@ router.post('/addUser', verifyToken, upload.fields([
   { name: 'photo', maxCount: 1 }, { name: 'resume', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { userid, accompany_person_data,facultyDetails, ...userData } = req.body; // Extract the accompanying person data
+    const { userid, accompany_person_data, facultyDetails, ...userData } = req.body; // Extract the accompanying person data
     console.log('Request Body:', req.body);
     console.log('Files Uploaded:', req.files); // Log uploaded files
 
@@ -405,7 +416,7 @@ router.post('/addUser', verifyToken, upload.fields([
 
     console.log('Profile', photo);
     console.log('CV', resume);
-  
+
 
     // Check if userid is provided
     if (!userid) {
@@ -420,8 +431,16 @@ router.post('/addUser', verifyToken, upload.fields([
     if (req.files['cs_document4']) documentPaths.cs_document4 = path.basename(req.files['cs_document4'][0].path);
     if (req.files['cs_document5']) documentPaths.cs_document5 = path.basename(req.files['cs_document5'][0].path);
 
+    console.log("userData", userData);
+
     // Combine userData and documentPaths
+
     const updateData = { ...userData, ...documentPaths };
+
+    delete updateData.photo;
+    delete updateData.resume;
+
+    console.log("updateData", updateData);
 
     if (Array.isArray(updateData.cs_workshop_category)) {
       // Filter out empty values from the array and take the first valid value
@@ -453,8 +472,12 @@ router.post('/addUser', verifyToken, upload.fields([
     console.log('Filtered Update Data:', filteredUpdateData);
 
     // Update user data in the database
-    const updateUserQuery = `UPDATE cs_os_users SET ? WHERE id = ?`;
-    const [updateResult] = await pool.query(updateUserQuery, [filteredUpdateData, userid]);
+    const updateUserQuery = `UPDATE cs_os_users 
+    SET ?, 
+        \`cs_module\` = ?, 
+        \`cs_source\` = ? 
+    WHERE id = ?`;
+    const [updateResult] = await pool.query(updateUserQuery, [filteredUpdateData, 1, 1, userid]);
 
     if (updateResult.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'No user found with the provided ID' });
@@ -465,10 +488,10 @@ router.post('/addUser', verifyToken, upload.fields([
     // Step 1: Parse the string into an object
     let parsedData;
     try {
-        parsedData = JSON.parse(accompany_person_data);
+      parsedData = JSON.parse(accompany_person_data);
     } catch (error) {
-        console.error('Error parsing accompany_person_data:', error);
-        return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
+      console.error('Error parsing accompany_person_data:', error);
+      return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
     }
 
     console.log('Parsed Data:', parsedData);
@@ -480,40 +503,40 @@ router.post('/addUser', verifyToken, upload.fields([
     console.log('Extracted personArray:', personArray);
 
     if (Array.isArray(personArray)) {
-        // Step 3: Process each person in the array
-        personArray.forEach(person => {
-            // Here, you get each person's name and age
-            console.log('Person:', person);
+      // Step 3: Process each person in the array
+      personArray.forEach(person => {
+        // Here, you get each person's name and age
+        console.log('Person:', person);
 
-            // If you want to process or store the data, you can now map this information
-            const accperData = {
+        // If you want to process or store the data, you can now map this information
+        const accperData = {
 
-                accper_name: person.name,
-                accper_age: person.age || null, // Handle if age is missing
-            };
+          accper_name: person.name,
+          accper_age: person.age || null, // Handle if age is missing
+        };
 
-            console.log('Mapped accperData:', accperData);
+        console.log('Mapped accperData:', accperData);
 
-            // Optionally, you can insert this data into the database or process it as needed
-            // For example, if you're inserting this data:
-            const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id,accper_name, accper_age) VALUES ?';
-            const insertData = [[userid,accperData.accper_name, accperData.accper_age]];
+        // Optionally, you can insert this data into the database or process it as needed
+        // For example, if you're inserting this data:
+        const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id,accper_name, accper_age) VALUES ?';
+        const insertData = [[userid, accperData.accper_name, accperData.accper_age]];
 
-            console.log('Data to insert into the database:', insertData);
+        console.log('Data to insert into the database:', insertData);
 
-            try {
-                // Insert into the database (example using a pool)
-                 pool.query(insertAccperQuery, [insertData]);
-                console.log('Accompanying person inserted:', accperData);
-            } catch (error) {
-                console.error('Error inserting accompanying person:', error);
-            }
-        });
+        try {
+          // Insert into the database (example using a pool)
+          pool.query(insertAccperQuery, [insertData]);
+          console.log('Accompanying person inserted:', accperData);
+        } catch (error) {
+          console.error('Error inserting accompanying person:', error);
+        }
+      });
 
-        // return res.status(200).json({ message: 'Accompanying persons processed successfully' });
+      // return res.status(200).json({ message: 'Accompanying persons processed successfully' });
     } else {
-        console.log('Expected personArray, but found:', personArray);
-        // return res.status(400).json({ message: 'No valid array of persons found in the parsed data' });
+      console.log('Expected personArray, but found:', personArray);
+      // return res.status(400).json({ message: 'No valid array of persons found in the parsed data' });
     }
 
     const faculty = req.body.facultyDetails ? JSON.parse(req.body.facultyDetails) : {};
@@ -565,7 +588,7 @@ router.post('/addUser', verifyToken, upload.fields([
         return res.status(500).json({ error: 'Error inserting faculty data' });
       }
     }
-    res.status(200).json({ success: true, message: 'User updated successfully',data: filteredUpdateData  });
+    res.status(200).json({ success: true, message: 'User updated successfully', data: filteredUpdateData });
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(500).json({ success: false, message: 'Error updating user', error: error.message });
@@ -766,6 +789,8 @@ router.post('/processPayment', async (req, res) => {
   try {
     const { paymentData } = req.body;
 
+    console.log("req.body", req.body);
+
     if (!paymentData) {
       return res.status(400).json({ success: false, message: "Missing payment data or payment gateway selection" });
     }
@@ -808,9 +833,9 @@ router.post('/processPayment', async (req, res) => {
         furl: process.env.FURL, // Failure URL
       };
 
-    // Step 3: Generate PayU Hash
-    const hash = generatePayUHash(payUData, PAYU_MERCHANT_KEY, PAYU_MERCHANT_SALT);
-    payUData.hash = hash;
+      // Step 3: Generate PayU Hash
+      const hash = generatePayUHash(payUData, PAYU_MERCHANT_KEY, PAYU_MERCHANT_SALT);
+      payUData.hash = hash;
 
       return res.status(200).json({
         success: true,
@@ -958,7 +983,7 @@ router.post('/confirmPayment', async (req, res) => {
       }
 
       // Step 4: Redirect to the success page on the frontend
-      res.redirect(`http://localhost:3001/confirm-payment/Consoft?txnid=${txnid}&amount=${amount}&status=${status}`);
+      res.redirect(`https://projects.consoftservices.com/user/confirm-payment/Consoft?txnid=${txnid}&amount=${amount}&status=${status}`);
 
     }
   } catch (error) {
@@ -1099,7 +1124,7 @@ router.get('/getDiscount', async (req, res) => {
   }
 });
 
-router.get('/useddicountemails', verifyToken, async (req, res) => {
+router.get('/useddicountemails', async (req, res) => {
   try {
     // Query to get all data from cs_reg_discount_log table
     const query = `SELECT * FROM cs_reg_discount_log`;

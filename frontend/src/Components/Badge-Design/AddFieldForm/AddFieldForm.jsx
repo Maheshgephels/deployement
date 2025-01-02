@@ -31,7 +31,8 @@ const AddFieldForm = ({ addFieldAsComponent, badgeType, activeside }) => {
     // Update field selection to add to the selected side ('front' or 'back')
     const handleAddFieldClick = (field, side) => {
         console.log("Adding field to side:", side);
-        addFieldAsComponent({ ...field, side }); // Pass side to the addFieldAsComponent
+        const zIndex = 2;
+        addFieldAsComponent({ ...field, side, zIndex }); // Pass side to the addFieldAsComponent
     };
 
     const toggleDropdown = () => {

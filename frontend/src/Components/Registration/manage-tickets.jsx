@@ -75,6 +75,7 @@ const Managetickets = () => {
     };
     const handleSearch = (value) => {
         setSearchText(value);
+        setCurrentPage(1);
     };
 
     useEffect(() => {
@@ -162,7 +163,7 @@ const Managetickets = () => {
             // Show confirmation dialog
             const result = await Swal.fire({
                 title: 'Are you sure?',
-                text: visibilityStatus ? 'Do you want to hide this ticket?' : 'Do you want to show this ticket?',
+                text: visibilityStatus ? 'Do you want to show this ticket?' : 'Do you want to hide this ticket?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, update it!',
@@ -256,14 +257,14 @@ const Managetickets = () => {
         try {
             const { ticketId } = deleteticketDetails;
             const token = getToken();
-            
+
             await axios.delete(`${BackendAPI}/ticketRoutes/deleteticket`, {
                 headers: {
                     Authorization: `Bearer ${token}` // Include the token in the Authorization header
                 },
                 data: { ticketId } // Include the data payload correctly
             });
-    
+
             SweetAlert.fire({
                 title: 'Success!',
                 text: 'Ticket removed successfully!',
@@ -277,7 +278,7 @@ const Managetickets = () => {
                     navigate(`${process.env.PUBLIC_URL}/registration/manage-tickets/Consoft`);
                 }
             });
-    
+
             fetchTicket(); // Fetch updated ticket list
         } catch (error) {
             // Handle specific server error response
@@ -297,13 +298,13 @@ const Managetickets = () => {
                     confirmButtonText: 'OK'
                 });
             }
-    
+
             console.error('Error deleting ticket:', error);
         } finally {
             setModal(false); // Close modal regardless of success or failure
         }
     };
-    
+
 
     const [openItemId, setOpenItemId] = useState(null);
 
@@ -324,7 +325,7 @@ const Managetickets = () => {
             key: '2',
             label: (
                 <div onClick={() => toggleVisibility(item.ticket_id)}>
-                    <FaClone /> Mark a {item.ticket_id === 1 ? "Hide" : "Unhide"}
+                    <FaClone /> Mark a {item.ticket_visibility === 1 ? "Hide" : "Unhide"}
                 </div>
             ),
         },
@@ -346,6 +347,12 @@ const Managetickets = () => {
         },
         // Add more options if needed
     ];
+
+    const categorywiseNavigation = (ticketId) => {
+        const URL = '/registration/confirm-user-listing/';
+        navigate(`${process.env.PUBLIC_URL}${URL}${layoutURL}`, { state: { ticketId } });
+
+    };
 
 
 
@@ -417,9 +424,13 @@ const Managetickets = () => {
                                                         {'Price'}
                                                         {getSortIndicator('ticket_ispaid')}
                                                     </th>
-                                                    <th scope='col' className='text-start' onClick={() => handleSort('ticket_count')}>
+                                                    <th scope='col' className='text-start' onClick={() => handleSort('ticket_type')}>
                                                         {'Seats'}
-                                                        {getSortIndicator('ticket_count')}
+                                                        {getSortIndicator('ticket_type')}
+                                                    </th>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('userCount')}>
+                                                        {'Usage Count'}
+                                                        {getSortIndicator('userCount')}
                                                     </th>
                                                     {/* <th scope='col' className='text-start'>{'ticket Name'}</th> */}
                                                     <th scope='col' className='text-center' onClick={() => handleSort('ticket_status')}>
@@ -439,9 +450,26 @@ const Managetickets = () => {
                                                         <td className='text-start'>{item.ticket_title}</td>
                                                         <td className='text-start'>{item.ticket_ispaid === '0' ? 'Free' : 'Paid'}</td>
 
-
                                                         <td className='text-start'>
-                                                            {item.ticket_type === 'Unlimited' ? 'Unlimited' : item.ticket_count}
+                                                            {item.ticket_type === 'Unlimited'
+                                                                ? 'Unlimited'
+                                                                : `${item.ticket_type} (${item.ticket_count})`}
+                                                        </td>
+
+
+                                                        <td className='text-center'>
+                                                            <Button
+                                                                color='link' // Makes it look like a link
+                                                                className='p-0' // Removes padding
+                                                                style={{ textDecoration: 'none' }} // Inline style to remove underline
+                                                                onClick={() => {
+                                                                    if (item.userCount > 0) { // Check if userCount is greater than 0
+                                                                        categorywiseNavigation(item.ticket_id);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {item.userCount}
+                                                            </Button>
                                                         </td>
 
                                                         {/* <td className='text-center'>

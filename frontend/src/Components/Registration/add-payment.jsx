@@ -42,6 +42,8 @@ const AddPayment = () => {
     const location = useLocation();
     const { item } = location.state || {};
     const [prefixes, setPrefixes] = useState([]);
+    const [currencydata, setCurrencydata] = useState([]);
+    const [currency, setCurrency] = useState(''); // Initially null or a default value
     const [state, setState] = useState([]);
     const [country, setCountry] = useState([]);
     const [regCat, setRegCat] = useState([]);
@@ -63,6 +65,7 @@ const AddPayment = () => {
     const [showNextStep, setShowNextStep] = useState(false); // Handles when "Next" is clicked
     const [isChecked, setIsChecked] = useState(false); // Track the state of the checkbox
     const [sendEmail, setSendEmail] = useState(false);
+    const AdminTimezone = localStorage.getItem('AdminTimezone');
     const paymentTypeOptions = paymentType.map(type => ({
         value: type.paymenttype_id,
         label: type.paymenttype_name
@@ -74,12 +77,22 @@ const AddPayment = () => {
 
 
     console.log("Related Payment", relatedPayments);
+    console.log("Data Currency", currency);
 
 
 
 
 
 
+    const uniqueCurrencies = [
+        ...new Set(currencydata.map((country) => country.cs_currencyCode)),
+    ];
+    const currencyOptions = uniqueCurrencies.map((currencyCode) => ({
+        value: currencyCode,
+        label: currencyCode,
+    }));
+
+    console.log("Currency", currencyOptions);
 
 
     // useEffect(() => {
@@ -221,7 +234,7 @@ const AddPayment = () => {
             if (response.data.success) {
                 SweetAlert.fire({
                     title: 'Success!',
-                    html: `Payment for <b>${item.cs_first_name}</b> created successfully!`,
+                    html: `Payment for ${item.cs_first_name} created successfully!`,
                     icon: 'success',
                     timer: 3000,
                     showConfirmButton: false,
@@ -258,6 +271,9 @@ const AddPayment = () => {
 
             const fetchPaymentType = response.data.paymentType;
             const fetchPaymentStatus = response.data.paymentStatus;
+            const fetchCurrency = response.data.currency[0]?.cs_value;
+            setCurrency({ value: fetchCurrency, label: fetchCurrency });
+
 
 
             setPaymentType(fetchPaymentType);
@@ -270,11 +286,37 @@ const AddPayment = () => {
         }
     };
 
+    const fetchCurrency = async () => {
+        try {
+            const token = getToken();
+            const response = await axios.get(`${BackendAPI}/paymentRoutes/getDropdownData`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            setLoading(false);
+
+
+            const { currency: fetchcurrency } = response.data;
+
+
+
+            setCurrencydata(fetchcurrency);
+        } catch (error) {
+            console.error('Error fetching dropdown data:', error);
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchCurrency();
+    }, []);
+
 
 
 
     const handleNavigation = () => {
-        navigate(`${process.env.PUBLIC_URL}/User-listing/Consoft`);
+        navigate(`${process.env.PUBLIC_URL}/registration/manage-payment/Consoft`);
     };
 
     const handleCheckboxChange = (e) => {
@@ -308,7 +350,7 @@ const AddPayment = () => {
         try {
             const token = getToken();
             await axios.put(
-                `${BackendAPI}/paymentRoutes/updatePayment`,
+                `${BackendAPI}/paymentRoutes/updatePadyment`,
                 { ...selectedPayment, ...values },
                 {
                     headers: {
@@ -326,32 +368,13 @@ const AddPayment = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle={
-                <>
-                    Create Payment
-                    <MdInfoOutline
-                        id="addPopover"
-                        style={{
-                            cursor: 'pointer', position: 'absolute', marginLeft: '5px'
-                        }}
-                    />
-                    <UncontrolledPopover
-                        placement="bottom"
-                        target="addPopover"
-                        trigger="focus"
-                    >
-                        <PopoverBody>
-                            Use the <strong>Create User</strong> feature to register a new user and ensure all required information is accurately entered before creating.
-                        </PopoverBody>
-                    </UncontrolledPopover>
-                </>
-            } parent="Registration Admin" title=" Create Payment" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Create Payment" parent="Manage Payment" title=" Create Payment" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
                         <Card>
                             <CardBody>
-                                <h5 className="mb-4 text-start">User Details</h5>
+                                <h5 className="mb-4 text-start">User Payment Details</h5>
                                 <ul className="list-unstyled">
                                     <li className="mb-2">
                                         <FaUser className="me-2" />
@@ -365,10 +388,12 @@ const AddPayment = () => {
                                         <FaTicketAlt className="me-2" />
                                         <strong>Ticket:</strong> {item.ticket_title || 'N/A'}
                                     </li>
-                                    <li>
-                                        <FaPlus className="me-2" />
-                                        <strong>Addon:</strong> {item.addon_title || 'N/A'}
-                                    </li>
+                                    {item.addon_title && (
+                                        <li>
+                                            <FaPlus className="me-2" />
+                                            <strong>Addon:</strong> {item.addon_title || 'N/A'}
+                                        </li>
+                                    )}
                                 </ul>
 
                                 <div className='table-responsive'>
@@ -389,7 +414,7 @@ const AddPayment = () => {
                                                 <tr key={payment.payment_id}>
                                                     <td>{index + 1}</td>
                                                     <td>{payment.payment_mode || 'N/A'}</td>
-                                                    <td>{payment.tracking_id || 'N/A'}</td>
+                                                    <td>{payment.tracking_id || payment.cheque_no}</td>
                                                     <td>{payment.bank || 'N/A'}</td>
                                                     <td>{payment.total_paid_amount || 'N/A'}</td>
                                                     <td>{payment.payment_date ? moment(payment.payment_date).format('YYYY-MM-DD HH:mm:ss') : 'N/A'}</td>
@@ -421,6 +446,7 @@ const AddPayment = () => {
 
                                                         <Field
                                                             name="paymenttype_id"
+                                                            validate={option}
                                                         >
                                                             {({ input, meta }) => {
                                                                 const selectedOption = paymentTypeOptions.find(option => option.value === input.value);
@@ -429,11 +455,11 @@ const AddPayment = () => {
 
                                                                 return (
                                                                     <div>
-                                                                        <Label className='form-label' for="paymenttype_id"><strong>Payment Type</strong></Label>
+                                                                        <Label className='form-label' for="paymenttype_id"><strong>Payment Type</strong> <span className="text-danger"> *</span></Label>
                                                                         <Select
                                                                             {...input}
                                                                             options={paymentTypeOptions}
-                                                                            placeholder={`Select Payment Status`}
+                                                                            placeholder={`Select Payment Type`}
                                                                             isSearchable={true}
                                                                             onChange={(value) => {
                                                                                 input.onChange(value);
@@ -454,6 +480,7 @@ const AddPayment = () => {
 
                                                         <Field
                                                             name="paymentstatus_id"
+                                                            validate={option}
                                                         >
                                                             {({ input, meta }) => {
                                                                 const selectedOption = paymentStatusOptions.find(option => option.value === input.value);
@@ -462,7 +489,7 @@ const AddPayment = () => {
 
                                                                 return (
                                                                     <div>
-                                                                        <Label className='form-label' for="paymentstatus_id"><strong>Payment Status</strong></Label>
+                                                                        <Label className='form-label' for="paymentstatus_id"><strong>Payment Status</strong> <span className="text-danger"> *</span></Label>
                                                                         <Select
                                                                             {...input}
                                                                             options={paymentStatusOptions}
@@ -488,7 +515,7 @@ const AddPayment = () => {
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="cheque_no">
-                                                                        <strong>DD / CHEQUE NO. / TRANSACTION ID</strong><span className="text-danger"> *</span>
+                                                                        <strong>DD / CHEQUE NO. / TRANSACTION ID</strong>
                                                                     </Label>
                                                                     <input
                                                                         {...input}
@@ -512,15 +539,16 @@ const AddPayment = () => {
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="payment_date">
-                                                                        <strong>Payment Date</strong><span className="text-danger"> *</span>
+                                                                        <strong>Payment Date & Time</strong>
                                                                     </Label>
                                                                     <input
                                                                         {...input}
                                                                         className="form-control"
                                                                         id="payment_date"
-                                                                        type="date"
+                                                                        type="datetime-local"
                                                                         placeholder="Enter Payment Date"
-                                                                        max="9999-12-31"
+                                                                        // min={minDate}
+                                                                        max="9999-12-31T23:59"
                                                                     />
                                                                     {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
                                                                 </div>
@@ -533,7 +561,7 @@ const AddPayment = () => {
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="bank">
-                                                                        <strong>Bank</strong><span className="text-danger"> *</span>
+                                                                        <strong>Bank</strong>
                                                                     </Label>
                                                                     <input
                                                                         {...input}
@@ -552,7 +580,7 @@ const AddPayment = () => {
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="branch">
-                                                                        <strong>Branch</strong><span className="text-danger"> *</span>
+                                                                        <strong>Branch</strong>
                                                                     </Label>
                                                                     <input
                                                                         {...input}
@@ -569,7 +597,7 @@ const AddPayment = () => {
                                                 <Row>
 
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
+                                                    {/* <Col xs={12} sm={6} md={4} className="mb-3">
                                                         <Field name="currency">
                                                             {({ input, meta }) => (
                                                                 <div>
@@ -586,12 +614,35 @@ const AddPayment = () => {
                                                                 </div>
                                                             )}
                                                         </Field>
+                                                    </Col> */}
+                                                    <Col xs={12} sm={6} md={4} className="mb-3">
+                                                        <Field name="currency">
+                                                            {({ input, meta }) => (
+                                                                <div className="form-group">
+                                                                    <Label>
+                                                                        <strong>Currency</strong>
+                                                                    </Label>
+                                                                    <Select
+                                                                        {...input} // Spread input props provided by Field
+                                                                        options={currencyOptions}
+                                                                        value={currency} // Set the selected value
+                                                                        onChange={(selectedOption) => {
+                                                                            input.onChange(selectedOption.value); // Update Field's value with selected option's value
+                                                                            setCurrency(selectedOption); // Update the state (if needed elsewhere)
+                                                                        }}
+                                                                        classNamePrefix="react-select"
+                                                                    />
+                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                </div>
+                                                            )}
+                                                        </Field>
                                                     </Col>
 
 
 
+
                                                     <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="conference_fees">
+                                                        <Field name="conference_fees" validate={required}>
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="conference_fees">
@@ -614,7 +665,7 @@ const AddPayment = () => {
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="processing_fee">
-                                                                        <strong>Processing Fees</strong><span className="text-danger"> *</span>
+                                                                        <strong>Processing Fees</strong>
                                                                     </Label>
                                                                     <input
                                                                         {...input}
@@ -631,7 +682,7 @@ const AddPayment = () => {
 
                                                 <Row>
                                                     <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="total_paid_amount">
+                                                        <Field name="total_paid_amount" validate={required}>
                                                             {({ input, meta }) => (
                                                                 <div>
                                                                     <Label className="form-label" for="total_paid_amount">
@@ -665,7 +716,7 @@ const AddPayment = () => {
                                                         )}
                                                     </Col>
                                                     <Col xs="auto">
-                                                        <Button color='warning' className="me-2 mt-3">Cancel</Button>
+                                                        <Button color='warning' className="me-2 mt-3" onClick={handleCancel}>Cancel</Button>
                                                         <Button color='primary' type='submit' className="me-2 mt-3">Submit</Button>
                                                     </Col>
                                                 </Row>
@@ -723,19 +774,19 @@ const AddPayment = () => {
                             conference_fees: selectedPayment?.conference_fees || '',
                             processing_fee: selectedPayment?.processing_fee || '',
                             total_paid_amount: selectedPayment?.total_paid_amount || '',
-                            payment_date: selectedPayment?.payment_date ? moment(selectedPayment.payment_date).format('YYYY-MM-DD') : ''
+                            payment_date: selectedPayment?.payment_date ? moment(selectedPayment.payment_date).tz(AdminTimezone).format('YYYY-MM-DD') : ''
                         }}
                         render={({ handleSubmit }) => (
                             <form onSubmit={handleSubmit}>
                                 <Row>
                                     <Col xs={12} sm={6} md={4} className="mb-3">
-                                        <Field name="paymenttype_id">
+                                        <Field name="paymenttype_id" validate={option}>
                                             {({ input, meta }) => {
                                                 const selectedOption = paymentTypeOptions.find(option => option.value === input.value);
                                                 return (
                                                     <div>
                                                         <Label className="form-label" for="paymenttype_id">
-                                                            <strong>Payment Type</strong>
+                                                            <strong>Payment Type</strong> <span className="text-danger"> *</span>
                                                         </Label>
                                                         <Select
                                                             {...input}
@@ -755,13 +806,13 @@ const AddPayment = () => {
                                     </Col>
 
                                     <Col xs={12} sm={6} md={4} className="mb-3">
-                                        <Field name="paymentstatus_id">
+                                        <Field name="paymentstatus_id" validate={option}>
                                             {({ input, meta }) => {
                                                 const selectedOption = paymentStatusOptions.find(option => option.value === input.value);
                                                 return (
                                                     <div>
                                                         <Label className="form-label" for="paymentstatus_id">
-                                                            <strong>Payment Status</strong>
+                                                            <strong>Payment Status</strong><span className="text-danger"> *</span>
                                                         </Label>
                                                         <Select
                                                             {...input}
@@ -785,7 +836,7 @@ const AddPayment = () => {
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="cheque_no" style={{ fontSize: '12px' }}>
-                                                        <strong>DD / CHEQUE NO. / TRANSACTION ID</strong><span className="text-danger"> *</span>
+                                                        <strong>DD / CHEQUE NO. / TRANSACTION ID</strong>
                                                     </Label>
                                                     <input
                                                         {...input}
@@ -811,16 +862,16 @@ const AddPayment = () => {
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="payment_date">
-                                                        <strong>Payment Date</strong><span className="text-danger"> *</span>
+                                                        <strong>Payment Date & Time</strong>
                                                     </Label>
                                                     <input
                                                         {...input}
                                                         className="form-control"
                                                         id="payment_date"
-                                                        type="date"
-                                                        max="9999-12-31"
+                                                        type="datetime-local"
                                                         placeholder="Enter Payment Date"
-                                                        disabled
+                                                        // min={minDate}
+                                                        max="9999-12-31T23:59"
                                                     />
                                                     {meta.touched && meta.error && <p className="d-block text-danger">{meta.error}</p>}
                                                 </div>
@@ -833,7 +884,7 @@ const AddPayment = () => {
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="bank">
-                                                        <strong>Bank</strong><span className="text-danger"> *</span>
+                                                        <strong>Bank</strong>
                                                     </Label>
                                                     <input
                                                         {...input}
@@ -852,7 +903,7 @@ const AddPayment = () => {
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="branch">
-                                                        <strong>Branch</strong><span className="text-danger"> *</span>
+                                                        <strong>Branch</strong>
                                                     </Label>
                                                     <input
                                                         {...input}
@@ -876,7 +927,7 @@ const AddPayment = () => {
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="currency">
-                                                        <strong>Payment Currency</strong><span className="text-danger"> *</span>
+                                                        <strong>Payment Currency</strong>
                                                     </Label>
                                                     <input
                                                         {...input}
@@ -893,7 +944,7 @@ const AddPayment = () => {
 
 
                                     <Col xs={12} sm={6} md={4} className="mb-3">
-                                        <Field name="conference_fees">
+                                        <Field name="conference_fees" validate={required}>
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="conference_fees">
@@ -916,7 +967,7 @@ const AddPayment = () => {
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="processing_fee">
-                                                        <strong>Processing Fees</strong><span className="text-danger"> *</span>
+                                                        <strong>Processing Fees</strong>
                                                     </Label>
                                                     <input
                                                         {...input}
@@ -933,7 +984,7 @@ const AddPayment = () => {
 
                                 <Row>
                                     <Col xs={12} sm={6} md={4} className="mb-3">
-                                        <Field name="total_paid_amount">
+                                        <Field name="total_paid_amount" validate={required}>
                                             {({ input, meta }) => (
                                                 <div>
                                                     <Label className="form-label" for="total_paid_amount">

@@ -30,6 +30,7 @@ const ViewAddon = () => {
 
     console.log("Addon", addonData);
     console.log("Ticketdata", ticket);
+    console.log("Duration", durationData);
 
 
     useEffect(() => {
@@ -43,8 +44,14 @@ const ViewAddon = () => {
                 });
 
                 const { addon, durations } = response.data;
+
+                // Sort durations using moment for addon_duration_start_date
+                const sortedDurations = durations.sort((a, b) =>
+                    moment(a.addon_duration_start_date).diff(moment(b.addon_duration_start_date))
+                );
+
                 setAddonData(addon); // Updated to set addon data
-                setDurationData(durations);
+                setDurationData(sortedDurations);
             } catch (error) {
                 console.error('Error fetching addon data:', error.message);
             }
@@ -61,7 +68,7 @@ const ViewAddon = () => {
             });
 
             const { ticket: fetchTicket } = response.data;
-           
+
             const fetchcurrency = response.data.currency[0];
             const fetchgstfee = response.data.gstfee[0];
             const fetchgstinclded = response.data.gstinclded[0];
@@ -118,10 +125,10 @@ const ViewAddon = () => {
         if (gstfee === 'Yes') {
             if (gstinclded === 'Yes') {
                 if (processingfeeornot === 'Yes') {
-                    console.log("processinginclded",processinginclded);
+                    console.log("processinginclded", processinginclded);
                     if (processinginclded === 'Include') {
                         // Eliminate processing fee before calculating GST
-                      
+
                         let baseAmountWithoutProcessing = amount;
 
                         // Calculate processing fee if applicable
@@ -142,14 +149,14 @@ const ViewAddon = () => {
                         console.log("Adjusted regAmount after GST:", regAmount);
                     }
                 }
-                    else {
-                        // If processing fee is not included, calculate GST directly on the amount
-                        gstAmount = (amount * parseFloat(gstpercentage)) / 100;
-                        regAmount = amount - gstAmount;  // Adjust regAmount after GST
-                        console.log("GST without processing fee:", gstAmount);
-                        console.log("Adjusted regAmount without GST:", regAmount);
-                    }
-                
+                else {
+                    // If processing fee is not included, calculate GST directly on the amount
+                    gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+                    regAmount = amount - gstAmount;  // Adjust regAmount after GST
+                    console.log("GST without processing fee:", gstAmount);
+                    console.log("Adjusted regAmount without GST:", regAmount);
+                }
+
             }
             else {
                 // If GST is excluded, calculate normally
@@ -349,40 +356,42 @@ const ViewAddon = () => {
                                                 ))}
                                             </tbody>
                                         </Table> */}
-                                        <Table className="mt-4 table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Duration Name</th>
-                                                    <th>Start Date</th>
-                                                    <th>End Date</th>
-                                                    <th>Ticket Amount</th>
-                                                    <th>GST Amount</th>
-                                                    <th>Processing Fee</th>
-                                                    <th>Total Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {durationData.map((duration, index) => {
-                                                    const { gstAmount, processingAmount, totalAmount,regAmount } = calculateAmounts(duration.addon_amount);
+                                        <div className="table-responsive">
 
-                                                    return (
-                                                        
-                                                         <tr key={duration.addon_duration_id || index}>
-                                                        <td>{duration.addon_duration_name || 'N/A'}</td>
-                                                        <td>{duration.addon_duration_start_date ? moment(duration.addon_duration_start_date).format('DD-MM-YYYY') : 'N/A'}</td>
-                                                        <td>{duration.addon_duration_till_date ? moment(duration.addon_duration_till_date).format('DD-MM-YYYY') : 'N/A'}</td>
-                                                    
-                                                    
-                                                            <td>{regAmount > 0 ? `${regAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
-                                                            <td>{gstAmount > 0 ? `${gstAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
-                                                            <td>{processingAmount > 0 ? `${processingAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
-                                                            <td>{totalAmount > 0 ? `${totalAmount.toFixed(2)} ${currency}` : 'N/A'}</td> {/* Uncomment this line */}
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </Table>
+                                            <Table className="mt-4 table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Duration Name</th>
+                                                        <th>Start Date</th>
+                                                        <th>End Date</th>
+                                                        <th>Ticket Amount</th>
+                                                        <th>GST Amount</th>
+                                                        <th>Processing Fee</th>
+                                                        <th>Total Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {durationData.map((duration, index) => {
+                                                        const { gstAmount, processingAmount, totalAmount, regAmount } = calculateAmounts(duration.addon_amount);
 
+                                                        return (
+
+                                                            <tr key={duration.addon_duration_id || index}>
+                                                                <td>{duration.addon_duration_name || 'N/A'}</td>
+                                                                <td>{duration.addon_duration_start_date ? moment(duration.addon_duration_start_date).format('DD-MM-YYYY') : 'N/A'}</td>
+                                                                <td>{duration.addon_duration_till_date ? moment(duration.addon_duration_till_date).format('DD-MM-YYYY') : 'N/A'}</td>
+
+
+                                                                <td>{regAmount > 0 ? `${regAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
+                                                                <td>{gstAmount > 0 ? `${gstAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
+                                                                <td>{processingAmount > 0 ? `${processingAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
+                                                                <td>{totalAmount > 0 ? `${totalAmount.toFixed(2)} ${currency}` : 'N/A'}</td> {/* Uncomment this line */}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </Table>
+                                        </div>
                                     </Fragment>
                                 )}
                                 {!addonData && <p>Loading addon details...</p>}

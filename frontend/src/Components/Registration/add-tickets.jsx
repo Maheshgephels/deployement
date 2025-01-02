@@ -78,6 +78,17 @@ const AddTicket = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [value, setValue] = useState('');
     const navigate = useNavigate(); // Initialize useHistory
+    const [selectedAccommodation, setSelectedAccommodation] = useState("");
+    const [wordCount, setWordCount] = useState(0);
+    const maxWordCount = 50;
+
+    const handleWordCount = (value) => {
+        if (!value) return 0; // If value is undefined or empty, return 0
+        const words = value.trim().split(/\s+/); // Splitting based on spaces
+        return words.length; // Returns word count
+    };
+
+
 
 
     // Handle seat type change
@@ -193,6 +204,7 @@ const AddTicket = () => {
             isPrivate: values.isprivate ? 1 : 0, // Transform checkbox value
             maxBuyingLimit: values.maxBuyingLimit, // Maximum buying limit maxBuyingLimit
             mailDescription: value,
+            selectedAccommodation: selectedAccommodation,
         };
 
         console.log("formData", formData); // Log the prepared data
@@ -297,7 +309,7 @@ const AddTicket = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs mainTitle="Create Ticket" parent="Manage Ticket" title="Create Ticket" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Create Ticket" parent="Manage Ticket" title="Create Ticket" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="8">
@@ -308,14 +320,17 @@ const AddTicket = () => {
                                     render={({ handleSubmit, form }) => (
                                         <form onSubmit={handleSubmit}>
                                             <Row>
-                                                <Col md="12" className="mb-3">
+                                                {/* <Col md="12" className="mb-3">
                                                     <Field
                                                         name="ticketTitle"
                                                         validate={composeValidators(required, Name)}
                                                     >
                                                         {({ input, meta }) => (
                                                             <div className="form-group">
-                                                                <label><strong>Title</strong><span className="red-asterisk">*</span></label>
+                                                                <label className="d-flex justify-content-between align-items-center">
+                                                                    <strong>Title<span className="red-asterisk">*</span></strong>
+                                                                    <small>(0/50)</small>
+                                                                </label>
                                                                 <input
                                                                     {...input}
                                                                     type="text"
@@ -326,25 +341,96 @@ const AddTicket = () => {
                                                             </div>
                                                         )}
                                                     </Field>
-                                                </Col>
+                                                </Col> */}
                                                 <Col md="12" className="mb-3">
                                                     <Field
-                                                        name="ticketDescription"
-                                                        validate={required}
+                                                        name="ticketTitle"
+                                                        validate={(value) => {
+                                                            const words = handleWordCount(value);
+                                                            if (!value) return 'Title is required';
+                                                            if (words > maxWordCount) return `Title cannot exceed ${maxWordCount} words`;
+                                                            return undefined;
+                                                        }}
                                                     >
-                                                        {({ input, meta }) => (
-                                                            <div className="form-group">
-                                                                <label><strong>Description</strong><span className="red-asterisk">*</span></label>
-                                                                <textarea
-                                                                    {...input}
-                                                                    placeholder="Enter Ticket Description"
-                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
-                                                                />
-                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                            </div>
-                                                        )}
+                                                        {({ input, meta }) => {
+                                                            const currentWordCount = handleWordCount(input.value);
+                                                            return (
+                                                                <div className="form-group">
+                                                                    <label className="d-flex justify-content-between align-items-center">
+                                                                        <strong>
+                                                                            Title<span className="red-asterisk">*</span>
+                                                                        </strong>
+                                                                        <small>
+                                                                            ({currentWordCount}/{maxWordCount})
+                                                                        </small>
+                                                                    </label>
+                                                                    <input
+                                                                        {...input}
+                                                                        type="text"
+                                                                        placeholder="Enter Ticket Title"
+                                                                        className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                                                        onChange={(e) => {
+                                                                            const inputText = e.target.value;
+                                                                            const words = inputText.trim().split(/\s+/);
+
+                                                                            // Truncate input if word count exceeds maxWordCount
+                                                                            if (words.length > maxWordCount) {
+                                                                                const truncatedText = words.slice(0, maxWordCount).join(' ');
+                                                                                input.onChange(truncatedText); // Set truncated text
+                                                                            } else {
+                                                                                input.onChange(inputText); // Update normally
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    {meta.error && meta.touched && (
+                                                                        <p className="d-block text-danger">{meta.error}</p>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        }}
                                                     </Field>
                                                 </Col>
+                                                <Col md="12" className="mb-3">
+                                                    <Field name="ticketDescription">
+                                                        {({ input, meta }) => {
+                                                            const handleWordCount = (value) => {
+                                                                if (!value) return 0; // If value is undefined or empty, return 0
+                                                                const words = value.trim().split(/\s+/); // Splitting based on spaces
+                                                                return words.length; // Returns word count
+                                                            };
+
+                                                            const maxWordCount = 200;
+                                                            const currentWordCount = handleWordCount(input.value);
+
+                                                            return (
+                                                                <div className="form-group">
+                                                                    <label className="d-flex justify-content-between align-items-center">
+                                                                        <strong>Description</strong>
+                                                                        <small>({currentWordCount}/{maxWordCount})</small>
+                                                                    </label>
+                                                                    <textarea
+                                                                        {...input}
+                                                                        placeholder="Enter Ticket Description"
+                                                                        className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                                                        onChange={(e) => {
+                                                                            const inputText = e.target.value;
+                                                                            const words = inputText.trim().split(/\s+/);
+
+                                                                            // Truncate input if word count exceeds maxWordCount
+                                                                            if (words.length > maxWordCount) {
+                                                                                const truncatedText = words.slice(0, maxWordCount).join(' ');
+                                                                                input.onChange(truncatedText); // Set truncated text
+                                                                            } else {
+                                                                                input.onChange(inputText); // Update normally
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        }}
+                                                    </Field>
+                                                </Col>
+
                                                 <Col md="12" className="mb-3">
                                                     <div className="row align-items-center">
                                                         <div className="col-md-9"> {/* Limit the width of this div */}
@@ -387,6 +473,25 @@ const AddTicket = () => {
                                                         </Input>
                                                     </div>
                                                 </Col>
+
+                                                {/* Conditionally Render Twin Sharing and Single Occupancy Dropdown */}
+                                                {selectedType === "1" && (
+                                                    <Col md="6" className="mb-3">
+                                                        <div className="form-group">
+                                                            <label><strong>Accommodation Type</strong></label>
+                                                            <Input
+                                                                type="select"
+                                                                className="form-control"
+                                                                onChange={(e) => setSelectedAccommodation(e.target.value)}
+                                                                value={selectedAccommodation}
+                                                            >
+                                                                <option value="" disabled selected>Select Accommodation</option>
+                                                                <option value="1">Twin Sharing</option>
+                                                                <option value="2">Single Occupancy</option>
+                                                            </Input>
+                                                        </div>
+                                                    </Col>
+                                                )}
                                                 <Col md="6" className="mb-3">
                                                     <Field name="ticketStatus" validate={required} defaultValue="Open">
                                                         {({ input, meta }) => (
@@ -529,7 +634,7 @@ const AddTicket = () => {
                                                                     onChange={handlePercentageChange}  // Update slider state
                                                                     marks={{ 0: '0', 50: '50', 100: '100' }}
                                                                     step={1}
-                                                                    handleStyle={{ color: 'orange', borderColor: 'orange', height: 20, width: 20 }}
+                                                                    handleStyle={{ color: 'orange', borderColor: 'orange', height: 20, width: 20, zIndex: 0 }}
                                                                     trackStyle={{ backgroundColor: 'orange' }}  // Set the track color to orange
                                                                 />
 
@@ -663,10 +768,10 @@ const AddTicket = () => {
                                             {priceType === 'Paid' && (
 
                                                 <Card className='mt-3'>
-                                                    <CardHeader>
-                                                        <h5><strong>Duration Management</strong></h5>
-                                                    </CardHeader>
                                                     <CardBody>
+                                                        <Row className='mb-2'>
+                                                            <h5><strong>Duration Management</strong></h5>
+                                                        </Row>
                                                         <Row>
                                                             <Col md="12" className='mb-2'>
                                                                 <div className="form-group">
@@ -687,6 +792,7 @@ const AddTicket = () => {
                                                                     <DatePicker
                                                                         selected={newDuration.startDate}
                                                                         onChange={handlestartDateChange}
+
                                                                         className="form-control"
                                                                         showMonthDropdown
                                                                         showYearDropdown
@@ -700,6 +806,7 @@ const AddTicket = () => {
                                                                     <DatePicker
                                                                         selected={newDuration.endDate}
                                                                         onChange={handleDateChange}
+                                                                        minDate={newDuration.startDate}
                                                                         className="form-control"
                                                                         showMonthDropdown
                                                                         showYearDropdown
@@ -755,37 +862,39 @@ const AddTicket = () => {
                                                                 </div>
                                                             </Col>
                                                         </Row>
-                                                        <Table striped>
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>Name</th>
-                                                                    <th>Start Date</th>
-                                                                    <th>End Date</th>
-                                                                    <th>Amount</th>
-                                                                    {/* <th>Currency</th> */}
-                                                                    <th>Actions</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {durations.map((duration, index) => (
-                                                                    <tr key={index}>
-                                                                        <td>{duration.name}</td>
-                                                                        <td>{duration.startDate.toLocaleDateString()}</td>
-                                                                        <td>{duration.endDate.toLocaleDateString()}</td>
-                                                                        <td>{duration.amount}</td>
-                                                                        {/* <td>{duration.currency}</td> */}
-                                                                        <td>
-                                                                            <Button size="sm" color="warning" onClick={() => { handleEditDuration(index) }}>
-                                                                                <FaEdit />
-                                                                            </Button>
-                                                                            <Button size="sm" color="danger" onClick={() => { handleDeleteDuration(index) }}>
-                                                                                <MdDelete />
-                                                                            </Button>
-                                                                        </td>
+                                                        <div className="table-responsive">
+                                                            <Table striped>
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Name</th>
+                                                                        <th>Start Date</th>
+                                                                        <th>End Date</th>
+                                                                        <th>Amount</th>
+                                                                        {/* <th>Currency</th> */}
+                                                                        <th>Actions</th>
                                                                     </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </Table>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {durations.map((duration, index) => (
+                                                                        <tr key={index}>
+                                                                            <td>{duration.name}</td>
+                                                                            <td>{duration.startDate.toLocaleDateString()}</td>
+                                                                            <td>{duration.endDate.toLocaleDateString()}</td>
+                                                                            <td>{duration.amount}</td>
+                                                                            {/* <td>{duration.currency}</td> */}
+                                                                            <td>
+                                                                                <Button size="sm" color="warning" onClick={() => { handleEditDuration(index) }}>
+                                                                                    <FaEdit />
+                                                                                </Button>
+                                                                                <Button size="sm" color="danger" onClick={() => { handleDeleteDuration(index) }}>
+                                                                                    <MdDelete />
+                                                                                </Button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </Table>
+                                                        </div>
                                                     </CardBody>
                                                 </Card>
                                             )}
@@ -825,6 +934,7 @@ const AddTicket = () => {
                                                                 <DatePicker
                                                                     selected={newDuration.endDate}
                                                                     onChange={handleDateChange}
+                                                                    minDate={newDuration.startDate}
                                                                     className="form-control"
                                                                     showMonthDropdown
                                                                     showYearDropdown
@@ -943,7 +1053,7 @@ const AddTicket = () => {
                                             </Row> */}
                                             <div className="d-flex justify-content-end mt-3">
                                                 <Button color='warning' onClick={handleCancel} className="ms-3">Cancel</Button>
-                                                <Button type="submit" color="primary" className='ms-3'>Save</Button>
+                                                <Button type="submit" color="primary" className='ms-3'>Create</Button>
                                             </div>
 
                                         </form>

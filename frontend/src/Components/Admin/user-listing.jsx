@@ -607,6 +607,8 @@ const handlePrintCertificate = async (user) => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        setSelectedItems([]);
     };
 
 
@@ -656,6 +658,8 @@ const handlePrintCertificate = async (user) => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, 'User_Data.xlsx');
+
+        setSelectedItems([]);
     };
 
 
@@ -956,6 +960,7 @@ const handlePrintCertificate = async (user) => {
                                                         <input
                                                             type="checkbox"
                                                             onChange={handleSelectAll} // Function to handle 'select all' checkbox
+                                                            checked={selectedItems.length === users.length && users.length > 0} // Dynamically set checked status
                                                         />
                                                     </th>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
@@ -1129,6 +1134,8 @@ const handlePrintCertificate = async (user) => {
                                 MultiValueRemove: MultiValueRemoveWithCondition // Use custom MultiValueRemove component
                             }}
                             isClearable={false}
+                            classNamePrefix="react-select"
+
                         />
 
 

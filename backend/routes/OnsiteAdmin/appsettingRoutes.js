@@ -5,8 +5,9 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../../config/database');
 const multer = require('multer');
 const verifyToken = require('../api/middleware/authMiddleware');
-const queueMiddleware = require('../api/middleware/queueMiddleware'); 
-  
+const queueMiddleware = require('../api/middleware/queueMiddleware');
+
+
 // Set up multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -20,7 +21,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 
-//updated code
+
 
 router.get('/getSetting', verifyToken, async (req, res) => {
   try {
@@ -45,7 +46,7 @@ router.get('/getSetting', verifyToken, async (req, res) => {
 router.get('/getCertFeedbackData', verifyToken, async (req, res) => {
   try {
     // Query to fetch cs_value for id 38 from cs_tbl_sitesetting table
-    const query = "SELECT cs_parameter,cs_value FROM cs_tbl_sitesetting WHERE cs_parameter IN ('certificate', 'certificate_with_feedback', 'feedback_form')";
+    const query = "SELECT cs_parameter,cs_value FROM cs_tbl_sitesetting WHERE cs_parameter IN ('certificate', 'certificate_with_feedback', 'feedback_form' ,'user_panel','Multipleuser','Discountcoupon', 'is_international')";
 
     // Execute the query
     const [results] = await pool.query(query);
@@ -95,7 +96,7 @@ router.post('/updateSettings', verifyToken,upload.single('bannerimage'), async (
 });
 
 router.post('/updateCertSettings', verifyToken, async (req, res) => {
-  const { certificate, certificateWithFeedback, feedbackForm } = req.body;
+  const { certificate, certificateWithFeedback, feedbackForm ,userpanel,multipleuser,Discountcoupon, IsInternatioanl} = req.body;
 
   try {
     // Settings to update
@@ -103,6 +104,10 @@ router.post('/updateCertSettings', verifyToken, async (req, res) => {
       { parameter: 'certificate', value: certificate },
       { parameter: 'certificate_with_feedback', value: certificateWithFeedback },
       { parameter: 'feedback_form', value: feedbackForm },
+      { parameter: 'user_panel', value: userpanel },
+      { parameter: 'Multipleuser', value: multipleuser },
+      { parameter: 'Discountcoupon', value: Discountcoupon },
+      { parameter: 'is_international', value: IsInternatioanl },
     ];
 
     // Update each setting in the database
@@ -730,6 +735,22 @@ router.post('/check-admin-regno', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error checking registration number availability:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/getsettings', async (req, res) => {
+
+  try {
+    // Query the database
+    const query = 'SELECT * FROM cs_tbl_sitesetting';
+    const [rows] = await pool.query(query, []);
+
+
+    // Send the result to the frontend
+    res.status(200).json({ settings: rows });
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ message: 'Failed to fetch settings' });
   }
 });
 

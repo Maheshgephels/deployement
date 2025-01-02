@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
 // API to get payment list
 router.get('/getPaymentData', verifyToken, async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, search = '', sortColumn = 'payment_id', sortOrder = 'ASC' } = req.query;
+    const { page = 1, pageSize = 10, search = '', sortColumn = 'payment_id', sortOrder = 'DESC' } = req.query;
     const offset = (page - 1) * pageSize;
 
     console.log("Search", search);
@@ -35,11 +35,11 @@ router.get('/getPaymentData', verifyToken, async (req, res) => {
       'total_paid_amount', 'order_id', 'tracking_id', 'payment_mode',
       'note', 'status', 'created_at', 'updated_at', 'cs_regno'
     ];
-    const columnToSortBy = validColumns.includes(sortColumn) ? sortColumn : 'payment_date';
+    const columnToSortBy = validColumns.includes(sortColumn) ? sortColumn : 'payment_id';
 
     let query = `SELECT p.*, 
                         u.cs_regno, u.cs_first_name, u.cs_last_name, u.cs_email, u.updated_at,
-                        u.cs_ticket, u.cs_addons, u.cs_reg_cat_id, u.cs_state,
+                        u.cs_ticket, u.cs_addons, u.cs_reg_cat_id, u.cs_state, u.cs_reg_category, u.cs_address,
                         t.ticket_title,
                         a.addon_title,
                         m.paymenttype_name
@@ -76,8 +76,14 @@ router.get('/getPaymentData', verifyToken, async (req, res) => {
       }
     }
 
-    query += ` ORDER BY ${columnToSortBy} ${sortOrder} LIMIT ${pageSize} OFFSET ${offset}`;
+    query += `
+      ORDER BY ${columnToSortBy} ${sortOrder}
+      LIMIT ${pageSize} OFFSET ${offset}
+    `;
+    
     const [paymentData] = await pool.query(query);
+
+    // console.log("Paymentt Data", paymentData)
 
     const gstinclded = `SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter = "GST_Include"`;
     const processinginclded = `SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter = "processing_fee_IncludeExclude"`;
@@ -224,7 +230,7 @@ router.get('/getPaymentData', verifyToken, async (req, res) => {
       };
     });
 
-    console.log("Updated Payment Data", updatedPaymentData);
+    // console.log("Updated Payment Data", updatedPaymentData);
 
 
     const totalCountQuery = 'SELECT COUNT(*) AS total FROM cs_reg_payment';
@@ -517,8 +523,8 @@ router.post('/editCatPack', verifyToken, async (req, res) => {
     if (userData && Object.keys(userData).length > 0) {
       // Update user data if provided
       try {
-        const columns = Object.keys(userData);
-        const values = Object.values(userData);
+        const columns = Object.keys(userData).filter(key => key !== 'accompany_person_data');
+        const values = columns.map(key => userData[key]);
 
         // Fetch cs_reg_cat_id based on cs_reg_category
         const [categoryResult] = await pool.query(
@@ -550,6 +556,48 @@ router.post('/editCatPack', verifyToken, async (req, res) => {
         return res.status(500).json({ error: 'Error updating user data' });
       }
     }
+
+    if (userData.accompany_person_data) {
+      try {
+          const parsedData = JSON.parse(userData.accompany_person_data);
+          const firstKey = Object.keys(parsedData)[0];
+          const personArray = parsedData[firstKey];
+  
+          if (Array.isArray(personArray)) {
+              // Separate new and existing records
+              const newPersons = personArray.filter(person => !person.id || person.id === ""); // New entries
+              const existingPersons = personArray.filter(person => person.id && person.id !== ""); // Existing entries
+  
+              // Insert new persons
+              if (newPersons.length > 0) {
+                  const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id, accper_name, accper_age) VALUES ?';
+                  const insertData = newPersons.map(person => [userId, person.name, person.age || null]);
+  
+                  await pool.query(insertAccperQuery, [insertData]);
+                  console.log('New accompanying persons inserted successfully');
+              }
+  
+              // Update existing persons
+              if (existingPersons.length > 0) {
+                  for (const person of existingPersons) {
+                      const updateAccperQuery = `
+                          UPDATE cs_reg_accper
+                          SET accper_name = ?, accper_age = ?
+                          WHERE accper_id = ? AND user_id = ?
+                      `;
+                      await pool.query(updateAccperQuery, [person.name, person.age || null, person.id, userId]);
+                  }
+                  console.log('Existing accompanying persons updated successfully');
+              }
+          }
+      } catch (error) {
+          console.error('Error processing accompany_person_data:', error);
+          return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
+      }
+  }
+  
+
+    
 
     // Insert payment details if they exist
     if (payment && Object.keys(payment).length > 0) {
@@ -600,10 +648,144 @@ router.post('/editCatPack', verifyToken, async (req, res) => {
   }
 });
 
+// router.post('/editCatPack', verifyToken, async (req, res) => {
+//   try {
+//       const { data: userData, Id: userId, paymentDetails: payment, sendEmail } = req.body;
+
+//       // Validate necessary data
+//       if (!userId) {
+//           return res.status(400).json({ error: 'User ID is required' });
+//       }
+
+//       // Update user data
+//       if (userData && Object.keys(userData).length > 0) {
+//           try {
+//               const columns = Object.keys(userData).filter(key => key !== 'accompany_person_data');
+//               const values = columns.map(key => userData[key]);
+
+//               // Fetch cs_reg_cat_id based on cs_reg_category
+//               const [categoryResult] = await pool.query(
+//                 'SELECT cs_reg_category FROM cs_os_category WHERE cs_reg_cat_id = ?',
+//                 [userData.cs_reg_cat_id]
+//               );
+
+//               const csRegCat = categoryResult[0]?.cs_reg_category || null;
+
+//               if (csRegCat) {
+//                   columns.push('cs_reg_category');
+//                   values.push(csRegCat);
+//               }
+
+//               const updateQuery = `
+//                 UPDATE cs_os_users
+//                 SET ${columns.map(col => `${col} = ?`).join(', ')}
+//                 WHERE id = ?
+//               `;
+
+//               await pool.query(updateQuery, [...values, userId]);
+//               console.log("User update successful for ID:", userId);
+
+//           } catch (updateError) {
+//               console.error('Error updating user data:', updateError);
+//               return res.status(500).json({ error: 'Error updating user data' });
+//           }
+//       }
+
+//       // Parse and handle accompany_person_data
+//       if (userData.accompany_person_data) {
+//           try {
+//               const parsedData = JSON.parse(userData.accompany_person_data);
+//               const firstKey = Object.keys(parsedData)[0];
+//               const personArray = parsedData[firstKey];
+
+//               if (Array.isArray(personArray)) {
+//                   const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id, accper_name, accper_age) VALUES ?';
+//                   const insertData = personArray.map(person => [userId, person.name, person.age || null]);
+
+//                   await pool.query(insertAccperQuery, [insertData]);
+//                   console.log('Accompanying persons inserted successfully');
+//               }
+//           } catch (error) {
+//               console.error('Error processing accompany_person_data:', error);
+//               return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
+//           }
+//       }
+
+//       // Insert payment details if provided
+//       if (payment && Object.keys(payment).length > 0) {
+//           try {
+//               const paymentColumns = Object.keys(payment);
+//               const paymentValues = Object.values(payment);
+
+//               paymentColumns.push('status');
+//               paymentValues.push(1);
+
+//               const paymentInsertQuery = `
+//                 INSERT INTO cs_reg_payment (${paymentColumns.join(', ')})
+//                 VALUES (${paymentColumns.map(() => '?').join(', ')})
+//               `;
+
+//               await pool.query(paymentInsertQuery, paymentValues);
+//               console.log("Payment Insert Result:", paymentValues);
+
+//           } catch (paymentError) {
+//               console.error('Error inserting payment data:', paymentError);
+//               return res.status(500).json({ error: 'Error inserting payment data' });
+//           }
+//       }
+
+//       // Send email if required
+//       if (sendEmail) {
+//           try {
+//               const [userRow] = await pool.query('SELECT * FROM cs_os_users WHERE id = ?', [userId]);
+//               if (userRow.length > 0) {
+//                   await sendChangepackageEmail(userRow[0]);
+//                   console.log("Changed package mail sent successfully for UserId:", userId);
+//               }
+//           } catch (emailError) {
+//               console.error('Error sending email:', emailError);
+//               return res.status(500).json({ error: 'Error sending email' });
+//           }
+//       }
+
+//       res.status(200).json({ success: true, message: "User and payment details updated successfully" });
+//   } catch (error) {
+//       console.error('Error processing request:', error);
+//       return res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
+
+
 // Reuse Basic sendEmail function
 const sendChangepackageEmail = async (userData, userId) => {
   const templateQuery = `SELECT template_content, template_subject FROM cs_tbl_email_template WHERE template_id = ?`;
-  const [templateData] = await pool.query(templateQuery, [1]);
+  const [templateData] = await pool.query(templateQuery, [21]);
+
+    // Fetch ticket details if cs_ticket exists
+    let ticketData = [];
+    if (userData.cs_ticket) {
+      const ticketQuery = `
+        SELECT ticket_title, ticket_mail_description AS ticket_message 
+        FROM cs_reg_tickets 
+        WHERE ticket_id = ?`;
+      [ticketData] = await pool.query(ticketQuery, [userData.cs_ticket]);
+      console.log("Ticket", ticketData);
+  
+      // Merge ticket data into userData
+      if (ticketData && ticketData.length > 0) {
+        userData.ticket_title = ticketData[0].ticket_title;
+        userData.ticket_message = ticketData[0].ticket_message;
+      } else {
+        userData.ticket_title = '';
+        userData.ticket_message = '';
+      }
+    } else {
+      console.log("No valid ticket ID found for this user.");
+      userData.ticket_title = '';
+      userData.ticket_message = '';
+    }
+  
+    console.log("Final User Data with Ticket", userData);
 
   if (!templateData || templateData.length === 0) {
     console.log("No email template found");
@@ -736,7 +918,7 @@ router.post('/getUserReceipt', verifyToken, async (req, res) => {
 
     let query = `SELECT p.*, 
                         u.cs_regno, u.cs_first_name, u.cs_last_name, u.cs_email, u.updated_at,
-                        u.cs_ticket, u.cs_addons, u.cs_reg_cat_id, u.cs_state,
+                        u.cs_ticket, u.cs_addons, u.cs_reg_cat_id, u.cs_state, u.cs_address,
                         t.ticket_title,
                         a.addon_title,
                         m.paymenttype_name
@@ -901,6 +1083,87 @@ router.post('/getUserReceipt', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
+
+router.post('/accompanypersons', verifyToken, async (req, res) => {
+  const { Id } = req.body; // Use req.body for POST request
+
+  const query = `
+      SELECT accper_id, accper_name, accper_age
+      FROM cs_reg_accper
+      WHERE user_id = ?
+  `;
+
+  try {
+      const [receiptData] = await pool.query(query, [Id]);
+
+      console.log("receiptData",receiptData);
+
+      // Send the data back to the frontend
+        res.status(200).json({ receiptData }); // Ensure the key is "receiptData" (corrected)
+  } catch (error) {
+      console.error("Database query error:", error);
+      res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+//Get lock status
+router.get('/getLockStatus', verifyToken, async (req, res) => {
+  try {
+
+    const columnsToFetch = ['*'];
+
+
+    let query = `
+    SELECT ${columnsToFetch}
+    FROM cs_tbl_sitesetting
+    WHERE cs_parameter = 'Payment Lock'
+  `;
+
+    // Execute the query to fetch field data from the table
+    const [lockData] = await pool.query(query);
+
+
+    res.json({ Lock: lockData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Route to update lock status
+router.post('/updateLockStatus', verifyToken, async (req, res) => {
+  try {
+    const { cs_value } = req.body; // Assuming lockValue is passed in the request body
+
+    const id = 45;
+
+    console.log("Status", cs_value)
+
+    // // Validate lockValue (optional)
+    // if (cs_value !== 0 && cs_value !== 1) {
+    //   return res.status(400).json({ message: 'Invalid lock value. Must be 0 or 1.' });
+    // }
+
+    // Update query
+    const query = `
+      UPDATE cs_tbl_sitesetting
+      SET cs_value = ?
+      WHERE cs_parameter = 'Payment Lock'
+    `;
+
+    // Execute the update query
+    const [pagesData] = await pool.query(query, [cs_value]);
+
+    // Send the pages data as a response
+    res.json(pagesData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 
 

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import React, { Fragment, useState, useEffect, useContext, useRef } from "react";
-import { Card, Col, Container, Form, FormGroup, Input, Label, Row, Button } from "reactstrap";
+import { Card, Col, Container, Form, FormGroup, Input, Label, Row, Button, CardHeader } from "reactstrap";
 import { Btn, H4, P } from "../AbstractElements";
 import { EmailAddress, ForgotPassword, Password, RememberPassword, SignIn } from "../Constant";
 import { BackendAPI } from "../api";
@@ -17,26 +17,31 @@ import styles from './Signin.module.css'; // Import CSS module
 import moment from 'moment-timezone';
 
 const validatePassword = (value) => {
+  // console.log("Password", value);
   if (!value) return 'Password is required';
 
-  const lengthCriteria = /.{8,}/;
-  const uppercaseCriteria = /[A-Z]/;
-  const lowercaseCriteria = /[a-z]/;
-  const digitCriteria = /[0-9]/;
-  const specialCharacterCriteria = /[!@#$%^&*(),.?":{}|<>]/;
+  // const lengthCriteria = /.{8,}/;
+  // const uppercaseCriteria = /[A-Z]/;
+  // const lowercaseCriteria = /[a-z]/;
+  // const digitCriteria = /[0-9]/;
+  // const specialCharacterCriteria = /[!@#$%^&*(),.?":{}|<>]/;
 
-  if (!lengthCriteria.test(value)) return 'Password must be at least 8 characters long';
-  if (!uppercaseCriteria.test(value)) return 'Password must include at least one uppercase letter';
-  if (!lowercaseCriteria.test(value)) return 'Password must include at least one lowercase letter';
-  if (!digitCriteria.test(value)) return 'Password must include at least one digit';
-  if (!specialCharacterCriteria.test(value)) return 'Password must include at least one special character';
+  // if (!lengthCriteria.test(value)) return 'Password must be at least 8 characters long';
+  // if (!uppercaseCriteria.test(value)) return 'Password must include at least one uppercase letter';
+  // if (!lowercaseCriteria.test(value)) return 'Password must include at least one lowercase letter';
+  // if (!digitCriteria.test(value)) return 'Password must include at least one digit';
+  // if (!specialCharacterCriteria.test(value)) return 'Password must include at least one special character';
 
   return undefined;
 };
 
 const validateUsername = (value) => {
-  if (!value || value.length < 6 || value.length > 32) return 'Username must be between 6 and 32 characters long';
-  if (!/^[a-zA-Z][a-zA-Z0-9-_]*$/.test(value)) return 'Username can only contain alphanumeric characters, hyphen, and underscore, and must not start with a number';
+  // console.log("Username", value);
+
+  if (!value) return 'Username is required';
+
+  // if (!value || value.length < 6 || value.length > 32) return 'Username must be between 6 and 32 characters long';
+  // if (!/^[a-zA-Z][a-zA-Z0-9-_]*$/.test(value)) return 'Username can only contain alphanumeric characters, hyphen, and underscore, and must not start with a number';
 
   return undefined;
 };
@@ -155,15 +160,15 @@ const Signin = ({ selected }) => {
               <Card>
                 <div className="login-main login-tab">
                   <div className="text-center">
-                    <img src={logo} alt="Logo" className="" />
+                    <img src={logo} alt="Logo" className="mb-3" style={{ maxWidth: '35%', height: 'auto' }} />
                   </div>
                   <Form className="theme-form" onKeyDown={handleKeyDown}>
-                    <H4>{selected === "simpleLogin" ? "" : "Log In  "}</H4>
-                    <P>{"Enter your Username & Password to login"}</P>
+                    <h4 className="text-center">{selected === "simpleLogin" ? "" : "Log In  "}</h4>
+                    <P className="text-center">{"Enter your Username & Password to login"}</P>
                     <FormGroup>
                       <Label className="col-form-label">Username</Label>
                       <Input
-                        className={`form-control ${usernameError || serverUsernameError ? styles.inputError : ''}`}
+                        className={`form-control ${serverUsernameError ? styles.inputError : ''}`}
                         type="text"
                         name="username"
                         onChange={handleUsernameChange}
@@ -177,7 +182,7 @@ const Signin = ({ selected }) => {
                       <div className="position-relative">
                         <Input
                           innerRef={passwordRef}
-                          className={`form-control ${passwordError || serverPasswordError ? styles.inputError : ''}`}
+                          className={`form-control ${serverPasswordError ? styles.inputError : ''}`}
                           type={showPassword ? 'text' : 'password'}
                           name="password"
                           onChange={handlePasswordChange}
@@ -187,7 +192,7 @@ const Signin = ({ selected }) => {
                         {serverPasswordError && <div className={styles.errorMessage}>{serverPasswordError}</div>}
                         <span
                           className="position-absolute"
-                          style={{ top: '24%', right: '10px', cursor: 'pointer' }}
+                          style={{ top: '24%', right: '10px', cursor: 'pointer', color: 'Black' }}
                           onClick={togglePasswordVisibility}
                         >
                           {showPassword ? <FaEyeSlash /> : <FaEye />}

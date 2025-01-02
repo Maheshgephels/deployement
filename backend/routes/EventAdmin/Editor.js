@@ -80,21 +80,49 @@ router.post('/savetemplate', verifyToken, async (req, res) => {
   }
 });
 
+// router.post('/drafttemplate', verifyToken, async (req, res) => {
+//   const { design, temp_id, html} = req.body;
+  
+//   const status = 2;
+
+
+//   try {
+//      //Update Email draft
+//     const updateQuery = `UPDATE cs_tbl_email_template SET template_draft_design = ?, cs_status = ? WHERE template_id = ?`;
+//     await pool.query(updateQuery, [design, status, temp_id]);
+
+//     return res.status(200).json({ message: 'Template Drafted successfully' });
+//   } catch (error) {
+//     console.error('Error updating settings:', error);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// });
+
 router.post('/drafttemplate', verifyToken, async (req, res) => {
-  const { design, temp_id, html} = req.body;
-
+  const { design, temp_id, html, tempName, tempSubject } = req.body;
   const status = 2;
-
-
+  console.log("Draft", req.body);
   try {
-     //Update Email draft
-    const updateQuery = `UPDATE cs_tbl_email_template SET template_draft_design = ?, template_content = ?, cs_status = ? WHERE template_id = ?`;
-    await pool.query(updateQuery, [design, html, status, temp_id]);
+    if (temp_id === "New") {
+      // Insert new email into the database
+      const insertQuery = `INSERT INTO cs_tbl_email_template 
+                           (template_name, template_subject, template_default_design, template_draft_design, template_content, cs_status) 
+                           VALUES (?, ?, ?, ?, ?, ?)`;
+
+      await pool.query(insertQuery, [tempName, tempSubject, design, design, html, status]);
+    } else {
+      // Update Email draft
+      const updateQuery = `UPDATE cs_tbl_email_template 
+                           SET template_draft_design = ?, cs_status = ? 
+                           WHERE template_id = ?`;
+
+      await pool.query(updateQuery, [design, status, temp_id]);
+    }
 
     return res.status(200).json({ message: 'Template Drafted successfully' });
   } catch (error) {
-    console.error('Error updating settings:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Error updating settings:', error); // Log the error for debugging
+    res.status(500).json({ message: error.message || 'Internal server error' }); // Send actual error message for better debugging
   }
 });
 
@@ -261,7 +289,7 @@ router.post('/testemail', verifyToken, async (req, res) => {
   const emailSubject = tempSubject;
 
   const mailOptions = {
-    from: process.env.GMAIL_USER,
+    from: `"Test Email" <${process.env.GMAIL_USER}>`, // Custom sender name
     to: email,
     subject: emailSubject,
     html: emailBody,

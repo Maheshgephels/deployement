@@ -36,7 +36,7 @@ const ManagePayment = () => {
     const [pageSize, setPageSize] = useState(10);
     const [searchText, setSearchText] = useState('');
     const [sortColumn, setSortColumn] = useState(''); // Column to sort by
-    const [sortOrder, setSortOrder] = useState('asc'); // Sort order (asc/desc)
+    const [sortOrder, setSortOrder] = useState('desc'); // Sort order (asc/desc)
     const [catIds, setCatIds] = useState([]);
     const { layoutURL } = useContext(CustomizerContext);
     const [modal, setModal] = useState(false);
@@ -99,7 +99,6 @@ const ManagePayment = () => {
     const handleSearch = (value) => {
         setSearchText(value);
         setCurrentPage(1);
-
     };
 
     const handleSort = (column) => {
@@ -148,14 +147,18 @@ const ManagePayment = () => {
                     </div>
                 ),
             },
-            {
-                key: '3',
-                label: (
-                    <div onClick={() => openDeleteModal(item.payment_id, item.cs_first_name)}>
-                        <MdDelete /> Delete Payment
-                    </div>
-                ),
-            },
+
+            ...(ManagePaymentPermissions?.delete === 1
+                ? [{
+                    key: '3',
+                    label: (
+                        <div onClick={() => openDeleteModal(item.payment_id, item.cs_first_name)}>
+                            <MdDelete /> Delete Payment
+                        </div>
+                    ),
+                }]
+                : []
+            ),
             // Add more options if needed
         ];
     };
@@ -270,8 +273,12 @@ const ManagePayment = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            From here, you can add profiles for organizers exhibiting at your event, including their images, descriptions, contact details and more. <br />
-                            You can also manage the order of the exhibitor listings, and the exhibitors will appear in the same order in the Event App.
+                            • Payment details for users who have completed their payment are displayed.<br />
+                            • Users can be searched by their registration number or name.<br />
+                            • Payment details can be sorted in ascending or descending order.<br />
+                            • The payment status can be updated to active or inactive as needed.<br />
+                            • You can view the current payment details and add new payment for the user if required.<br />
+                            • A payment receipt get generated for the user's payment, providing a record of the transaction
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
@@ -323,19 +330,14 @@ const ManagePayment = () => {
                                                         {'Name'}
                                                         {getSortIndicator('cs_first_name')}
                                                     </th>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('cs_email')}>
+                                                        {'Email'}
+                                                        {getSortIndicator('cs_email')}
+                                                    </th>
                                                     {/* <th scope='col' className='text-center'>Exhibitor Name</th> */}
                                                     <th scope='col' className='text-center' onClick={() => handleSort('payment_mode')}>
                                                         {'Payment Mode'}
                                                         {getSortIndicator('payment_mode')}
-                                                    </th>
-                                                    {/* <th scope='col' className='text-center'>Exhibitor Email</th> */}
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('bank')}>
-                                                        {'Bank'}
-                                                        {getSortIndicator('bank')}
-                                                    </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('branch')}>
-                                                        {'Brank'}
-                                                        {getSortIndicator('branch')}
                                                     </th>
                                                     <th scope='col' className='text-center' onClick={() => handleSort('tracking_id')}>
                                                         {'Tracking Id'}
@@ -368,10 +370,9 @@ const ManagePayment = () => {
                                                         </td>
                                                         <td className='text-center w-25'>{item.cs_regno}</td>
                                                         <td className='text-center w-25'>{item.cs_first_name} {item.cs_last_name}</td>
+                                                        <td className='text-center w-25'>{item.cs_email}</td>
                                                         <td className='text-center'>{item.payment_mode}</td>
-                                                        <td className='text-center w-25'>{item.bank}</td>
-                                                        <td className='text-center w-25'>{item.branch}</td>
-                                                        <td className='text-center w-25'>{item.tracking_id}</td>
+                                                        <td className='text-center w-25'>{item.tracking_id || item.cheque_no}</td>
                                                         <td className='text-center w-25'>{item.total_paid_amount}</td>
                                                         <td className='text-center'>
                                                             {AdminTimezone && item.payment_date

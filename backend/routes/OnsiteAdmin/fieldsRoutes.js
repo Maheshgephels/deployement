@@ -252,11 +252,11 @@ router.post('/updateFlag', verifyToken, async (req, res) => {
       // Construct the SQL query for updating the fields
       const updateQuery = `
         UPDATE cs_os_field_data 
-        SET cs_visible_add_user = ?, cs_visible_onspot = ?, cs_field_order = ?
+        SET cs_visible_add_user = ?,  cs_visible_onspot = ?, cs_field_order = ?, cs_visible_reg_adminform = ?,  cs_visible_reg_confirmform = ?
         WHERE cs_field_label = ?`;
 
       // Execute the query to update the fields
-      await pool.query(updateQuery, [flag, flag, newfieldOrder, item]);
+      await pool.query(updateQuery, [flag, flag, newfieldOrder, flag, flag, item]);
 
     } else if (flag === 0) {
       const newFieldOrder = 0;
@@ -264,11 +264,11 @@ router.post('/updateFlag', verifyToken, async (req, res) => {
       // Construct the SQL query for updating the fields
       const updateQuery = `
         UPDATE cs_os_field_data 
-        SET cs_visible_add_user = ?, cs_visible_onspot = ?, cs_field_order = ?
+        SET cs_visible_add_user = ?, cs_visible_onspot = ?, cs_field_order = ?, cs_visible_reg_adminform = ?,  cs_visible_reg_confirmform = ?, cs_visible_reg_userform = ?, cs_visible_reg_basicform = ?
         WHERE cs_field_label = ?`;
 
       // Execute the query to update the fields
-      await pool.query(updateQuery, [flag, flag, newFieldOrder, item]);
+      await pool.query(updateQuery, [flag, flag, newFieldOrder, flag, flag, flag, flag, item]);
     }
 
     // Send success response
@@ -884,9 +884,24 @@ router.get('/getCatId', verifyToken, async (req, res) => {
     
     const [fieldsType13] = await pool.query(fieldType13Query);
 
+    
+    let query6 = `
+    SELECT ticket_id, ticket_title
+    FROM cs_reg_tickets
+    WHERE ticket_visibility = 1
+  `;
+    const [TicketData] = await pool.query(query6);
+
+    let query7 = `
+    SELECT addon_id, addon_title
+    FROM cs_reg_add_ons
+    WHERE addon_visiblility = 1
+  `;
+    const [AddonData] = await pool.query(query7);
 
 
-    res.json({ catData, workshopData, mandatoryData, prefixData, facultyData ,Workshoptypedata});
+
+    res.json({ catData, workshopData, mandatoryData, prefixData, facultyData ,Workshoptypedata,TicketData,AddonData});
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });

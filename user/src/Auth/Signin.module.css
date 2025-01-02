@@ -1,0 +1,32 @@
+/* Signin.module.css */
+.logo-container {
+    display: flex; /* Use flexbox */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    height: 200px; /* Set a fixed height for the container */
+    margin-bottom: 20px;
+  }
+  
+  .logo {
+    width: 150px; /* Adjust width as needed */
+    height: auto;
+    max-height: 150px; /* Set a maximum height */
+    border-radius: 50%; /* Rounded corners */
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); /* Shadow effect */
+    transition: transform 0.3s ease-in-out; /* Smooth transition */
+  }
+  
+  .logo:hover {
+    transform: scale(1.05); /* Scale up on hover */
+  }
+  .inputError {
+    border-color: red; /* Customize the border color for invalid input */
+    box-shadow: none;  /* Remove any shadow or icon */
+  }
+  
+  .errorMessage {
+    color: red;
+    margin-top: 5px;
+  }
+  
+  

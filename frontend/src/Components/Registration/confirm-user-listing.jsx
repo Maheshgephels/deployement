@@ -51,7 +51,7 @@ const ConfirmUserListing = () => {
     const [label, setLabel] = useState([]);
     const [selectedItems, setSelectedItems] = useState([]);
     const [users, setUsers] = useState([]);
-    const { catID, ticketId, } = location.state || {};
+    const { catID, ticketId, addonId } = location.state || {};
     const { Title, complimentary, cancel, inactive } = location.state || {};
     const [selectedColumns, setSelectedColumns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -80,13 +80,16 @@ const ConfirmUserListing = () => {
     const [viewmodal, setViewModal] = useState(false);
     const [view, setView] = useState([]);
     const [passwordVisible, setPasswordVisible] = useState(false);
+    const [show, setShow] = useState('');
+    const [canMessage, SetCanMessage] = useState('');
+    const AdminTimezone = localStorage.getItem('AdminTimezone');
 
 
 
 
 
-    // console.log("Data:", data);
-    // console.log("Testing:", permissions);
+
+    console.log("Timezone:", AdminTimezone);
     // console.log("Label:", label);
     // console.log("User:", users);
     // console.log("Selected:", selectedColumns);
@@ -95,12 +98,7 @@ const ConfirmUserListing = () => {
 
     // console.log("Slected ID:", selectedItems);
 
-
-
-
     // console.log("User name:", userName);
-
-
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -114,6 +112,9 @@ const ConfirmUserListing = () => {
             }
             if (ticketId) {
                 url += `&ticketId=${ticketId}`;
+            }
+            if (addonId) {
+                url += `&addonId=${addonId}`;
             }
             if (complimentary) {
                 url += `&iscomplimentary=${complimentary}`;
@@ -140,12 +141,11 @@ const ConfirmUserListing = () => {
             setAllColumns(availableColumns);
             setLabel(response.data.allColumn);
 
+            console.log("User", response.data.Users);
+
             // Transform users data with labels as keys
             const filteredView = response.data.Users.map(user => {
                 const filteredUser = {};
-
-                // Include the user ID in the filtered view
-                filteredUser['ID'] = user.id;
 
                 response.data.allColumn.forEach(column => {
                     const fieldName = column.cs_field_name;
@@ -155,8 +155,22 @@ const ConfirmUserListing = () => {
                     }
                 });
 
+                // Convert `created_at` to AdminTimezone
+                if (user.created_at) {
+                    // Parse as UTC or the database's timezone, then convert to AdminTimezone
+                    filteredUser['Registration Date'] = moment
+                        .utc(user.created_at) // Treat as UTC if stored in UTC
+                        .tz(AdminTimezone) // Convert to AdminTimezone
+                        .format('DD-MM-YYYY HH:mm');
+                } else {
+                    filteredUser['Registration Date'] = 'N/A'; // Handle missing date
+                }
+
                 return filteredUser;
             });
+
+
+            console.log("Filtered", filteredView);
 
             setView(filteredView); // Store the transformed data in `view`
         } catch (error) {
@@ -168,6 +182,7 @@ const ConfirmUserListing = () => {
 
     useEffect(() => {
         fetchUsers();
+        fetchSettings();
     }, [fetchUsers]);
 
     // const handleSearch =  (
@@ -222,6 +237,21 @@ const ConfirmUserListing = () => {
         }
     }, [allColumns]);
 
+    const fetchSettings = async () => {
+        try {
+
+            const response = await axios.get(`${BackendAPI}/auth/getsettings`, {});
+            const fetchedSettings = response.data.settings;
+
+            console.log("Fetch Setting", fetchedSettings);
+            setShow(fetchedSettings);
+
+
+        } catch (error) {
+            console.error("Error fetching settings:", error);
+        }
+    };
+
     const toggleModal = () => {
         setModalOpen(!modalOpen);
     };
@@ -253,7 +283,7 @@ const ConfirmUserListing = () => {
     const handleEditUser = async (user) => {
         const catId = user.id;
         const URL = '/registration/edit-confirm-user/';
-        navigate(`${process.env.PUBLIC_URL}${URL}${layoutURL}`, { state: { Data: user } });
+        navigate(`${process.env.PUBLIC_URL}${URL}${layoutURL}`, { state: { Data: user, complimentary, cancel, inactive } });
     };
 
     const handleChangeCatPack = async (user) => {
@@ -302,13 +332,13 @@ const ConfirmUserListing = () => {
         let newStatus;
         if (currentStatus === 0 || currentStatus === 1) {
             newStatus = 2;
-            temp_id = 1; // Set temp_id to 1 if currentStatus is 0 or 1
+            temp_id = 20; // Set temp_id to 1 if currentStatus is 0 or 1
         } else if (currentStatus === 2) {
             newStatus = 1;
-            temp_id = 2; // Set temp_id to 2 if currentStatus is 2
+            temp_id = 7; // Set temp_id to 2 if currentStatus is 2
         } else {
             newStatus = currentStatus; // In case of other statuses, keep it unchanged
-            temp_id = 1; // Default temp_id, you can change it as needed
+            temp_id = 20; // Default temp_id, you can change it as needed
         }
 
         console.log("New Status", newStatus);
@@ -316,7 +346,7 @@ const ConfirmUserListing = () => {
 
         try {
             const token = getToken();
-            await axios.put(`${BackendAPI}/reguser/CancelStatus`, { Id, status: newStatus, sendEmail, temp_id }, {
+            await axios.put(`${BackendAPI}/reguser/CancelStatus`, { Id, status: newStatus, sendEmail, temp_id, canMessage }, {
                 headers: {
                     Authorization: `Bearer ${token}` // Include the token in the Authorization header
                 }
@@ -340,8 +370,8 @@ const ConfirmUserListing = () => {
     };
 
     // Opens the modal and sets the selected user data
-    const openViewModal = (userId) => {
-        const user = view.find(u => u['ID'] === userId);
+    const openViewModal = (regNo) => {
+        const user = view.find(u => u['Registration Number'] === regNo);
         if (user) {
             setSelectedUser(user);
             setViewModal(true);
@@ -532,6 +562,8 @@ const ConfirmUserListing = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        setSelectedItems([]);
     };
 
 
@@ -579,6 +611,8 @@ const ConfirmUserListing = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, 'User_Data.xlsx');
+
+        setSelectedItems([]);
     };
 
 
@@ -614,8 +648,8 @@ const ConfirmUserListing = () => {
         {
             key: '5',
             label: (
-                <div onClick={() => handleResendMail(0)}>
-                    <GrPowerCycle /> Resend login mail
+                <div onClick={() => handleResendMail(0, 7)}>
+                    <GrPowerCycle /> Resend Confirmation Mail
                 </div>
             ),
         },
@@ -633,21 +667,13 @@ const ConfirmUserListing = () => {
         {
             key: '2',
             label: (
-                <div onClick={() => openViewModal(user.id)}>
+                <div onClick={() => openViewModal(user.cs_regno)}>
                     <FaEye /> View User
                 </div>
             ),
         },
         {
             key: '3',
-            label: (
-                <div onClick={() => openCancelModal(user.id, user.cs_first_name, user.cs_status)}>
-                    <FaClone /> {user.cs_status === 2 ? "Active user" : "Cancel user"}
-                </div>
-            ),
-        },
-        {
-            key: '4',
             label: (
                 <div onClick={() => handleChangeCatPack(user)}>
                     <FaEdit /> Change Category / Package
@@ -662,11 +688,30 @@ const ConfirmUserListing = () => {
         //         </div>
         //     ),
         // },
+        ...(show === 'Yes'
+            ? [{
+                key: '4',
+                label: (
+                    <div onClick={() => handleResendMail(user.id, 1)}>
+                        <GrPowerCycle /> Resend Login Mail
+                    </div>
+                ),
+            }]
+            : []
+        ),
         {
             key: '5',
             label: (
-                <div onClick={() => handleResendMail(user.id)}>
-                    <GrPowerCycle /> Resend login mail
+                <div onClick={() => handleResendMail(user.id, 7)}>
+                    <GrPowerCycle /> Resend Confirmation Mail
+                </div>
+            ),
+        },
+        {
+            key: '6',
+            label: (
+                <div onClick={() => openCancelModal(user.id, user.cs_first_name, user.cs_status)}>
+                    <FaClone /> {user.cs_status === 2 ? "Active User" : "Cancel User"}
                 </div>
             ),
         },
@@ -742,14 +787,14 @@ const ConfirmUserListing = () => {
         }
     };
 
-    const handleResendMail = async (id) => {
+    const handleResendMail = async (id, temp_id) => {
         const toastId = toast.info('Processing...', { autoClose: false });
 
         console.log("Id", id);
 
         try {
             const cs_id = id;
-            const temp_id = 7;
+            // const temp_id = 7;
             const flag = 1;
             const token = getToken();
 
@@ -797,6 +842,11 @@ const ConfirmUserListing = () => {
         setPasswordVisible(!passwordVisible);
     };
 
+    const handleCancellation = (e) => {
+        SetCanMessage(e.target.value);
+    };
+
+
 
     return (
         <Fragment>
@@ -815,11 +865,11 @@ const ConfirmUserListing = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            Here you can view all users and select fields to see additional details.
-                            <br />
-                            To find a specific user, enter their name or details in the search field.
-                            <br />
-                            You can edit user information, print their badge, and reset their facility count. Additionally, you can export the data displayed on the listing page.
+                            •All confirmed users are listed here.<br />
+                            •The Select Column button allows the selection of columns to displays on User listing.<br />
+                            •The three-dot vertical icon provides options to edit user information, view user details, cancel registration, change the package, or re-send a confirmation email.<br />
+                            •User data can be exported by selecting the checkbox for the user and clicking the Export Data button.<br />
+                            •By selecting multiple users, bulk actions such as making users active or inactive and resending confirmation emails can be performed.
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
@@ -922,6 +972,7 @@ const ConfirmUserListing = () => {
                                                         <input
                                                             type="checkbox"
                                                             onChange={handleSelectAll} // Function to handle 'select all' checkbox
+                                                            checked={selectedItems.length === users.length && users.length > 0} // Dynamically set checked status
                                                         />
                                                     </th>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
@@ -1043,7 +1094,7 @@ const ConfirmUserListing = () => {
                                     )}
                                 </div>
                                 {totalItems > 10 && (
-                                    <div className="d-flex justify-content-center align-items-center mt-3">
+                                    <div className="justify-content-center align-items-center mt-3">
                                         <Pagination
                                             onChange={handlePageChange}
                                             current={currentPage}
@@ -1076,6 +1127,7 @@ const ConfirmUserListing = () => {
                             }))}
                             onChange={handleColumnChange}
                             isClearable={false}
+                            classNamePrefix="react-select"
                             components={{
                                 MultiValueRemove: MultiValueRemoveWithCondition // Use custom MultiValueRemove component
                             }}
@@ -1121,7 +1173,22 @@ const ConfirmUserListing = () => {
                             </>
                         ) : null}
                     </div>
+                    {currentStatus === 0 || currentStatus === 1 && (
+                        <div className="mb-3">
+                            <Label className='form-check-label ps-2' for="sendEmail">
+                                <strong>
+                                    Reason for Cancellation ?
+                                </strong>
+                            </Label>
+                            <Input
+                                id="cancellation_message"
+                                type="textarea"
+                                onChange={handleCancellation}
+                                className="form-control ps-2"
+                            />
+                        </div>
 
+                    )}
 
                     <div className="mb-2">
                         <input

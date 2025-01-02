@@ -217,6 +217,7 @@ const RegWorkshoptype = () => {
 
     const handleSearch = (value) => {
         setSearchText(value);
+        setCurrentPage(1);
     };
 
     const handleSort = (column) => {
@@ -440,7 +441,7 @@ const RegWorkshoptype = () => {
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Onsite App" title="Manage Workshop Type" />
+            } parent="Registration Admin" title="Manage Workshop Type" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">

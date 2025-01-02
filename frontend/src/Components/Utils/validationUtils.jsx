@@ -14,9 +14,9 @@ export const NAME = (value) => {
     return 'This field is required';
   }
 
-  if (/^\s+|\s+$/.test(value)) {
-    return 'Leading or trailing spaces are not allowed.';
-  }
+  // if (/^\s+|\s+$/.test(value)) {
+  //   return 'Leading or trailing spaces are not allowed.';
+  // }
 
   if (!/^[a-zA-Z0-9 ()_/'-~]+$/.test(value)) {
     return 'Only alphanumeric characters and () _ - / are allowed.';

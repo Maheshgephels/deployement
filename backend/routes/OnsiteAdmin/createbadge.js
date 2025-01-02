@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../../config/database');
 const multer = require('multer');
 // const verifyToken = require('./middleware/authMiddleware'); 
-const verifyToken =require('../api/middleware/authMiddleware');
+const verifyToken = require('../api/middleware/authMiddleware');
 // const path = require('path');
 const fs = require('fs');
 const path = require('path');
@@ -91,7 +91,7 @@ const upload = multer({ storage: storage });
 
 //---------------------------
 // Route to delete a badge and its associated fields
-router.delete('/removebadge/:badgeId',verifyToken ,async (req, res) => {
+router.delete('/removebadge/:badgeId', verifyToken, async (req, res) => {
     const badgeId = req.params.badgeId;
     try {
         // Delete the badge from the cs_os_badge_template table
@@ -99,6 +99,7 @@ router.delete('/removebadge/:badgeId',verifyToken ,async (req, res) => {
 
         // Delete associated fields from the cs_os_badge_fields table
         await pool.query('DELETE FROM cs_os_badge_fields WHERE cs_badge_id = ?', [badgeId]);
+
 
         // Respond with success message
         res.json({ success: true, message: 'Badge and associated fields deleted successfully' });
@@ -112,7 +113,7 @@ router.delete('/removebadge/:badgeId',verifyToken ,async (req, res) => {
 
 //---------------------------
 // Route to fetch previously created badges
-router.get('/getcreatedbadges',verifyToken, async (req, res) => {
+router.get('/getcreatedbadges', verifyToken, async (req, res) => {
     try {
         // Query to fetch badges with necessary fields
         const query = `
@@ -157,7 +158,7 @@ router.get('/getcreatedbadges',verifyToken, async (req, res) => {
 //---------------------------
 
 // Assuming Multer is set up correctly
-router.post('/uplaodebadgeimg',verifyToken, upload.single('image'), (req, res) => {
+router.post('/uplaodebadgeimg', verifyToken, upload.single('image'), (req, res) => {
     if (req.file) {
         const imageUrl = 'badgeimg/' + req.file.filename;
         console.log('File path:', imageUrl);
@@ -173,7 +174,7 @@ router.post('/uplaodebadgeimg',verifyToken, upload.single('image'), (req, res) =
 
 
 
-router.get('/getdesignations/:categoryId', verifyToken,async (req, res) => {
+router.get('/getdesignations/:categoryId', verifyToken, async (req, res) => {
     try {
         const { categoryId } = req.params;
 
@@ -295,36 +296,38 @@ router.post('/getcategories', verifyToken, async (req, res) => {
 
 
 // Define the route to create a badge template
-router.post('/createbadge',verifyToken, async (req, res) => {
+router.post('/createbadge', verifyToken, async (req, res) => {
     const { badgeName, categoryId, designationId } = req.body;
 
     try {
-  
         const existingBadgeQuery = `
-        SELECT cs_reg_cat_id FROM cs_os_badge_template WHERE cs_reg_cat_id = ?;
-    `;
-    
-    const existingBadgeResult = await pool.query(existingBadgeQuery, [categoryId]);
-    console.log('Existing badges:', existingBadgeResult,categoryId);
+            SELECT cs_reg_cat_id FROM cs_os_badge_template WHERE cs_reg_cat_id = ?;
+        `;
 
-       // If a badge already exists for the category, return an error message
-       if (existingBadgeResult.length > 0 && existingBadgeResult[0].length > 0) {
-        console.log('A badge already exists for this category');
-        return res.status(400).json({ message: 'A badge already exists for this category' });
-    }
+        const existingBadgeResult = await pool.query(existingBadgeQuery, [categoryId]);
+        console.log('Existing badges:', existingBadgeResult, categoryId);
 
+        // If a badge already exists for the category, return an error message
+        if (existingBadgeResult.length > 0 && existingBadgeResult[0].length > 0) {
+            console.log('A badge already exists for this category');
+            return res.status(400).json({ message: 'A badge already exists for this category' });
+        }
 
         const insertQuery = `
-        INSERT INTO cs_os_badge_template (cs_badge_name, cs_reg_cat_id, cs_designation_id)
-        VALUES (?, ?, ?) 
-    `;
+            INSERT INTO cs_os_badge_template (cs_badge_name, cs_reg_cat_id, cs_designation_id)
+            VALUES (?, ?, ?);
+        `;
 
+        // Execute the insert query and get the last inserted ID
+        const insertResult = await pool.query(insertQuery, [badgeName, categoryId, designationId]);
 
-        await pool.query(insertQuery, [badgeName, categoryId, designationId]);
+        const newBadgeId = insertResult[0].insertId; // Retrieve the auto-generated badge ID
+        console.log('Badge created successfully, ID:', newBadgeId);
 
-        console.log('Badge created successfully');
-
-        res.status(201).json({ message: 'Badge created successfully' });
+        res.status(201).json({ 
+            message: 'Badge created successfully', 
+            badgeId: newBadgeId 
+        });
     } catch (error) {
         console.error('Error creating badge:', error);
         res.status(500).json({ message: 'Internal server error' });
@@ -332,9 +335,10 @@ router.post('/createbadge',verifyToken, async (req, res) => {
 });
 
 
+
 router.post('/badgeconfiguration', verifyToken, async (req, res) => {
     const { badgeData } = req.body;
-    const { width, height, orientation, storedData , badgeType } = badgeData;
+    const { badgeSize, width, height, orientation, storedData, badgeType } = badgeData;
     const categoryId = storedData.id;  // Extract id from storedData
 
     console.log(req.body);
@@ -349,8 +353,8 @@ router.post('/badgeconfiguration', verifyToken, async (req, res) => {
 
             // If a row exists, update the existing row
             await pool.query(
-                'UPDATE cs_os_badge_template SET cs_badge_width = ?, cs_badge_height = ?, orientation = ? ,cs_badge_type = ?  WHERE cs_reg_cat_id = ?',
-                [width, height, orientation, badgeType, categoryId]  // Use categoryId instead of id
+                'UPDATE cs_os_badge_template SET cs_badgesize = ?, cs_badge_width = ?, cs_badge_height = ?, orientation = ? ,cs_badge_type = ?  WHERE cs_reg_cat_id = ?',
+                [ badgeSize, width, height, orientation, badgeType, categoryId]  // Use categoryId instead of id
             );
 
             return res.status(200).json({ message: 'Badge design saved successfully!' });
@@ -366,7 +370,7 @@ router.post('/badgeconfiguration', verifyToken, async (req, res) => {
 });
 
 
-router.get('/formfields',verifyToken, async (req, res) => {
+router.get('/formfields', verifyToken, async (req, res) => {
     try {
         // Execute a query to fetch the active form fields from the table
         // const [formFields] = await pool.query('SELECT cs_field_id, cs_field_label FROM cs_os_field_data WHERE cs_status = 1');
@@ -398,9 +402,13 @@ router.post('/saveBadgeDesign', verifyToken, async (req, res) => {
 
         const badgeDesign = req.body;
         console.log('Received badge design:', badgeDesign);
-        const { storedData, badgeSize, components, orientation, badgeType, badgeNam, selectedCat } = badgeDesign;
+        const { storedData, badgeSize, components, orientation, badgeType, badgeNam, selectedCat, size } = badgeDesign;
         const { id } = storedData;
         const { width, height } = badgeSize;
+
+        console.log("Component", components);
+        console.log("Badge Size", size);
+
 
         // Check if a row already exists with the matching cs_reg_cat_id
         const existingRowTemplate = await pool.query('SELECT * FROM cs_os_badge_template WHERE cs_reg_cat_id = ?', [id]);
@@ -410,8 +418,8 @@ router.post('/saveBadgeDesign', verifyToken, async (req, res) => {
             console.log("badgeId: here", badgeId);
 
             // Construct dynamic query for updating the badge template
-            let updateQuery = `UPDATE cs_os_badge_template SET cs_badge_width = ?, cs_badge_height = ?, orientation = ?, cs_badge_type = ?`;
-            const updateValues = [width, height, orientation, badgeType];
+            let updateQuery = `UPDATE cs_os_badge_template SET cs_badgesize = ?, cs_badge_width = ?, cs_badge_height = ?, orientation = ?, cs_badge_type = ?`;
+            const updateValues = [ size, width, height, orientation, badgeType];
 
             // Add conditions for badgeNam and selectedCat
             if (badgeNam) {
@@ -459,44 +467,47 @@ async function processQRComponent(badgeId, component) {
     const csfieldName = 'cs_regno'; // For QR type, set csfieldName to 'cs_regno'
 
     const { width: fieldWidth, height: fieldHeight } = size;
-    const { left: fieldPosX, top: fieldPosY } = position;
+    const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+
 
     // Check if the field exists and update it, otherwise insert a new record
     const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_content = ? AND cs_badge_id = ?', [content, badgeId]);
     if (existingField[0].length > 0) {
         // If the field exists, update its values
         await pool.query(
-            'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?,cs_field_content=?,  cs_badge_side = ? WHERE  cs_field_type_id = ?',
-            [csfieldName, 'qr', fieldPosX, fieldPosY, textFontSize, fieldWidth, fieldHeight, content, cs_badge_side, 'qr']
+            'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?,cs_field_content=?,  cs_badge_side = ? WHERE  cs_field_type_id = ?',
+            [csfieldName, 'qr', fieldPosX, fieldPosY, fieldZindex, textFontSize, fieldWidth, fieldHeight, content, cs_badge_side, 'qr']
         );
     } else {
         // If the field doesn't exist, insert a new record
         await pool.query(
-            'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [badgeId, 'qr', csfieldName, 'qr', content, fieldPosX, fieldPosY, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+            'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [badgeId, 'qr', csfieldName, 'qr', content, fieldPosX, fieldPosY, fieldZindex, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
         );
     }
 }
 
 async function processFullnameComponent(badgeId, component) {
-    const { content, textFontSize, size, position, cs_badge_side, fontColor, alignment, font, fontWeight, rotation } = component;
-    const { width: fieldWidth, height: fieldHeight } = size;
-    const { left: fieldPosX, top: fieldPosY } = position;
-    const csfieldName = 'fullname'; // Set csfieldName for fullname type
+    const { content, textFontSize, size, position, cs_badge_side, fontColor, alignment, font, fontWeight, textcase, rotation } = component;
 
+
+    const { width: fieldWidth, height: fieldHeight } = size;
+    const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+    const csfieldName = 'fullname'; // Set csfieldName for fullname type
+    const status = 1;
     // Check if the field exists and update it, otherwise insert a new record
     const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_label = ? AND cs_badge_id = ?', [content, badgeId]);
     if (existingField.length > 0 && existingField[0].length > 0) {
         // If the field exists, update its values
         await pool.query(
-            'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ? WHERE cs_field_label = ?',
-            [csfieldName, 'fullname', fieldPosX, fieldPosY, textFontSize, fieldWidth, fieldHeight, content]
+            'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_textcase = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ? WHERE cs_field_label = ?',
+            [csfieldName, 'fullname', fieldPosX, fieldPosY, fieldZindex, textcase, textFontSize, fieldWidth, fieldHeight, content]
         );
     } else {
         // If the field doesn't exist, insert a new record
         await pool.query(
-            'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [badgeId, content, csfieldName, 'fullname', '', fieldPosX, fieldPosY, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+            'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_textcase, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [badgeId, content, csfieldName, 'fullname', '', fieldPosX, fieldPosY, fieldZindex, textcase, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, status]
         );
     }
 }
@@ -510,7 +521,7 @@ async function processBadgeComponent(badgeId, component) {
     if (type === 'qr') {
         await processQRComponent(badgeId, component);
     } else if (type === 'customtext') {
-        const { type, content, textFontSize, size, position,  fontColor, alignment, font, fontWeight, rotation } = component;
+        const { type, content, textFontSize, size, position, fontColor, alignment, font, fontWeight, textcase, rotation } = component;
         const { width: fieldWidth, height: fieldHeight } = size;
         const { left: fieldPosX, top: fieldPosY } = position;
 
@@ -521,14 +532,14 @@ async function processBadgeComponent(badgeId, component) {
         if (existingField.length > 0 && existingField[0].length > 0) {
             // If the field exists, update its values
             await pool.query(
-                'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_label = ?',
-                [csfieldName, type, fieldPosX, fieldPosY, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
+                'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_textcase = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_label = ?',
+                [csfieldName, type, fieldPosX, fieldPosY, textFontSize, textcase, fieldWidth, fieldHeight, cs_badge_side, content]
             );
         } else {
             // If the field doesn't exist, insert a new record
-            await pool.query( 
-                'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [badgeId, content, csfieldName, type, '', fieldPosX, fieldPosY, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+            await pool.query(
+                'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_textcase, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [badgeId, content, csfieldName, type, '', fieldPosX, fieldPosY, textcase, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
             );
         }
     } else if (type === 'fullname') {
@@ -541,7 +552,7 @@ async function processBadgeComponent(badgeId, component) {
         if (type === 'image' || type === 'backgroundimage') {
             const { size, position, cs_badge_side } = component;
             const { width: fieldWidth, height: fieldHeight } = size;
-            const { left: fieldPosX, top: fieldPosY } = position;
+            const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
 
             // csfieldName = type === 'qr' ? 'cs_regno' : csfieldName;
 
@@ -552,15 +563,29 @@ async function processBadgeComponent(badgeId, component) {
             if (existingField.length > 0 && existingField[0].length > 0) {
                 // If the field exists, update its values
                 await pool.query(
-                    'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_content = ?',
-                    [csfieldName, type, fieldPosX, fieldPosY, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
+                    'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_content = ?',
+                    [csfieldName, type, fieldPosX, fieldPosY, fieldZindex, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
                 );
             } else {
                 // If the field doesn't exist, insert a new record
-                await pool.query(
-                    'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [badgeId,type, csfieldName, type, content, fieldPosX, fieldPosY, textFontSize, '', '', '', fieldWidth, fieldHeight,cs_badge_side, '1']
-                );
+                // await pool.query(
+                //     'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                //     [badgeId,type, csfieldName, type, content, fieldPosX, fieldPosY, fieldZindex, textFontSize, '', '', '', fieldWidth, fieldHeight,cs_badge_side, '1']
+                // );
+                // If the field doesn't exist, insert a new record
+                if (type === 'image') {
+                    // Insert cs_zindex for image type
+                    await pool.query(
+                        'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [badgeId, 'image', csfieldName, type, content, fieldPosX, fieldPosY, fieldZindex, textFontSize, '', '', '', fieldWidth, fieldHeight, cs_badge_side, '1']
+                    );
+                } else {
+                    // Insert for backgroundimage type, without cs_zindex
+                    await pool.query(
+                        'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [badgeId, 'backgroundimage', csfieldName, type, content, fieldPosX, fieldPosY, textFontSize, '', '', '', fieldWidth, fieldHeight, cs_badge_side, '1']
+                    );
+                }
             }
         } else {
 
@@ -568,28 +593,236 @@ async function processBadgeComponent(badgeId, component) {
             const fieldData = await pool.query('SELECT cs_field_name FROM cs_os_field_data WHERE cs_field_label = ?', [content]);
             csfieldName = fieldData.length > 0 ? fieldData[0][0].cs_field_name : '';
 
-            const { size, position, cs_badge_side, fontColor, alignment, font, fontWeight, rotation } = component;
+            const { size, position, cs_badge_side, fontColor, alignment, font, fontWeight, textcase, rotation } = component;
             const { width: fieldWidth, height: fieldHeight } = size;
-            const { left: fieldPosX, top: fieldPosY } = position;
+            const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+
+            console.log("Position", position);
 
             // Check if the field exists and update it, otherwise insert a new record
             const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_label = ? AND cs_badge_id = ?', [content, badgeId]);
             if (existingField.length > 0 && existingField[0].length > 0) {
                 // If the field exists, update its values
                 await pool.query(
-                    'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_label = ?',
-                    [csfieldName, type, fieldPosX, fieldPosY, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
+                    'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_textcase = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_label = ?',
+                    [csfieldName, type, fieldPosX, fieldPosY, fieldZindex, textcase, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
                 );
             } else {
                 // If the field doesn't exist, insert a new record
                 await pool.query(
-                    'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [badgeId, content, csfieldName, type, '', fieldPosX, fieldPosY, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+                    'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_textcase, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [badgeId, content, csfieldName, type, '', fieldPosX, fieldPosY, fieldZindex, textcase, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
                 );
             }
         }
     }
 }
+
+
+// router.post('/saveBadgeDesign', verifyToken, async (req, res) => {
+//     try {
+//         if (!req.body || Object.keys(req.body).length === 0) {
+//             console.error('Request body is empty');
+//             return res.status(400).json({ error: 'Request body is empty' });
+//         }
+
+//         const badgeDesign = req.body;
+//         console.log('Received badge design:', badgeDesign);
+//         const { storedData, badgeSize, components, orientation, badgeType, badgeNam, selectedCat } = badgeDesign;
+//         const { id } = storedData;
+//         const { width, height } = badgeSize;
+
+//         console.log("Component", components);
+
+//         // Check if a row already exists with the matching cs_reg_cat_id
+//         const existingRowTemplate = await pool.query('SELECT * FROM cs_os_badge_template WHERE cs_reg_cat_id = ?', [id]);
+
+//         if (existingRowTemplate.length > 0) {
+//             const badgeId = existingRowTemplate[0][0].cs_badge_id;
+//             console.log("badgeId: here", badgeId);
+
+//             // Construct dynamic query for updating the badge template
+//             let updateQuery = `UPDATE cs_os_badge_template SET cs_badge_width = ?, cs_badge_height = ?, orientation = ?, cs_badge_type = ?`;
+//             const updateValues = [width, height, orientation, badgeType];
+
+//             // Add conditions for badgeNam and selectedCat
+//             if (badgeNam) {
+//                 updateQuery += `, cs_badge_name = ?`;
+//                 updateValues.push(badgeNam);
+//             }
+//             if (selectedCat) {
+//                 updateQuery += `, cs_reg_cat_id = ?`;
+//                 updateValues.push(selectedCat);
+//             }
+
+//             // Finalize query
+//             updateQuery += ` WHERE cs_reg_cat_id = ?`;
+//             updateValues.push(id);
+
+//             // Execute update query
+//             await pool.query(updateQuery, updateValues);
+
+//             // Remove all existing fields for the badge
+//             await pool.query('DELETE FROM cs_os_badge_fields WHERE cs_badge_id = ?', [badgeId]);
+
+//             // Loop through components and insert/update them into the cs_os_badge_fields table
+//             for (const component of components) {
+//                 await processBadgeComponent(badgeId, component);
+//             }
+
+//             // Send success response
+//             return res.status(200).json({ message: 'Badge design saved successfully!' });
+//         } else {
+//             // If no row exists, send an error response
+//             console.error('No row exists with the matching cs_reg_cat_id');
+//             return res.status(404).json({ error: 'No row exists with the matching cs_reg_cat_id' });
+//         }
+//     } catch (error) {
+//         console.error('Error saving badge design:', error);
+//         return res.status(500).json({ error: 'Failed to save badge design. Please try again.' });
+//     }
+// });
+
+
+
+
+// async function processQRComponent(badgeId, component) {
+//     const { content, size, position, textFontSize, type, cs_badge_side, fontColor, alignment, font, fontWeight, rotation } = component;
+//     const csfieldName = 'cs_regno'; // For QR type, set csfieldName to 'cs_regno'
+
+//     const { width: fieldWidth, height: fieldHeight } = size;
+//     const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+
+//     // Check if the field exists and update it, otherwise insert a new record
+//     const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_content = ? AND cs_badge_id = ?', [content, badgeId]);
+//     if (existingField[0].length > 0) {
+//         // If the field exists, update its values
+//         await pool.query(
+//             'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?,cs_field_content=?,  cs_badge_side = ? WHERE  cs_field_type_id = ?',
+//             [csfieldName, 'qr', fieldPosX, fieldPosY, textFontSize, fieldWidth, fieldHeight, content, cs_badge_side, 'qr']
+//         );
+//     } else {
+//         // If the field doesn't exist, insert a new record
+//         await pool.query(
+//             'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+//             [badgeId, 'qr', csfieldName, content, fieldPosX, fieldPosY, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+//         );
+
+//     }
+// }
+
+// async function processFullnameComponent(badgeId, component) {
+//     const { content, textFontSize, size, position, cs_badge_side, fontColor, alignment, font, fontWeight, rotation } = component;
+//     const { width: fieldWidth, height: fieldHeight } = size;
+//     const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+//     const csfieldName = 'fullname'; // Set csfieldName for fullname type
+
+//     // Check if the field exists and update it, otherwise insert a new record
+//     const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_label = ? AND cs_badge_id = ?', [content, badgeId]);
+//     if (existingField.length > 0 && existingField[0].length > 0) {
+//         // If the field exists, update its values
+//         await pool.query(
+//             'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ? WHERE cs_field_label = ?',
+//             [csfieldName, 'fullname', fieldPosX, fieldPosY, fieldZindex, textFontSize, fieldWidth, fieldHeight, content]
+//         );
+//     } else {
+//         // If the field doesn't exist, insert a new record
+//         await pool.query(
+//             'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+//             [badgeId, content, csfieldName, 'fullname', '', fieldPosX, fieldPosY, fieldZindex, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+//         );
+//     }
+// }
+
+
+
+
+// async function processBadgeComponent(badgeId, component) {
+//     const { type, content, textFontSize, size, position, cs_badge_side, } = component;
+
+//     if (type === 'qr') {
+//         await processQRComponent(badgeId, component);
+//     } else if (type === 'customtext') {
+//         const { type, content, textFontSize, size, position, fontColor, alignment, font, fontWeight, rotation } = component;
+//         const { width: fieldWidth, height: fieldHeight } = size;
+//         const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+
+//         let csfieldName = ''; // Determine csfieldName for custom text
+
+//         // Check if the field exists and update it, otherwise insert a new record
+//         const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_label = ? AND cs_badge_id = ?', [content, badgeId]);
+//         if (existingField.length > 0 && existingField[0].length > 0) {
+//             // If the field exists, update its values
+//             await pool.query(
+//                 'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_label = ?',
+//                 [csfieldName, type, fieldPosX, fieldPosY, fieldZindex, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
+//             );
+//         } else {
+//             // If the field doesn't exist, insert a new record
+//             await pool.query(
+//                 'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+//                 [badgeId, content, csfieldName, type, '', fieldPosX, fieldPosY, fieldZindex, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+//             );
+//         }
+//     } else if (type === 'fullname') {
+//         await processFullnameComponent(badgeId, component)
+//     }
+//     else {
+//         // For non-QR types, continue with the existing logic
+//         let csfieldName = '';
+
+//         if (type === 'image' || type === 'backgroundimage') {
+//             const { size, position, cs_badge_side } = component;
+//             const { width: fieldWidth, height: fieldHeight } = size;
+//             const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+
+//             // csfieldName = type === 'qr' ? 'cs_regno' : csfieldName;
+
+
+//             // Process image or backgroundimage components
+//             const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_content = ? AND cs_badge_id = ?', [content, badgeId]);
+//             // Check if the field exists and update it, otherwise insert a new record
+//             if (existingField.length > 0 && existingField[0].length > 0) {
+//                 // If the field exists, update its values
+//                 await pool.query(
+//                     'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_content = ?',
+//                     [csfieldName, type, fieldPosX, fieldPosY, fieldZindex, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
+//                 );
+//             } else {
+//                 // If the field doesn't exist, insert a new record
+//                 await pool.query(
+//                     'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+//                     [badgeId, type, csfieldName, type, content, fieldPosX, fieldPosY, fieldZindex, textFontSize, '', '', '', fieldWidth, fieldHeight, cs_badge_side, '1']
+//                 );
+//             }
+//         } else {
+
+//             // For other types, continue with existing logic
+//             const fieldData = await pool.query('SELECT cs_field_name FROM cs_os_field_data WHERE cs_field_label = ?', [content]);
+//             csfieldName = fieldData.length > 0 ? fieldData[0][0].cs_field_name : '';
+
+//             const { size, position, cs_badge_side, fontColor, alignment, font, fontWeight, rotation } = component;
+//             const { width: fieldWidth, height: fieldHeight } = size;
+//             const { left: fieldPosX, top: fieldPosY, zIndex: fieldZindex } = position;
+
+//             // Check if the field exists and update it, otherwise insert a new record
+//             const existingField = await pool.query('SELECT * FROM cs_os_badge_fields WHERE cs_field_label = ? AND cs_badge_id = ?', [content, badgeId]);
+//             if (existingField.length > 0 && existingField[0].length > 0) {
+//                 // If the field exists, update its values
+//                 await pool.query(
+//                     'UPDATE cs_os_badge_fields SET cs_field_name = ?, cs_field_type_id = ?, cs_field_position_x = ?, cs_field_position_y = ?, cs_zindex = ?, cs_text_size = ?, cs_field_width = ?, cs_field_height = ?, cs_badge_side = ? WHERE cs_field_label = ?',
+//                     [csfieldName, type, fieldPosX, fieldPosY, fieldZindex, textFontSize, fieldWidth, fieldHeight, cs_badge_side, content]
+//                 );
+//             } else {
+//                 // If the field doesn't exist, insert a new record
+//                 await pool.query(
+//                     'INSERT INTO cs_os_badge_fields (cs_badge_id, cs_field_label, cs_field_name, cs_field_type_id, cs_field_content, cs_field_position_x, cs_field_position_y, cs_zindex, cs_text_size, cs_field_color, cs_field_alignment, cs_font, cs_field_weight, cs_field_rotate, cs_field_width, cs_field_height, cs_badge_side, cs_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+//                     [badgeId, content, csfieldName, type, '', fieldPosX, fieldPosY, fieldZindex, textFontSize, fontColor, alignment, font, fontWeight, rotation, fieldWidth, fieldHeight, cs_badge_side, '1']
+//                 );
+//             }
+//         }
+//     }
+// }
 
 
 // ++++++++++++++++++++++++++++++++ 
@@ -599,7 +832,7 @@ router.post('/cloneBadge', verifyToken, async (req, res) => {
         const { badgeId, selectedCat } = req.body;
 
         console.log("badgeId:", badgeId);
-console.log("selectedCat:", selectedCat);
+        console.log("selectedCat:", selectedCat);
 
 
         // Check if the badge exists
@@ -611,14 +844,14 @@ console.log("selectedCat:", selectedCat);
         const [templateData] = await pool.query(originalBadge, [badgeId]);
 
         if (templateData.length === 0) {
-          return res.status(404).json({ error: 'Template not found' });
+            return res.status(404).json({ error: 'Template not found' });
         }
 
         // Extract badge information
         const { cs_badge_width, cs_badge_name, cs_badge_height, orientation, cs_badge_type } = templateData[0];
 
-                // Modify the badge name by appending 'Clone'
-                const newBadgeName = cs_badge_name + ' Clone';
+        // Modify the badge name by appending 'Clone'
+        const newBadgeName = cs_badge_name + ' Clone';
 
         // Insert new badge template with the new category ID
         const result = await pool.query(
@@ -664,10 +897,10 @@ console.log("selectedCat:", selectedCat);
 
 router.get('/getNoBadgeCat', verifyToken, async (req, res) => {
     try {
-      const columnsToFetch = ['*'];
-  
-      // Construct the SQL query to fetch categories not present in the badge_template table
-      let query = `
+        const columnsToFetch = ['*'];
+
+        // Construct the SQL query to fetch categories not present in the badge_template table
+        let query = `
         SELECT ${columnsToFetch}
         FROM cs_os_category
         WHERE cs_status = 1
@@ -677,23 +910,23 @@ router.get('/getNoBadgeCat', verifyToken, async (req, res) => {
             FROM cs_os_badge_template
           )
       `;
-  
-      // Execute the query to fetch category data from the table
-      const [catData] = await pool.query(query);
-  
-      res.json({ Types: catData });
+
+        // Execute the query to fetch category data from the table
+        const [catData] = await pool.query(query);
+
+        res.json({ Types: catData });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Internal server error' });
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-  });
-  
+});
+
 // 
 
 
 
 
-router.post('/getbadgefileds',verifyToken, async (req, res) => {
+router.post('/getbadgefileds', verifyToken, async (req, res) => {
     try {
         const category = req.body.category;
         console.log('Requested category:', category);
@@ -712,7 +945,7 @@ router.post('/getbadgefileds',verifyToken, async (req, res) => {
 
         const cs_reg_cat_id = categoryRows[0].cs_reg_cat_id;
 
-        const badgeQuery = `SELECT cs_badge_id, cs_badge_width, cs_badge_height,orientation,cs_badge_type  FROM cs_os_badge_template WHERE cs_reg_cat_id = ?`;
+        const badgeQuery = `SELECT cs_badge_id, cs_badgesize, cs_badge_width, cs_badge_height,orientation,cs_badge_type  FROM cs_os_badge_template WHERE cs_reg_cat_id = ?`;
         const [badgeRows] = await pool.query(badgeQuery, [cs_reg_cat_id]);
 
         if (badgeRows.length === 0) {
@@ -720,7 +953,7 @@ router.post('/getbadgefileds',verifyToken, async (req, res) => {
             return res.status(404).json({ error: 'No badge data found for the provided category.' });
         }
 
-        const { cs_badge_id, cs_badge_width, cs_badge_height, orientation ,cs_badge_type } = badgeRows[0];
+        const { cs_badge_id, cs_badgesize,  cs_badge_width, cs_badge_height, orientation, cs_badge_type } = badgeRows[0];
         console.log('Badge ID:', cs_badge_id);
         console.log('Badge Width:', cs_badge_width);
         console.log('Badge Height:', cs_badge_height);
@@ -749,10 +982,12 @@ router.post('/getbadgefileds',verifyToken, async (req, res) => {
             cs_field_content: row.cs_field_content,
             cs_field_position_x: row.cs_field_position_x.toString(),
             cs_field_position_y: row.cs_field_position_y.toString(),
+            cs_zindex: row.cs_zindex,
             cs_text_size: row.cs_text_size,
             cs_field_color: row.cs_field_color,
             cs_field_alignment: row.cs_field_alignment,
             cs_font: row.cs_font,
+            cs_textcase: row.cs_textcase,
             cs_field_weight: row.cs_field_weight,
             cs_field_rotate: row.cs_field_rotate,
             cs_field_width: row.cs_field_width,
@@ -764,20 +999,21 @@ router.post('/getbadgefileds',verifyToken, async (req, res) => {
             updated_at: row.updated_at
         }));
 
-    const responseData = {
-        badgedata: {
-            width: cs_badge_width,
-            height: cs_badge_height,
-            orientation: orientation,
-            type: cs_badge_type,
-            badge_fields: badgeFields
-        },
-        userData: usersRows, // Assuming you meant to use usersRows instead of users
-        message: 'Badge data retrieved successfully'
-    };
+        const responseData = {
+            badgedata: {
+                size: cs_badgesize,
+                width: cs_badge_width,
+                height: cs_badge_height,
+                orientation: orientation,
+                type: cs_badge_type,
+                badge_fields: badgeFields
+            },
+            userData: usersRows, // Assuming you meant to use usersRows instead of users
+            message: 'Badge data retrieved successfully'
+        };
 
-    console.log('Response data:', responseData);
-    res.json(responseData); // Send the combined responseData object
+        console.log('Response data:', responseData);
+        res.json(responseData); // Send the combined responseData object
     } catch (error) {
         console.error('Error fetching badge data:', error);
         res.status(500).json({ error: 'An unexpected error occurred while fetching badge data. Please try again later.' });
@@ -789,7 +1025,7 @@ router.post('/getbadgefileds',verifyToken, async (req, res) => {
 
 
 // exportbadgegetdata for singleuser on catagory and day basis 
-router.post('/exportbadgegetdata',verifyToken, async (req, res) => {
+router.post('/exportbadgegetdata', verifyToken, async (req, res) => {
     try {
         // Extract category from the request body
         const { category } = req.body;

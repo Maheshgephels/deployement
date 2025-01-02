@@ -230,7 +230,7 @@ const EditUser = () => {
                                             <Row className="d-flex flex-wrap">
                                                 {/* Render multiple Field components based on the length of fieldLabels array */}
                                                 {fieldLabels.map((label, index) => {
-                                                    const isFieldRequired = requiredfield[index] === 1;
+                                                    const isFieldRequired = requiredfield[index] === '1';
                                                     return (
                                                         <Col
                                                             key={index}

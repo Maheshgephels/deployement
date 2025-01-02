@@ -258,7 +258,7 @@ const EditTicket = () => {
 
 
     const onSubmit = async (values) => {
-        console.log("values",values);
+        console.log("values", values);
         const selectedTickets = values.tickets ? values.tickets.map(option => option.value) : null;
 
         // Prepare the data to be sent
@@ -276,7 +276,7 @@ const EditTicket = () => {
             seatCount: seatType === 'Limited' ? seatCount : null, // Include seat count if Limited is selected
             ticketStatus: values.ticketStatus,             // Ticket status: Open, Close, or Sold Out
             durations: durations,                          // Array of duration objects with name, endDate, amount, and currency
-            isVisible: values.isvisible ? 1 : 0,   
+            isVisible: values.isvisible ? 1 : 0,
             workshoptype: selectedworkshoptype,        // Checkbox for visibility (1 if checked, 0 if not)
         };
 
@@ -331,7 +331,7 @@ const EditTicket = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs mainTitle="Edit Add-on" parent="Manage Addon" title="Edit Add-on" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Edit Add-on" parent="Manage Addon" title="Edit Addon" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="8">
@@ -348,12 +348,51 @@ const EditTicket = () => {
                                         accpseatNumber: addon.addon_accper_limit,
                                         ticketStatus: addon.addon_status,
                                         isvisible: addon.addon_visiblility,
-                                        workshopDetails : selectedworkshop,
+                                        workshopDetails: selectedworkshop,
 
                                     }} // Set initial values
                                     render={({ handleSubmit }) => (
                                         <form onSubmit={handleSubmit}>
                                             <Row>
+
+                                            <Col md="12" className="mb-3">
+                                                    <Field name={`addonTitle`} validate={composeValidators(required, Name)}>
+                                                        {({ input, meta }) => (
+                                                            <div className="form-group">
+                                                                <label className="d-flex justify-content-between align-items-center">
+                                                                    <strong>Title<span className="red-asterisk">*</span></strong>
+                                                                    <small>(0/50)</small>
+                                                                </label>                                                                 <input
+                                                                    {...input}
+                                                                    type="text"
+                                                                    placeholder="Enter Addon Title"
+                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                                                />
+                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                            </div>
+                                                        )}
+                                                    </Field>
+                                                </Col>
+                                                <Col md="12" className="mb-3">
+                                                    <Field
+                                                        name="addonDescription"
+                                                        validate={required}
+                                                    >
+                                                        {({ input, meta }) => (
+                                                            <div className="form-group">
+                                                                <label className="d-flex justify-content-between align-items-center">
+                                                                    <strong>Description<span className="red-asterisk">*</span></strong><small>(0/250)</small>
+                                                                </label>                                                                <textarea
+                                                                    {...input}
+                                                                    placeholder="Enter Addon Description"
+                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                                                />
+                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                            </div>
+                                                        )}
+                                                    </Field>
+                                                </Col>
+
                                                 <Col md="12" className="mb-3">
                                                     <Field name={`tickets`}
                                                         validate={required}>
@@ -509,7 +548,7 @@ const EditTicket = () => {
                                                                             }))
                                                                             .find((option) => option.value === selectedworkshoptype)} // Set the selected option based on state
                                                                         onChange={(selectedOption) => {
-                                                                            console.log("selectedOption.value",selectedOption.value);
+                                                                            console.log("selectedOption.value", selectedOption.value);
                                                                             setselectedworkshoptype(selectedOption.value); // Update state when option changes
                                                                         }}
                                                                         classNamePrefix="react-select"
@@ -671,43 +710,7 @@ const EditTicket = () => {
                                                     }
 
                                                 </Col>
-                                                <Col md="12" className="mb-3">
-                                                    <Field name={`addonTitle`} validate={composeValidators(required, Name)}>
-                                                        {({ input, meta }) => (
-                                                            <div className="form-group">
-                                                                <label className="d-flex justify-content-between align-items-center">
-                                                                    <strong>Title Name<span className="red-asterisk">*</span></strong>
-                                                                    <small>(0/50)</small>
-                                                                </label>                                                                 <input
-                                                                    {...input}
-                                                                    type="text"
-                                                                    placeholder="Enter Addon Title"
-                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
-                                                                />
-                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                            </div>
-                                                        )}
-                                                    </Field>
-                                                </Col>
-                                                <Col md="12" className="mb-3">
-                                                    <Field
-                                                        name="addonDescription"
-                                                        validate={required}
-                                                    >
-                                                        {({ input, meta }) => (
-                                                            <div className="form-group">
-                                                                <label className="d-flex justify-content-between align-items-center">
-                                                                    <strong>Description<span className="red-asterisk">*</span></strong><small>(0/250)</small>
-                                                                </label>                                                                <textarea
-                                                                    {...input}
-                                                                    placeholder="Enter Addon Description"
-                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
-                                                                />
-                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                            </div>
-                                                        )}
-                                                    </Field>
-                                                </Col>
+                                                
 
                                                 <Col md="12" className="mb-3">
                                                     <div className="form-group">
@@ -802,10 +805,10 @@ const EditTicket = () => {
                                                 {priceType === 'Paid' && (
 
                                                     <Card className='mt-3'>
-                                                        <CardHeader>
-                                                            <h5><strong>Duration Management</strong></h5>
-                                                        </CardHeader>
                                                         <CardBody>
+                                                            <Row>
+                                                                <h5><strong>Duration Management</strong></h5>
+                                                            </Row>
                                                             <Row>
                                                                 <Col md="12" className='mb-2'>
                                                                     <div className="form-group">
@@ -841,6 +844,7 @@ const EditTicket = () => {
                                                                         <DatePicker
                                                                             selected={newDuration.endDate}
                                                                             onChange={handleDateChange}
+                                                                            minDate={newDuration.startDate}
                                                                             className="form-control"
                                                                             showMonthDropdown
                                                                             showYearDropdown
@@ -995,6 +999,7 @@ const EditTicket = () => {
                                                                     <DatePicker
                                                                         selected={newDuration.endDate}
                                                                         onChange={handleDateChange}
+                                                                        minDate={newDuration.startDate}
                                                                         className="form-control"
                                                                         showMonthDropdown
                                                                         showYearDropdown

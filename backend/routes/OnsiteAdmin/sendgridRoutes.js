@@ -20,12 +20,22 @@ const path = require('path');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Create a transporter using Gmail SMTP
+// const transporter = nodemailer.createTransport({
+//   service: 'gmail',
+//   auth: {
+//     user: process.env.GMAIL_USER, // Your Gmail address
+//     pass: process.env.GMAIL_PASS,  // Your Gmail app password
+//   },
+// });
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER, // Your Gmail address
-    pass: process.env.GMAIL_PASS,  // Your Gmail app password
+    pass: process.env.GMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false  // Allow self-signed certificates
+  }
 });
 
 // Setup multer for file uploads
@@ -243,11 +253,53 @@ router.post('/resend', verifyToken, async (req, res) => {
 
 
 // Function to get user data
+// const getUserData = async (id) => {
+//   const userQuery = `SELECT * FROM cs_os_users WHERE id = ?`;
+//   const [userData] = await pool.query(userQuery, [id]);
+//   return userData && userData.length > 0 ? userData[0] : null;
+// };
+
 const getUserData = async (id) => {
   const userQuery = `SELECT * FROM cs_os_users WHERE id = ?`;
   const [userData] = await pool.query(userQuery, [id]);
-  return userData && userData.length > 0 ? userData[0] : null;
+  console.log("User Data", userData);
+
+  if (userData && userData.length > 0) {
+    const user = userData[0]; // Extract the first user object
+
+    // Ensure cs_ticket exists and fetch ticket details
+    if (user.cs_ticket) {
+      const ticketId = parseInt(user.cs_ticket, 10);
+      const ticketQuery = `
+        SELECT ticket_title, ticket_mail_description AS ticket_message 
+        FROM cs_reg_tickets 
+        WHERE ticket_id = ?`;
+      const [ticketData] = await pool.query(ticketQuery, [ticketId]);
+
+      console.log("Ticket", ticketData);
+
+      // Merge ticket data into user object if available
+      if (ticketData && ticketData.length > 0) {
+        user.ticket_title = ticketData[0].ticket_title;
+        user.ticket_message = ticketData[0].ticket_message;
+      } else {
+        user.ticket_title = null;
+        user.ticket_message = null;
+      }
+    } else {
+      console.log("No valid ticket ID found for this user");
+      user.ticket_title = '';
+      user.ticket_message = '';
+    }
+
+    console.log("Final User Data", user);
+    return user; // Return the merged user object
+  } else {
+    console.log("No user found with the given ID");
+    return null;
+  }
 };
+
 
 // Function to send email
 const sendEmail = async (userData, Template_id) => {
@@ -272,9 +324,9 @@ const sendEmail = async (userData, Template_id) => {
   // Include qr_code as part of userData to replace in email body
   emailBody = replacePlaceholders(emailBody, { ...userData, qr_code: qrCodeUrl });
 
-  console.log("Body", emailBody);
+  // console.log("Body", emailBody);
   const mailOptions = {
-    from: process.env.GMAIL_USER,
+    from: `"Stride ACL Focus 2025" <${process.env.GMAIL_USER}>`,
     to: userEmail,
     cc: process.env.GMAIL_CC,
     subject: emailSubject,
@@ -441,7 +493,7 @@ router.post('/bulk-email', verifyToken, upload.array('attachments'), async (req,
       const messages = await Promise.all(batch.map(async user => {
         const userEmail = user.cs_email || To;
         const messageAttachments = [];
-      
+
         // Generate QR code if QR is set to 1
         if (QR === '1' && user.cs_regno) {
           const qrCodeData = await QRCode.toDataURL(user.cs_regno.toString());
@@ -455,7 +507,7 @@ router.post('/bulk-email', verifyToken, upload.array('attachments'), async (req,
           });
           emailBody += `<p><img src="cid:qrcode" alt="QR Code" /></p>`;
         }
-      
+
         if (attachments && attachments.length > 0) {
           attachments.forEach(file => {
             messageAttachments.push({
@@ -466,24 +518,27 @@ router.post('/bulk-email', verifyToken, upload.array('attachments'), async (req,
             });
           });
         }
-      
+
         // Function to replace placeholders with user data
         const replacePlaceholders = (template, data) => {
           return template.replace(/{{(\w+)}}/g, (_, key) => data[key] || '');
         };
-      
+
         // Replace placeholders in email body with user-specific data
         const personalizedBody = replacePlaceholders(emailBody, user);
-      
+
         return {
           to: userEmail,
-          from: 'info@iadvlpune.org',
+          from: {
+            email: 'info@iadvlpune.org',
+            name: 'The Info', // Set the sender name here
+          },
           subject: emailSubject,
           html: personalizedBody,
-          attachments: messageAttachments,  // Pass the actual messageAttachments array
+          attachments: messageAttachments, // Pass the actual messageAttachments array
         };
       }));
-      
+
 
       // Send messages and log details
       await Promise.all(messages.map(async (message, index) => {
@@ -607,31 +662,38 @@ router.post('/reg-bulk-email', verifyToken, upload.array('attachments'), async (
 
       // Add category condition if it's defined and not the string 'undefined'
       if (category && category !== 'undefined') {
-        query += ` AND users.cs_reg_cat_id IN ('${category}')`;
+        const categoryArray = Array.isArray(category) ? category : category.split(',');
+        const categoryString = categoryArray.map(category => pool.escape(category)).join(',');
+        query += ` AND users.cs_reg_cat_id IN (${categoryString})`;
         conditions = true;
       }
 
       // Add ticket condition if it's defined and not 'undefined' string
       if (ticket_id && ticket_id !== 'undefined') {
-        query += ` AND users.cs_ticket = ${ticket_id}`;
+        const ticketArray = Array.isArray(ticket_id) ? ticket_id : ticket_id.split(',');
+        const ticketString = ticketArray.map(ticket => pool.escape(ticket)).join(',');
+        query += ` AND users.cs_ticket IN (${ticketString})`;
         conditions = true;
       }
 
+
       // Add addon condition if it's defined and not 'undefined' string
       if (addon_id && addon_id !== 'undefined') {
-        query += ` AND users.cs_addons = ${addon_id}`;
+        const addonArray = Array.isArray(addon_id) ? addon_id : addon_id.split(',');
+        const addonString = addonArray.map(addon => pool.escape(addon)).join(',');
+        query += ` AND users.cs_addons IN (${addonString})`;
         conditions = true;
       }
 
       // Add date range conditions if defined
       if (startDate && endDate) {
-        query += ` AND created_at BETWEEN ${pool.escape(startDate + ' 00:00:00')} AND ${pool.escape(endDate + ' 23:59:59')}`;
+        query += ` AND users.created_at BETWEEN ${pool.escape(startDate + ' 00:00:00')} AND ${pool.escape(endDate + ' 23:59:59')}`;
         conditions = true;
       } else if (startDate) {
-        query += ` AND created_at >= ${pool.escape(startDate + ' 00:00:00')}`;
+        query += ` AND users.created_at >= ${pool.escape(startDate + ' 00:00:00')}`;
         conditions = true;
       } else if (endDate) {
-        query += ` AND created_at <= ${pool.escape(endDate + ' 23:59:59')}`;
+        query += ` AND users.created_at <= ${pool.escape(endDate + ' 23:59:59')}`;
         conditions = true;
       }
 

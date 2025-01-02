@@ -36,6 +36,7 @@ const RegFields = () => {
     const navigate = useNavigate(); // Initialize useHistory
     const [basicFields, setBasicFields] = useState([]);
     const [formFields, setFormFields] = useState([]);
+    const [prodData, setProdData] = useState([]);
     const [typeData, setTypeData] = useState([]);
     const [dropdownData, setDropdownData] = useState([]);
     const [newdropdownData, setNewdropdownData] = useState([]);
@@ -47,6 +48,7 @@ const RegFields = () => {
     const [editedLabel, setEditedLabel] = useState('');
     const [addUserVisible, setAddUserVisible] = useState(true);
     const [required, setRequired] = useState(true);
+    const [regExclude, setRegExclude] = useState(true);
     const [addSpotVisible, setAddSpotVisible] = useState(true);
     const [addBasic, setAddbasic] = useState(true);
     const [addConfirm, setAddconfirm] = useState(true);
@@ -93,6 +95,7 @@ const RegFields = () => {
     console.log("Form fields:", formFields);
     console.log("Selection:", selectedItem);
     console.log("Dropdown:", dropdownData);
+    console.log("Prod Data:", prodData);
     console.log("Additional Dropdown:", newdropdownData);
 
 
@@ -153,6 +156,7 @@ const RegFields = () => {
         fetchFormFields();
         fetchData();
         fetchLockStatus();
+        fetchCat();
     }, []);
 
 
@@ -194,6 +198,7 @@ const RegFields = () => {
                 id: item.cs_field_id,
                 label: item.cs_field_label,
                 required: item.cs_is_required === '1',
+                status: item.cs_status === 3,
                 onspot: item.cs_visible_onspot === '1',
                 userpan: item.cs_visible_reg_userform === '1',
                 basic: item.cs_visible_reg_basicform === '1',
@@ -202,8 +207,24 @@ const RegFields = () => {
 
             }));
             setFormFields(fieldData);
+            setProdData(response.data.prodData);
         } catch (error) {
             console.error('Error fetching form fields:', error);
+        }
+    };
+
+    const fetchCat = async () => {
+        try {
+            const token = getToken();
+            const response = await axios.get(`${BackendAPI}/category/getCat`, {
+                headers: {
+                    Authorization: `Bearer ${token}` // Include the token in the Authorization header
+                }
+            });
+
+            setProdData(response.data.prodData)
+        } catch (error) {
+            console.error('Error fetching types:', error);
         }
     };
 
@@ -339,6 +360,7 @@ const RegFields = () => {
         setSelectedItem(item);
         setEditedLabel(item.label);
         setRequired(item.required);
+        setRegExclude(item.status);
         setAddSpotVisible(item.onspot);
         setAddbasic(item.basic);
         setAdduserpan(item.userpan)
@@ -414,6 +436,7 @@ const RegFields = () => {
                     option_data: optionData,
                     deletedOptionIds: deletedOptionIds,
                     required: required ? "1" : "0",
+                    status: regExclude ? "3" : "1",
                     onspot: addSpotVisible ? "1" : "0",
                     basic: addBasic ? "1" : "0",
                     userpan: addUserpan ? "1" : "0",
@@ -755,7 +778,7 @@ const RegFields = () => {
                                             </div>
                                             {RegFieldspermissions?.edit === 1 && (
                                                 <div className="button-group">
-                                                    {![3, 4, 9, 10, 7, 12, 24, 25, 26].includes(item.id) && (
+                                                    {![3, 4, 9, 10, 7, 12, 24, 25].includes(item.id) && (
                                                         <>
                                                             <Button
                                                                 color="primary"
@@ -873,7 +896,7 @@ const RegFields = () => {
                                                     <Card key={index} className={`field-card ${isLocked ? 'locked' : ''}`}>
                                                         <CardBody style={{ padding: '15px', display: 'flex', alignItems: 'center' }}>
                                                             <div style={{ flex: 1 }}>{item.label}</div>
-                                                            {item.label !== "First Name" && item.label !== "Last Name" && item.label !== "Registration Category" && (
+                                                            {item.label !== "First Name" && item.label !== "Last Name" && item.label !== "Registration Category" && item.label !== "Email" && item.label !== "Ticket" && item.label !== "Email" && item.label !== "Phone" && item.label !== "Country" && (
                                                                 <div className="button-group">
                                                                     <Tooltip id="tooltip" globalEventOff="click" />
                                                                     <Button
@@ -1002,8 +1025,8 @@ const RegFields = () => {
                             onChange={(e) => setAddbasic(e.target.checked)}
                             checked={addBasic}
                         />
-                        <Label className="form-check-label ms-2" htmlFor="spot">
-                            <strong>Add user in Basic Registration form</strong>
+                        <Label className="form-check-label ms-2" htmlFor="basic">
+                            <strong>Add field in Basic Registration form</strong>
                         </Label>
                     </div>
                     <div className="form">
@@ -1013,10 +1036,25 @@ const RegFields = () => {
                             onChange={(e) => setAdduserpan(e.target.checked)}
                             checked={addUserpan}
                         />
-                        <Label className="form-check-label ms-2" htmlFor="spot">
+                        <Label className="form-check-label ms-2" htmlFor="userpan">
                             <strong>Show in User Panel</strong>
                         </Label>
                     </div>
+                    {selectedItem && selectedItem.custom === 1 && prodData && prodData.some(item => item.product_id === 3 && item.cs_status === 1) && (
+
+                        <div className="form">
+                            <input
+                                id="regExclude"
+                                type="checkbox"
+                                onChange={(e) => setRegExclude(e.target.checked)}
+                                checked={regExclude}
+                            />
+                            <Label className="form-check-label ms-2" htmlFor="regExclude">
+                                <strong>Do you wanna exclude this field from Onsite module ?</strong>
+                            </Label>
+                        </div>
+                    )}
+
                     {selectedItem && selectedItem.custom === 1 && selectedItem.dropdown === '5' && (
                         <Fragment>
                             <div className="d-flex flex-wrap justify-content-center">
@@ -1099,7 +1137,7 @@ const RegFields = () => {
                                 </Field>
 
                                 <div style={{ marginBottom: '20px' }}>
-                                    <Label className='form-label' htmlFor="customLabel"><strong>Field Name</strong></Label>
+
                                     {/* <Field name="customLabel" component="input" className="form-control" validate={requiredValidator} /> */}
                                     <Field
                                         name="customLabel"
@@ -1107,20 +1145,23 @@ const RegFields = () => {
                                     >
                                         {({ input, meta }) => (
                                             <>
-                                                <input
-                                                    {...input}
-                                                    className="form-control"
-                                                    type="text"
-                                                    id="customLabel"
-                                                    onChange={(e) => {
-                                                        input.onChange(e); // Trigger onChange of the Field component
-                                                        setName(e.target.value); // Update userName state
-                                                        setNameTouched(true);
-                                                    }}
-                                                />
-                                                {nameValidationMessage && <div className="text-danger">{nameValidationMessage}</div>}
+                                                <div>
+                                                    <Label className='form-label' htmlFor="customLabel"><strong>Field Name</strong></Label>
+                                                    <input
+                                                        {...input}
+                                                        className="form-control"
+                                                        type="text"
+                                                        id="customLabel"
+                                                        onChange={(e) => {
+                                                            input.onChange(e); // Trigger onChange of the Field component
+                                                            setName(e.target.value); // Update userName state
+                                                            setNameTouched(true);
+                                                        }}
+                                                    />
+                                                    {nameValidationMessage && <div className="text-danger">{nameValidationMessage}</div>}
 
-                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                </div>
                                             </>
                                         )}
                                     </Field>

@@ -7,8 +7,10 @@ const verifyToken = require('../api/middleware/authMiddleware');
 
 router.get('/userCount', async (req, res) => {
   try {
+    const [basicuserResults] = await pool.query('SELECT COUNT(*) AS BasicuserCount FROM cs_os_users WHERE cs_isconfirm = 0');
+    const BasicuserCount = basicuserResults[0].BasicuserCount;
     // Fetch user count
-    const [userResults] = await pool.query('SELECT COUNT(*) AS userCount FROM cs_os_users');
+    const [userResults] = await pool.query('SELECT COUNT(*) AS userCount FROM cs_os_users WHERE cs_isconfirm = 1');
     const userCount = userResults[0].userCount;
 
     const [userloggedinResults] = await pool.query('SELECT COUNT(*) AS userloggedinResults FROM cs_app_logedin_users');
@@ -23,8 +25,14 @@ router.get('/userCount', async (req, res) => {
     const [inactiveResult] = await pool.query('SELECT COUNT(*) AS inactiveCount FROM cs_os_users  WHERE cs_isconfirm = 1 AND cs_status = 0');
     const inactiveCount = inactiveResult[0].inactiveCount;
 
+    const [tempResult] = await pool.query('SELECT COUNT(*) AS tempCount FROM cs_reg_temp_payment  WHERE is_discarded = 1 AND confirm_payment = 0');
+    const tempCount = tempResult[0].tempCount;
 
-    res.json({ userCount , userloggedinCount, compCount, cancelledCount, inactiveCount });
+    const [discResult] = await pool.query('SELECT COUNT(*) AS discardedCount FROM cs_reg_temp_payment  WHERE is_discarded = 0');
+    const discCount = discResult[0].discardedCount;
+
+
+    res.json({ BasicuserCount, userCount, userloggedinCount, compCount, cancelledCount, inactiveCount, tempCount, discCount });
   } catch (error) {
     console.error('Error fetching user count:', error);
     res.status(500).send('Server Error');
@@ -55,11 +63,11 @@ router.get('/facultyCount', async (req, res) => {
 
 router.get('/getLoggedInUsers', async (req, res) => {
   try {
-      const { page = 1, pageSize = 5, search = '' } = req.query;
-      const offset = (page - 1) * pageSize;
+    const { page = 1, pageSize = 5, search = '' } = req.query;
+    const offset = (page - 1) * pageSize;
 
-      // Construct the SQL query with pagination and search
-      let query = `
+    // Construct the SQL query with pagination and search
+    let query = `
           SELECT 
               logins.id, 
               logins.username, 
@@ -79,60 +87,60 @@ router.get('/getLoggedInUsers', async (req, res) => {
               logins.username = users.cs_username
       `;
 
-      // Array to hold query parameters
-      const queryParams = [];
+    // Array to hold query parameters
+    const queryParams = [];
 
-      // Add search condition if search query is provided
-      if (search) {
-          query += ` WHERE logins.username LIKE ? OR users.cs_first_name LIKE ? OR users.cs_last_name LIKE ?`;
-          queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
+    // Add search condition if search query is provided
+    if (search) {
+      query += ` WHERE logins.username LIKE ? OR users.cs_first_name LIKE ? OR users.cs_last_name LIKE ?`;
+      queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
 
-      // Add LIMIT and OFFSET for pagination
-      query += ` LIMIT ? OFFSET ?`;
-      queryParams.push(parseInt(pageSize), parseInt(offset));
+    // Add LIMIT and OFFSET for pagination
+    query += ` LIMIT ? OFFSET ?`;
+    queryParams.push(parseInt(pageSize), parseInt(offset));
 
-      // Execute the query to fetch user data from the database
-      const [userData] = await pool.query(query, queryParams);
+    // Execute the query to fetch user data from the database
+    const [userData] = await pool.query(query, queryParams);
 
-      // Get total count of items for pagination metadata
-      let totalItems = 0;
-      let totalPages = 0;
+    // Get total count of items for pagination metadata
+    let totalItems = 0;
+    let totalPages = 0;
 
-      // Construct the total count query
-      let totalCountQuery = `
+    // Construct the total count query
+    let totalCountQuery = `
           SELECT COUNT(*) AS total 
           FROM cs_app_logedin_users logins
           JOIN cs_os_users users 
           ON logins.username = users.cs_username
       `;
-      const totalCountParams = [];
+    const totalCountParams = [];
 
-      // Add search condition to total count query if search query is provided
-      if (search) {
-          totalCountQuery += ` WHERE logins.username LIKE ? OR users.cs_first_name LIKE ? OR users.cs_last_name LIKE ?`;
-          totalCountParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      }
+    // Add search condition to total count query if search query is provided
+    if (search) {
+      totalCountQuery += ` WHERE logins.username LIKE ? OR users.cs_first_name LIKE ? OR users.cs_last_name LIKE ?`;
+      totalCountParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
 
-      // Execute the total count query
-      const [totalCountResult] = await pool.query(totalCountQuery, totalCountParams);
-      totalItems = totalCountResult[0].total;
-      totalPages = Math.ceil(totalItems / pageSize);
+    // Execute the total count query
+    const [totalCountResult] = await pool.query(totalCountQuery, totalCountParams);
+    totalItems = totalCountResult[0].total;
+    totalPages = Math.ceil(totalItems / pageSize);
 
-      res.json({ users: userData, currentPage: parseInt(page), totalPages, pageSize, totalItems });
+    res.json({ users: userData, currentPage: parseInt(page), totalPages, pageSize, totalItems });
   } catch (error) {
-      console.error('Error fetching logged in users:', error);
-      res.status(500).json({ message: 'Internal server error', error });
+    console.error('Error fetching logged in users:', error);
+    res.status(500).json({ message: 'Internal server error', error });
   }
 });
 
 
 
-  // Fetch the latest 5 basic users
+// Fetch the latest 5 basic users
 router.get('/latestRegUsers', async (req, res) => {
   try {
-      // Construct the SQL query to fetch the latest 5 basic users
-      const query = `
+    // Construct the SQL query to fetch the latest 5 basic users
+    const query = `
           SELECT 
           cs_regno,
               cs_title, 
@@ -147,87 +155,88 @@ router.get('/latestRegUsers', async (req, res) => {
           ORDER BY id DESC
           LIMIT 5
       `;
-  
-      // Execute the query
-      const [userData] = await pool.query(query);
-  
-      // Send the response
-      res.json({ users: userData });
+
+    // Execute the query
+    const [userData] = await pool.query(query);
+
+    // Send the response
+    res.json({ users: userData });
   } catch (error) {
-      console.error('Error fetching latest basic users:', error);
-      res.status(500).json({ message: 'Internal server error', error });
+    console.error('Error fetching latest basic users:', error);
+    res.status(500).json({ message: 'Internal server error', error });
   }
 });
 
 
 
-        router.get('/userCountByDate', async (req, res) => {
-            try {
-                // Fetch user count by registration date
-                const query = `
+router.get('/userCountByDate', async (req, res) => {
+  try {
+    // Fetch user count by registration date
+    const query = `
                     SELECT DATE(created_at) AS registration_date, COUNT(*) AS userCount
                     FROM cs_os_users
+                    WHERE cs_isconfirm = 1
                     GROUP BY DATE(created_at)
                     ORDER BY DATE(created_at) ASC
                 `;
-                const [results] = await pool.query(query);
-        
-                res.json(results);
-            } catch (error) {
-                console.error('Error fetching user count by date:', error);
-                res.status(500).send('Server Error');
-            }
-        });
-        
-        router.get('/getActiveUsers', async (req, res) => {
-          try {
-            // Construct the SQL query to fetch active user data grouped by login time
-            let query = `
+    const [results] = await pool.query(query);
+
+    res.json(results);
+  } catch (error) {
+    console.error('Error fetching user count by date:', error);
+    res.status(500).send('Server Error');
+  }
+});
+
+router.get('/getActiveUsers', async (req, res) => {
+  try {
+    // Construct the SQL query to fetch active user data grouped by login time
+    let query = `
               SELECT DATE(login_time) AS login_date, COUNT(*) AS activeUsers
               FROM cs_app_logedin_users
               GROUP BY DATE(login_time)
               ORDER BY DATE(login_time) ASC
             `;
-          
-            // Execute the query to fetch active user data from the database
-            const [activeUsersData] = await pool.query(query);
-        
-            // Format the login_date to 'YYYY-MM-DD'
-            const formattedData = activeUsersData.map(item => ({
-              ...item,
-              login_date: new Date(item.login_date).toISOString().split('T')[0]
-            }));
-          
-            res.json({ activeUsers: formattedData });
-          } catch (error) {
-            console.error('Error fetching active users:', error);
-            res.status(500).json({ message: 'Internal server error', error });
-          }
-        });
-        
-          
 
-          router.get('/eventDetails', async (req, res) => {
-            try {
-              const query = `
+    // Execute the query to fetch active user data from the database
+    const [activeUsersData] = await pool.query(query);
+
+    // Format the login_date to 'YYYY-MM-DD'
+    const formattedData = activeUsersData.map(item => ({
+      ...item,
+      login_date: new Date(item.login_date).toISOString().split('T')[0]
+    }));
+
+    res.json({ activeUsers: formattedData });
+  } catch (error) {
+    console.error('Error fetching active users:', error);
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+});
+
+
+
+router.get('/eventDetails', async (req, res) => {
+  try {
+    const query = `
                 SELECT cs_parameter, cs_value 
                 FROM cs_tbl_sitesetting 
                 WHERE cs_parameter IN ('Event Name', 'event_venue', 'event_time', 'Event Start Date', 'event_image_url')
               `;
-              const [eventDetails] = await pool.query(query);
-              res.json({ eventDetails });
-            } catch (error) {
-              console.error('Error fetching event details:', error);
-              res.status(500).json({ message: 'Internal server error', error });
-            }
-          });
-        
+    const [eventDetails] = await pool.query(query);
+    res.json({ eventDetails });
+  } catch (error) {
+    console.error('Error fetching event details:', error);
+    res.status(500).json({ message: 'Internal server error', error });
+  }
+});
 
-           
-          router.get('/counts', async (req, res) => {
-            try {
-              // Query to fetch user counts
-              const userCountsQuery = `SELECT
+
+
+router.get('/counts', async (req, res) => {
+  try {
+    // Query to fetch user counts
+    const userCountsQuery = `SELECT
                 (SELECT COUNT(*) FROM cs_os_users) AS allUsers,
                 (SELECT COUNT(*) FROM cs_os_users WHERE cs_isconfirm = 0) AS basicUsers,
                 (SELECT COUNT(*) FROM cs_os_users WHERE cs_isconfirm = 1) AS confirmUsers,
@@ -248,9 +257,9 @@ router.get('/latestRegUsers', async (req, res) => {
                 ) AS offlinePaidUsers,
                 (SELECT COUNT(*) FROM cs_os_users WHERE cs_status = 0) AS inactiveUsers;
               `;
-          
-              // Query to fetch ticket-wise counts
-              const ticketCountsQuery = `
+
+    // Query to fetch ticket-wise counts
+    const ticketCountsQuery = `
                 SELECT 
                   t.ticket_id,
                   t.ticket_title,
@@ -261,27 +270,30 @@ router.get('/latestRegUsers', async (req, res) => {
                   cs_os_users u
                 ON 
                   t.ticket_id = u.cs_ticket
+                WHERE 
+                  u.cs_isconfirm = 1
                 GROUP BY 
                   t.ticket_id, t.ticket_title;
+
               `;
-          
-              // Execute both queries
-              const [userCountsResult] = await pool.query(userCountsQuery);
-              const [ticketCountsResult] = await pool.query(ticketCountsQuery);
-          
-              // Format response
-              const response = {
-                userCounts: userCountsResult[0], // Assuming single result for user counts
-                ticketCounts: ticketCountsResult // List of ticket counts
-              };
-          
-              res.json(response);
-            } catch (err) {
-              console.error('Error fetching data:', err);
-              res.status(500).json({ error: 'Internal server error', message: err.message });
-            }
-          });
-          
+
+    // Execute both queries
+    const [userCountsResult] = await pool.query(userCountsQuery);
+    const [ticketCountsResult] = await pool.query(ticketCountsQuery);
+
+    // Format response
+    const response = {
+      userCounts: userCountsResult[0], // Assuming single result for user counts
+      ticketCounts: ticketCountsResult // List of ticket counts
+    };
+
+    res.json(response);
+  } catch (err) {
+    console.error('Error fetching data:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  }
+});
+
 
 
 module.exports = router;

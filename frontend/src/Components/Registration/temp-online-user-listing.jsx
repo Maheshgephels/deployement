@@ -311,11 +311,21 @@ const TempUserListing = () => {
             const updatedusers = users.map((user) =>
                 user.id === Id ? { ...user, is_discarded: Discard } : user
             );
+            closeDuplicateModal(); // Close modal after status update
+
+            await SweetAlert.fire({
+                title: 'Success!',
+                text: 'User Discarded successfully!',
+                icon: 'success',
+                timer: 3000,
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+            });
             setUsers(updatedusers);
         } catch (error) {
             console.error('Error updating status:', error);
         }
-        closeDuplicateModal(); // Close modal after status update
     };
 
     const handleSort = (column) => {
@@ -420,6 +430,9 @@ const TempUserListing = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        setSelectedItems([]);
+
     };
 
 
@@ -479,6 +492,8 @@ const TempUserListing = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, 'User_Data.xlsx');
+        setSelectedItems([]);
+
     };
 
 
@@ -498,40 +513,32 @@ const TempUserListing = () => {
         },
     ];
 
-    const actions = (users) => [
-        {
-            key: '1',
-            label: (
-                <div onClick={() => bulkoperation(0)}>Make Inactive</div>
-            ),
-        },
-        {
-            key: '2',
-            label: (
-                <div onClick={() => bulkoperation(1)}>Make Active</div>
-            ),
-        },
-        {
-            key: '3',
-            label: (
-                <div onClick={() => bulkoperation(3)}>Make Unduplicate</div>
-            ),
-        },
-        {
-            key: '4',
-            label: (
-                <div onClick={() => bulkoperation(2)}>Make Duplicate</div>
-            ),
-        },
-        {
-            key: '5',
-            label: (
-                <div onClick={() => handleResendMail(0)}>
-                    <GrPowerCycle /> Resend login mail
-                </div>
-            ),
-        },
-    ];
+    // const actions = (users) => [
+    //     {
+    //         key: '1',
+    //         label: (
+    //             <div onClick={() => bulkoperation(0)}>Make Inactive</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '2',
+    //         label: (
+    //             <div onClick={() => bulkoperation(1)}>Make Active</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '3',
+    //         label: (
+    //             <div onClick={() => bulkoperation(3)}>Make Unduplicate</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '4',
+    //         label: (
+    //             <div onClick={() => bulkoperation(2)}>Make Duplicate</div>
+    //         ),
+    //     }
+    // ];
 
     const getSettings = (user) => [
         // {
@@ -573,15 +580,7 @@ const TempUserListing = () => {
                     <MdDelete /> Mark a Discarded
                 </div>
             ),
-        },
-        {
-            key: '5',
-            label: (
-                <div onClick={() => handleResendMail(user.id)}>
-                    <GrPowerCycle /> Resend login mail
-                </div>
-            ),
-        },
+        }
         // Add more options if needed
     ];
 
@@ -654,49 +653,6 @@ const TempUserListing = () => {
         }
     };
 
-    const handleResendMail = async (id) => {
-        const toastId = toast.info('Processing...', { autoClose: false });
-
-        console.log("Id", id);
-
-        try {
-            const cs_id = id;
-            const temp_id = 7;
-            const flag = 1;
-            const token = getToken();
-
-            const response = await axios.post(`${BackendAPI}/sendgrid/resend`, { cs_id, Id: selectedItems, Template_id: temp_id, flag }, {
-                headers: {
-                    Authorization: `Bearer ${token}`, // Include the token in the Authorization header
-                },
-            });
-
-            // Dismiss the processing toast
-            toast.dismiss(toastId);
-
-            // Show success alert
-            await SweetAlert.fire({
-                title: 'Success!',
-                text: 'Mail sent successfully!',
-                icon: 'success',
-                timer: 3000,
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-            });
-
-            console.log('Save response', response.data);
-        } catch (error) {
-            console.error('Error sending mail:', error);
-
-            // Dismiss the processing toast
-            toast.dismiss(toastId);
-
-            // Display the error message from the response or a default message
-            const errorMessage = error.response?.data?.message || 'There was an error sending the email. Please try again later.';
-            toast.error(errorMessage);
-        }
-    };
 
 
 
@@ -719,15 +675,13 @@ const TempUserListing = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            Here you can view all users and select fields to see additional details.
-                            <br />
-                            To find a specific user, enter their name or details in the search field.
-                            <br />
-                            You can edit user information, print their badge, and reset their facility count. Additionally, you can export the data displayed on the listing page.
+                            • Users who have started the registration process but haven’t completed it, or whose payment failed due to technical issues, will appear in the temp user listing.<br/>
+                            • By clicking on <strong>Confirm User</strong>, verify the payment details. An option is available to send a confirmation email to the user or not, If the option to send an email is selected, a confirmation email will be sent.<br/>
+                            • If the entry is invalid, you can discard it.
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Registration Admin" title="Manage Temp Users" />
+            } parent="Manage User" title="Manage Temp Users" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
@@ -789,7 +743,7 @@ const TempUserListing = () => {
                                         )}
 
                                         {/* Actions Button with Tooltip */}
-                                        {selectedItems.length > 0 && (
+                                        {/* {selectedItems.length > 0 && (
                                             <>
                                                 <D menu={{ items: actions(users[0]) }} placement="bottomLeft" arrow trigger={['click']}>
                                                     <Button
@@ -806,7 +760,7 @@ const TempUserListing = () => {
                                                     More Actions
                                                 </Tooltip>
                                             </>
-                                        )}
+                                        )} */}
                                     </div>
 
                                 </div>
@@ -826,6 +780,7 @@ const TempUserListing = () => {
                                                         <input
                                                             type="checkbox"
                                                             onChange={handleSelectAll} // Function to handle 'select all' checkbox
+                                                            checked={selectedItems.length === users.length && users.length > 0} // Dynamically set checked status
                                                         />
                                                     </th>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
@@ -843,10 +798,10 @@ const TempUserListing = () => {
                                                         {'Last Name'}
                                                         {getSortIndicator('cs_last_name')}
                                                     </th> */}
-                                                    {/* <th scope='col' className='text-center' onClick={() => handleSort('cs_email')}>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('cs_email')}>
                                                         {'Email'}
                                                         {getSortIndicator('cs_email')}
-                                                    </th> */}
+                                                    </th>
                                                     <th scope='col' className='text-center' onClick={() => handleSort('order_id')}>
                                                         {'Order Id'}
                                                         {getSortIndicator('order_id')}
@@ -859,22 +814,21 @@ const TempUserListing = () => {
                                                         {'Category'}
                                                         {getSortIndicator('cs_reg_category')}
                                                     </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('cs_email')}>
+                                                    <th scope='col' className='text-center'>
                                                         {'Reg Type'}
-                                                        {getSortIndicator('cs_email')}
                                                     </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('regamount')}>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('conference_fees')}>
                                                         {'Total Reg Amount'}
-                                                        {getSortIndicator('regamount')}
+                                                        {getSortIndicator('conference_fees')}
                                                     </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('total_paid_amount')}>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('current_paid_amount')}>
                                                         {'Total Paid Amount'}
-                                                        {getSortIndicator('total_paid_amount')}
+                                                        {getSortIndicator('current_paid_amount')}
                                                     </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('cs_status')}>
+                                                    {/* <th scope='col' className='text-center' onClick={() => handleSort('cs_status')}>
                                                         {'Status'}
                                                         {getSortIndicator('cs_status')}
-                                                    </th>
+                                                    </th> */}
                                                     {/* <th scope='col' className='text-center'>{'Status'}</th> */}
                                                     {UserListingpermissions?.edit === 1 || UserListingpermissions?.delete === 1 || UserListingpermissions?.print === 1 ? (
                                                         <th scope='col' className='text-center'>{'Action'}</th>
@@ -900,21 +854,20 @@ const TempUserListing = () => {
                                                             <td key={col}>{user[col]}</td>
                                                         ))} */}
                                                             <td className='text-center'>{`${user.cs_first_name} ${user.cs_last_name}`}</td>
-                                                            {/* <td className='text-center'>{user.cs_email}</td> */}
-                                                            <td className='text-center'>{user.order_id}</td>
+                                                            <td className='text-center'>{user.cs_email}</td>
+                                                            <td className='text-center'>{user.temppayment_id}</td>
                                                             <td className='text-center'>
                                                                 {moment(user.payment_date).format('YYYY-MM-DD HH:mm:ss')}
                                                             </td>
                                                             <td className='text-center'>{user.cs_reg_category}</td>
                                                             <td className='text-start'>
                                                                 {user.ticket_title || user.addon_title
-                                                                    ? `Ticket: ${user.ticket_title || ''} Addon: ${user.addon_title || ''}`
+                                                                    ? `Ticket: ${user.ticket_title || ''}${user.addon_title ? ` Addon: ${user.addon_title}` : ''}`
                                                                     : 'Not selected'}
                                                             </td>
 
-
-                                                            <td className='text-center'>{user.regamount}</td>
-                                                            <td className='text-center'>{user.total_paid_amount}</td>
+                                                            <td className='text-center'>{user.conference_fees}</td>
+                                                            <td className='text-center'>{user.current_paid_amount}</td>
 
                                                             {/* <td className='text-center'>
                                                             {user.cs_status === 0 ? (
@@ -937,7 +890,7 @@ const TempUserListing = () => {
                                                             )}
 
                                                         </td> */}
-                                                            <td className='text-center'>
+                                                            {/* <td className='text-center'>
                                                                 {user.cs_status === "0" || user.cs_status === 0 ? (
                                                                     <span style={{ color: 'red', fontSize: '20px', cursor: "pointer" }}
                                                                         onClick={() => openStatusModal(user.id, user.cs_first_name, user.cs_status)}
@@ -958,7 +911,7 @@ const TempUserListing = () => {
 
                                                                 )}
                                                                 <Tooltip id="tooltip" globalEventOff="click" />
-                                                            </td>
+                                                            </td> */}
                                                             {UserListingpermissions?.edit === 1 || UserListingpermissions?.delete === 1 || UserListingpermissions?.print === 1 ? (
                                                                 <td className='text-center'>
                                                                     <Tooltip id="tooltip" globalEventOff="click" />

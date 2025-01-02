@@ -22,6 +22,7 @@ const BadgeElement = ({
   onRotationChange,
   onColorChange,
   fontWeight,
+  letterCasing,
   badgeSize,
   textFontSize,
   alignment,
@@ -30,12 +31,15 @@ const BadgeElement = ({
   type,
   rotateBadge,
   side,
+  zoom
 }) => {
   const [internalContent, setInternalContent] = useState(content);
   const [isEditable, setIsEditable] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const badgeRef = useRef(null);
 
+  console.log("Letter Casing", letterCasing);
+  
   const handleClick = (e) => {
     e.stopPropagation();
     if (!isSelected) {
@@ -60,10 +64,24 @@ const BadgeElement = ({
   };
 
   const handleDrag = (e, data) => {
-    const newX = Math.max(Math.min(data.x, badgeSize.width - size.width), 0);
-    const newY = Math.max(Math.min(data.y, badgeSize.height - size.height), 0);
-    onPositionChange(id, { top: newY, left: newX });
+    const zoomAdjustedX = data.x / zoom; // Adjust for zoom level
+    const zoomAdjustedY = data.y / zoom; // Adjust for zoom level
+    const newX = Math.max(Math.min(zoomAdjustedX, badgeSize.width - size.width), 0);
+    const newY = Math.max(Math.min(zoomAdjustedY, badgeSize.height - size.height), 0);
+    onPositionChange(id, {
+      top: newY, left: newX, zIndex: position.zIndex,
+    });
   };
+
+  // Helper function for title case transformation
+  const toTitleCase = (str) => {
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+  
 
   return (
     <DraggableCore
@@ -82,10 +100,16 @@ const BadgeElement = ({
           width: size.width,
           height: size.height,
           transform: `rotate(${rotation || 0}deg)`,
+          textTransform: letterCasing === 'uppercase'
+          ? 'uppercase'
+          : letterCasing === 'lowercase'
+            ? 'lowercase'
+            : 'none', // No direct textTransform for camelcase
           display: 'flex',
           justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
           alignItems: 'center',
           color: fontColor || '#000',
+          zIndex: position.zIndex,  // Handle zIndex here
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -101,6 +125,11 @@ const BadgeElement = ({
               fontWeight: fontWeight || 'normal',
               color: fontColor,
               textAlign: alignment,
+              textTransform: letterCasing === 'uppercase'
+              ? 'uppercase'
+              : letterCasing === 'lowercase'
+                ? 'lowercase'
+                : 'none', // No direct textTransform for camelcase
             }}
           >
             {isEditable ? (
@@ -117,6 +146,11 @@ const BadgeElement = ({
                   fontWeight: fontWeight || 'normal',
                   color: fontColor,
                   textAlign: alignment,
+                  textTransform: letterCasing === 'uppercase'
+                  ? 'uppercase'
+                  : letterCasing === 'lowercase'
+                    ? 'lowercase'
+                    : 'none', // No direct textTransform for camelcase
                 }}
               />
             ) : (
@@ -127,16 +161,23 @@ const BadgeElement = ({
                   fontWeight: fontWeight,
                   color: fontColor,
                   textAlign: alignment,
+                  textTransform: letterCasing === 'uppercase'
+                    ? 'uppercase'
+                    : letterCasing === 'lowercase'
+                      ? 'lowercase'
+                      : 'none', // No direct textTransform for camelcase
                 }}
               >
-                {textContent || internalContent}
+                {letterCasing === 'titlecase'
+                  ? toTitleCase(textContent || internalContent)
+                  : textContent || internalContent}
               </div>
             )}
           </div>
         ) : type === 'image' ? (
           <img
             src={content}
-            alt=""
+            alt="Image"
             style={{ width: '100%', height: '100%', transform: `rotate(${rotation || 0}deg)` }}
           />
         ) : type === 'backgroundimage' ? (

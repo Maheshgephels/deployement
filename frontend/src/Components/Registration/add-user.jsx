@@ -85,7 +85,7 @@ const AddRegUser = () => {
     const [imagePreview, setImagePreview] = useState(Faculty.photo || null);
     const [pdfPreview, setPdfPreview] = useState(null);
     const [adminServerName, setAdminServerName] = useState('');
-
+    const [company, SetCompany] = useState('');
     const [logoOpen, setLogoOpen] = useState(false);
     const [imageOpen, setImageOpen] = useState(false);
     const [iconPreviewUrl, setIconPreviewUrl] = useState(null);
@@ -109,17 +109,20 @@ const AddRegUser = () => {
         label: status.exh_name
     }));
 
-    console.log("Selected Cat", category);
 
-    console.log("Field", fieldName);
-    console.log("Addon Ticket", addonticket);
+
+    // console.log("Selected Cat", category);
+
+    // console.log("Addon Ticket", addonticket);
     console.log("Ticket Amount", ticketAmount);
-    console.log("Addon Amount", addonAmount);
-    console.log("Reg Amount", regAmount);
-    console.log("Reg Addon Amount", regAddonAmount);
-    console.log("Processing Fee", processingFee);
-    console.log("Ticket", ticket);
-    console.log("Filtered Ticket", filteredTickets);
+    // console.log("Addon Amount", addonAmount);
+    // console.log("Reg Amount", regAmount);
+    // console.log("Reg Addon Amount", regAddonAmount);
+    // console.log("Processing Fee", processingFee);
+    // console.log("Ticket", ticket);
+    // console.log("Filtered Ticket", filteredTickets);
+    console.log("Company", company);
+
 
 
 
@@ -135,12 +138,20 @@ const AddRegUser = () => {
     const [gstpercentage, setgstpercentage] = useState(18);
     const [processingfeein, setprocessingfeein] = useState();
     const [processinginclded, setprocessinginclded] = useState();
-    const [currency, setcurrency] = useState();
+    const [currencydata, setCurrencydata] = useState([]);
+    const [currency, setCurrency] = useState(''); // Initially null or a default value
     const [processingfeeornot, setprocessingfeeornot] = useState();
 
 
+    console.log("Currency", currency);
 
-
+    const uniqueCurrencies = [
+        ...new Set(currencydata.map((country) => country.cs_currencyCode)),
+    ];
+    const currencyOptions = uniqueCurrencies.map((currencyCode) => ({
+        value: currencyCode,
+        label: currencyCode,
+    }));
 
 
 
@@ -149,10 +160,14 @@ const AddRegUser = () => {
     const empty = '';
 
 
-
+    console.log("Field label", fieldLabels);
     console.log("Location Data", Data);
+    console.log("Field Type", fieldType);
+    console.log("Field Name", fieldName);
+    console.log("Custom", custom);
+    console.log("Field ID", fieldId);
     // console.log("Ticket", ticket);
-    console.log("Category to match", category);
+    // console.log("Category to match", category);
 
 
 
@@ -215,6 +230,12 @@ const AddRegUser = () => {
         setModal(true);
     };
 
+    const toSentenceCase = (str) => {
+        if (!str) return ''; // Handle empty or undefined strings
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+
+
     const onSubmit = async (formData, files) => {
         const username = formData.cs_first_name;
 
@@ -225,8 +246,6 @@ const AddRegUser = () => {
             const formDataToSend = new FormData();
 
             console.log('File found:', files.photo);
-
-
 
 
             const paymentFields = [
@@ -265,6 +284,8 @@ const AddRegUser = () => {
                     if (formData[key].value !== '') {
                         if (paymentFields.includes(key)) {
                             paymentDetails[key] = formData[key].value || formData[key];
+                            paymentDetails.payment_mode = 'offline';
+                            paymentDetails.currency = currency?.label || '';
                         } else if (facultyFields.includes(key)) {
                             facultyDetails[key] = formData[key].value || formData[key];
                         } else {
@@ -273,6 +294,7 @@ const AddRegUser = () => {
                     }
                 }
             }
+
 
             // Create a data object to hold only unique form values
             const values = {};
@@ -284,6 +306,17 @@ const AddRegUser = () => {
                     }
                 }
             }
+
+            if (values.cs_first_name) {
+                values.cs_first_name = toSentenceCase(values.cs_first_name);
+            }
+
+            if (values.cs_last_name) {
+                values.cs_last_name = toSentenceCase(values.cs_last_name);
+            }
+
+
+
 
             console.log("Payment", paymentDetails);
             console.log("Faculty", facultyDetails);
@@ -298,10 +331,10 @@ const AddRegUser = () => {
 
 
             // Append paymentDetails to FormData only if it has values
-            if (hasPaymentDetails) {
-                paymentDetails.payment_mode = 'offline'; // Set payment_mode here if needed
-                formDataToSend.append('paymentDetails', JSON.stringify(paymentDetails));
-            }
+            // if (hasPaymentDetails) {
+            //     paymentDetails.payment_mode = 'offline'; // Set payment_mode here if needed
+            //     formDataToSend.append('paymentDetails', JSON.stringify(paymentDetails));
+            // }
             if (hadFacultyDetails) {
                 facultyDetails.fname = formData.cs_first_name; // Use formData directly
                 facultyDetails.lname = formData.cs_last_name;
@@ -353,7 +386,7 @@ const AddRegUser = () => {
                         allowEscapeKey: false
                     }).then((result) => {
                         if (result.dismiss === SweetAlert.DismissReason.timer) {
-                            navigate(`${process.env.PUBLIC_URL}/registration/basic-user-listing/Consoft`);
+                            navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
                         }
                     });
                 }
@@ -495,6 +528,8 @@ const AddRegUser = () => {
         addonAmount.map(item => [item.addon_id, item.addon_amount])
     );
 
+    const roundTo = (value, decimals = 2) => parseFloat(value.toFixed(decimals));
+
 
 
 
@@ -525,206 +560,481 @@ const AddRegUser = () => {
             }
         };
 
+   
+
+
         // const filterAddon = () => {
         //     if (addonticket) {
-        //         const parsedAddon = JSON.parse(addonticket); // Parse the selected addon ticket
+        //         const parsedAddon = JSON.parse(addonticket);
         //         console.log("Addon:", parsedAddon);
 
-        //         // Find the matching ticket based on the addon ticket ID
         //         const matchedTicket = ticketAmount.find(ticketItem => ticketItem.ticket_id === parsedAddon);
-        //         console.log("Matched", matchedTicket);
+
         //         if (matchedTicket) {
-        //             const amount = parseFloat(matchedTicket.tick_amount); // Convert tick_amount to a number
-        //             setRegAmount(amount); // Store the ticket amount in regAmount
+        //             const amount = parseFloat(matchedTicket.tick_amount);
+        //             let gstAmount = 0;
+        //             let processingAmount = 0;
+        //             let regAmount = amount; // Initialize regAmount with the base ticket amount
+        //             let totalAmount = amount; // Initialize totalAmount with the base ticket amount
 
-        //             // Calculate the processing fee based on the percentage
-        //             const currentAmount = amount; // No parseFloat needed if regAmount is already a number
-        //             const processingPercentage = processingFee.cs_value; // Should be a number
-        //             const processingFeeAmount = (amount * processingPercentage) / 100; // Correct calculation without parseFloat
+        //             // Calculate GST and adjust regAmount
+        //             if (gstfee === 'Yes') {
+        //                 console.log("processingAmount1", gstinclded);
+        //                 if (gstinclded === 'Yes') {
+        //                     console.log("processingAmount2", processingfeeornot);
+        //                     if (processingfeeornot === 'Yes') {
+        //                         console.log("processingAmount3", processinginclded);
+        //                         let baseAmountWithoutProcessing = amount;
+        //                         if (processinginclded === 'Include') {
+        //                             // Eliminate processing fee before calculating GST
+        //                             console.log("processingAmount4", processingAmount);
 
-        //             setProcessingAmount(processingFeeAmount); // Set the calculated processing fee
-        //             settotalPaidAmount(currentAmount + processingFeeAmount);
+        //                             if (processingfeeornot === 'Yes') {
+        //                                 if (processingfeein === 'Percentage') {
+        //                                     processingAmount = (amount * parseFloat(processingFee.cs_value)) / 100;
+        //                                     console.log("processingAmount", processingAmount);
+        //                                 } else {
+        //                                     processingAmount = parseFloat(processingFee.cs_value);
+        //                                 }
 
-        //             console.log("Matched Ticket Amount:", amount);
-        //             console.log("Processing Fee Amount:", processingFeeAmount);
+        //                                 baseAmountWithoutProcessing -= processingAmount; // Subtract processing fee from base
+        //                                 setProcessingAmount(processingAmount);
+        //                             }
+
+        //                             gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
+        //                             regAmount = baseAmountWithoutProcessing - gstAmount; // Adjust regAmount after GST
+        //                         } else {
+        //                             // If processing fee is not included, calculate GST directly on the amount
+        //                             gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
+        //                             console.log("gstAmount", gstAmount);
+        //                             regAmount = baseAmountWithoutProcessing - gstAmount; // Adjust regAmount after GST
+        //                         }
+        //                     }
+        //                     else {
+        //                         // If processing fee is not included, calculate GST directly on the amount
+        //                         gstAmount = (amount * parseFloat(gstpercentage)) / (100);
+        //                         regAmount = amount - gstAmount; // Adjust regAmount after GST
+        //                     }
+        //                 }
+
+
+        //                 else {
+        //                     // GST is excluded; normal processing
+        //                     // gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+        //                     // console.log("gstAmount12", gstAmount);
+        //                     // totalAmount += gstAmount; // Add GST to total if excluded
+
+
+        //                     if (processingfeeornot === 'Yes') {
+        //                         console.log("processingAmount31", processinginclded);
+        //                         let baseAmountWithoutProcessing = amount;
+        //                         if (processinginclded === 'Include') {
+        //                             // Eliminate processing fee before calculating GST
+        //                             console.log("processingAmount41", processingfeein);
+
+
+        //                             if (processingfeein === 'Percentage') {
+        //                                 processingAmount = (amount * parseFloat(processingFee.cs_value)) / 100;
+        //                                 console.log("processingAmount", processingAmount);
+        //                             } else {
+        //                                 processingAmount = parseFloat(processingFee.cs_value);
+        //                             }
+
+        //                             baseAmountWithoutProcessing -= processingAmount; // Subtract processing fee from base
+        //                             setProcessingAmount(processingAmount);
+
+
+        //                             gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
+        //                             totalAmount += gstAmount;
+        //                         } else {
+        //                             // If processing fee is not included, calculate GST directly on the amount
+        //                             gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+        //                             console.log("gstAmount12", gstAmount);
+        //                             totalAmount += gstAmount; // Add GST to total if excluded
+        //                         }
+        //                     }
+        //                     else {
+        //                         // If processing fee is not included, calculate GST directly on the amount
+        //                         gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+        //                         console.log("gstAmount12", gstAmount);
+        //                         totalAmount += gstAmount;
+        //                     }
+        //                 }
+        //             }
+
+
+
+        //             setgstamount(gstAmount); // Store the calculated GST amount
+
+        //             // Calculate processing fee
+        //             if (processingfeeornot === 'Yes') {
+        //                 if (processinginclded === 'Exclude') {
+        //                     processingAmount =
+        //                         processingfeein === 'Percentage'
+        //                             ? (totalAmount * parseFloat(processingFee.cs_value)) / 100
+        //                             : parseFloat(processingFee.cs_value);
+
+        //                     console.log("processingAmount2", processingAmount);
+
+        //                     totalAmount += processingAmount; // Add processing fee if excluded
+        //                 } else {
+        //                     processingAmount =
+        //                         processingfeein === 'Percentage'
+        //                             ? (totalAmount * parseFloat(processingFee.cs_value)) / 100
+        //                             : parseFloat(processingFee.cs_value);
+
+        //                 }
+
+        //                 setProcessingAmount(processingAmount);
+        //             } else {
+        //                 setProcessingAmount(0);
+        //             }
+
+        //             setRegAmount(regAmount); // Adjusted registration amount
+        //             settotalPaidAmount(totalAmount); // Total amount for display or further calculations
         //         } else {
-        //             setRegAmount(0); // Reset if no matching ticket is found
-        //             setProcessingAmount(0); // Reset processing amount as well
+        //             // Reset values if no match is found
+        //             setRegAmount(0);
+        //             setProcessingAmount(0);
         //             settotalPaidAmount(0);
+        //             setgstamount(0);
+
         //         }
 
 
+
+
+
+        //         const filtered = addon.filter(addon => {
+        //             if (addon.addon_ticket_ids && addon.addon_ticket_ids !== 'null') {
+        //                 try {
+        //                     // Convert {2,4,3} to [2,4,3] format
+        //                     const normalizedTicketIds = addon.addon_ticket_ids.replace(/{/g, '[').replace(/}/g, ']');
+        //                     const parsedTicketIds = JSON.parse(normalizedTicketIds);
+        //                     //Console.log("Parsed Ticket Addon IDs:", parsedTicketIds);
+
+        //                     return Array.isArray(parsedTicketIds) && parsedTicketIds.includes(parsedAddon);
+        //                 } catch (e) {
+        //                     //Console.error("Error parsing addon ticket IDs:", e);
+        //                     return false;
+        //                 }
+        //             }
+        //             return false;
+        //         });
+
+
+
+
+        //         setFilteredAddon(filtered); // Set the filtered addons
+        //     } else {
+        //         setFilteredAddon([]); // If no category, reset the filtered addons
+        //         setRegAmount(0); // Reset regAmount if no addonticket
+        //         setProcessingAmount(0);
+        //         settotalPaidAmount(0);
+
+        //     }
+        // };
+        
+
         const filterAddon = () => {
             if (addonticket) {
-                const parsedAddon = JSON.parse(addonticket);
-                console.log("Addon:", parsedAddon);
-
-                const matchedTicket = ticketAmount.find(ticketItem => ticketItem.ticket_id === parsedAddon);
-
-                if (matchedTicket) {
-                    const amount = parseFloat(matchedTicket.tick_amount);
-                    let gstAmount = 0;
-                    let processingAmount = 0;
-                    let regAmount = amount; // Initialize regAmount with the base ticket amount
-                    let totalAmount = amount; // Initialize totalAmount with the base ticket amount
-
-                    // Calculate GST and adjust regAmount
-                    if (gstfee === 'Yes') {
-                        console.log("processingAmount1", gstinclded);
-                        if (gstinclded === 'Yes') {
-                            console.log("processingAmount2", processingfeeornot);
-                            if (processingfeeornot === 'Yes') {
-                                console.log("processingAmount3", processinginclded);
-                                let baseAmountWithoutProcessing = amount;
-                                if (processinginclded === 'Include') {
-                                    // Eliminate processing fee before calculating GST
-                                    console.log("processingAmount4", processingAmount);
-
-                                    if (processingfeeornot === 'Yes') {
-                                        if (processingfeein === 'Percentage') {
-                                            processingAmount = (amount * parseFloat(processingFee.cs_value)) / 100;
-                                            console.log("processingAmount", processingAmount);
-                                        } else {
-                                            processingAmount = parseFloat(processingFee.cs_value);
-                                        }
-
-                                        baseAmountWithoutProcessing -= processingAmount; // Subtract processing fee from base
-                                        setProcessingAmount(processingAmount);
-                                    }
-
-                                    gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
-                                    regAmount = baseAmountWithoutProcessing - gstAmount; // Adjust regAmount after GST
-                                } else {
-                                    // If processing fee is not included, calculate GST directly on the amount
-                                    gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
-                                    console.log("gstAmount", gstAmount);
-                                    regAmount = baseAmountWithoutProcessing - gstAmount; // Adjust regAmount after GST
-                                }
-                            }
-                            else {
-                                // If processing fee is not included, calculate GST directly on the amount
-                                gstAmount = (amount * parseFloat(gstpercentage)) / (100);
-                                regAmount = amount - gstAmount; // Adjust regAmount after GST
-                            }
-                        }
-
-
-                        else {
-                            // GST is excluded; normal processing
-                            // gstAmount = (amount * parseFloat(gstpercentage)) / 100;
-                            // console.log("gstAmount12", gstAmount);
-                            // totalAmount += gstAmount; // Add GST to total if excluded
-
-
-                            if (processingfeeornot === 'Yes') {
-                                console.log("processingAmount31", processinginclded);
-                                let baseAmountWithoutProcessing = amount;
-                                if (processinginclded === 'Include') {
-                                    // Eliminate processing fee before calculating GST
-                                    console.log("processingAmount41", processingfeein);
-
-
-                                    if (processingfeein === 'Percentage') {
-                                        processingAmount = (amount * parseFloat(processingFee.cs_value)) / 100;
-                                        console.log("processingAmount", processingAmount);
-                                    } else {
-                                        processingAmount = parseFloat(processingFee.cs_value);
-                                    }
-
-                                    baseAmountWithoutProcessing -= processingAmount; // Subtract processing fee from base
-                                    setProcessingAmount(processingAmount);
-
-
-                                    gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
-                                    totalAmount += gstAmount;
-                                } else {
-                                    // If processing fee is not included, calculate GST directly on the amount
-                                    gstAmount = (amount * parseFloat(gstpercentage)) / 100;
-                                    console.log("gstAmount12", gstAmount);
-                                    totalAmount += gstAmount; // Add GST to total if excluded
-                                }
-                            }
-                            else {
-                                // If processing fee is not included, calculate GST directly on the amount
-                                gstAmount = (amount * parseFloat(gstpercentage)) / 100;
-                                console.log("gstAmount12", gstAmount);
-                                totalAmount += gstAmount;
-                            }
-                        }
-                    }
-
-
-
-                    setgstamount(gstAmount); // Store the calculated GST amount
-
-                    // Calculate processing fee
+              const parsedAddon = JSON.parse(addonticket);
+              console.log("Addon:", parsedAddon);
+      
+              const matchedTicket = ticketAmount.find(ticketItem => ticketItem.ticket_id === parsedAddon);
+      
+              if (matchedTicket) {
+                const amount = parseFloat(matchedTicket.tick_amount);
+                let gstAmount = 0;
+                let processingAmount = 0;
+                let regAmount = roundTo(amount); // Initialize regAmount with the base ticket amount
+                let totalAmount = roundTo(amount); // Initialize totalAmount with the base ticket amount
+      
+                // Calculate GST and adjust regAmount
+                if (gstfee === 'Yes') {
+                  console.log("processingAmount1", gstinclded);
+                  if (gstinclded === 'Yes') {
+                    console.log("processingAmount2", processingfeeornot);
                     if (processingfeeornot === 'Yes') {
-                        if (processinginclded === 'Exclude') {
-                            processingAmount =
-                                processingfeein === 'Percentage'
-                                    ? (totalAmount * parseFloat(processingFee.cs_value)) / 100
-                                    : parseFloat(processingFee.cs_value);
-
-                            console.log("processingAmount2", processingAmount);
-
-                            totalAmount += processingAmount; // Add processing fee if excluded
+                      console.log("processingAmount3", processinginclded);
+                      let baseAmountWithoutProcessing = amount;
+                      if (processinginclded === 'Include') {
+                        // Eliminate processing fee before calculating GST
+                        console.log("processingAmount4", processingAmount);
+      
+      
+                        if (processingfeein === 'Percentage') {
+                          processingAmount = (amount * parseFloat(processingFee.cs_value)) / 100;
+                          // processingAmount = amount / (1 + parseFloat(processingFee.cs_value) / 100);
+                          console.log("processingAmount", processingAmount);
                         } else {
-                            processingAmount =
-                                processingfeein === 'Percentage'
-                                    ? (totalAmount * parseFloat(processingFee.cs_value)) / 100
-                                    : parseFloat(processingFee.cs_value);
-
+                          processingAmount = parseFloat(processingFee.cs_value);
                         }
-
-                        setProcessingAmount(processingAmount);
-                    } else {
-                        setProcessingAmount(0);
+      
+                        baseAmountWithoutProcessing -= processingAmount; // Subtract processing fee from base
+                        setProcessingAmount(roundTo(processingAmount));
+      
+      
+                        // gstAmount = (baseAmountWithoutProcessing * parseFloat(gstpercentage)) / (100);
+                        // regAmount = baseAmountWithoutProcessing - gstAmount; // Adjust regAmount after GST
+      
+                        regAmount = baseAmountWithoutProcessing / (1 + parseFloat(gstpercentage) / 100);
+                        console.log("regAmount", regAmount);
+                        gstAmount = baseAmountWithoutProcessing - regAmount;
+                        console.log("gstAmount", gstAmount);
+                      } else {
+                        // If processing fee is not included, calculate GST directly on the amount
+                        regAmount = baseAmountWithoutProcessing / (1 + parseFloat(gstpercentage) / 100);
+                        console.log("regAmount", regAmount);
+                        gstAmount = baseAmountWithoutProcessing - regAmount;
+                        console.log("gstAmount", gstAmount);
+                      }
                     }
-
-                    setRegAmount(regAmount); // Adjusted registration amount
-                    settotalPaidAmount(totalAmount); // Total amount for display or further calculations
+                    else {
+                      // If processing fee is not included, calculate GST directly on the amount
+                      // gstAmount = (amount * parseFloat(gstpercentage)) / (100);
+                      // regAmount = amount - gstAmount; // Adjust regAmount after GST
+      
+                      regAmount = amount / (1 + parseFloat(gstpercentage) / 100);
+                      console.log("regAmount", regAmount);
+                      gstAmount = amount - regAmount;
+                      console.log("gstAmount", gstAmount);
+                    }
+                  } else {
+                    // GST is excluded; normal processing
+                    // gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+                    console.log("gstAmountfgdg", gstAmount);
+                    // totalAmount += gstAmount; // Add GST to total if excluded
+      
+      
+                    if (processingfeeornot === 'Yes') {
+                      console.log("processingAmount31", processinginclded);
+                      let baseAmountWithoutProcessing = amount;
+                      if (processinginclded === 'Include') {
+                        // Eliminate processing fee before calculating GST
+                        console.log("processingAmount41", processingfeein);
+      
+      
+                        if (processingfeein === 'Percentage') {
+      
+                          regAmount = amount / (1 + parseFloat(processingFee.cs_value) / 100);
+                          console.log("regAmount", regAmount);
+                          processingAmount = amount - regAmount;
+                          console.log("processingAmount", processingAmount);
+                        } else {
+                          processingAmount = parseFloat(processingFee.cs_value);
+                          regAmount = amount - processingAmount;
+                        }
+      
+      
+                        setProcessingAmount(roundTo(processingAmount));
+      
+      
+                        gstAmount = (regAmount * parseFloat(gstpercentage)) / (100);
+                        totalAmount += gstAmount;
+      
+                      } else {
+                        // If processing fee is not included, calculate GST directly on the amount
+      
+      
+                        gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+                        console.log("gstAmount12", gstAmount);
+                        totalAmount += gstAmount; // Add GST to total if excluded
+      
+                        if (processingfeein === 'Percentage') {
+      
+                          processingAmount = (totalAmount * processingFee.cs_value) / 100;
+                        } else {
+                          processingAmount = parseFloat(processingFee.cs_value);
+      
+                        }
+      
+                        totalAmount += processingAmount;
+      
+      
+                        setProcessingAmount(roundTo(processingAmount));
+                      }
+                    }
+                    else {
+                      // If processing fee is not included, calculate GST directly on the amount
+                      gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+                      console.log("gstAmount12", gstAmount);
+                      totalAmount += gstAmount;
+                    }
+                  }
                 } else {
-                    // Reset values if no match is found
-                    setRegAmount(0);
-                    setProcessingAmount(0);
-                    settotalPaidAmount(0);
-                    setgstamount(0);
-
-                }
-
-
-
-
-
-                const filtered = addon.filter(addon => {
-                    if (addon.addon_ticket_ids && addon.addon_ticket_ids !== 'null') {
-                        try {
-                            // Convert {2,4,3} to [2,4,3] format
-                            const normalizedTicketIds = addon.addon_ticket_ids.replace(/{/g, '[').replace(/}/g, ']');
-                            const parsedTicketIds = JSON.parse(normalizedTicketIds);
-                            //Console.log("Parsed Ticket Addon IDs:", parsedTicketIds);
-
-                            return Array.isArray(parsedTicketIds) && parsedTicketIds.includes(parsedAddon);
-                        } catch (e) {
-                            //Console.error("Error parsing addon ticket IDs:", e);
-                            return false;
-                        }
+                  if (processingfeeornot === 'Yes') {
+                    // Ensure totalAmount and processingFee.cs_value are valid numbers
+                    totalAmount = parseFloat(totalAmount) || 0; // Ensure it's a valid number
+                    processingFee.cs_value = parseFloat(processingFee.cs_value) || 0; // Ensure it's a valid number
+      
+                    // Log the values to ensure they're correct
+                    console.log("Total Amount before calculation:", totalAmount);
+                    console.log("Processing Fee Value:", processingFee.cs_value);
+      
+                    // Initialize processingAmount
+                    let processingAmount = 0;
+      
+                    // Check the condition for excluding or including the processing fee
+                    if (processinginclded === 'Exclude') {
+                      console.log("Processing fee is excluded, adding to totalAmount");
+      
+                      // Calculate processing amount based on percentage or fixed value
+                      if (processingfeein === 'Percentage') {
+                        processingAmount = (totalAmount * processingFee.cs_value) / 100;
+                        console.log("Processing Amount (Percentage):", processingAmount);
+                      } else {
+                        processingAmount = processingFee.cs_value;
+                        console.log("Processing Amount (Fixed):", processingAmount);
+                      }
+      
+                      // Add the processing fee to totalAmount if excluded
+                      totalAmount += processingAmount;
+      
+                      console.log("Total Amount after adding processing fee (Exclude):", totalAmount);
+                    } else {
+                      console.log("Processing fee is included, not adding to totalAmount");
+      
+                      // Calculate processing amount but do not add to totalAmount
+                      if (processingfeein === 'Percentage') {
+                        regAmount = totalAmount / (1 + parseFloat(processingFee.cs_value) / 100);
+                        processingAmount = totalAmount - regAmount;
+                        // processingAmount = (totalAmount * processingFee.cs_value) / 100;
+                        console.log("Processing Amount (Percentage):", processingAmount);
+                      } else {
+                        processingAmount = processingFee.cs_value;
+                        console.log("Processing Amount (Fixed):", processingAmount);
+                      }
+      
+                      console.log("Total Amount remains unchanged:", totalAmount);
                     }
-                    return false;
-                });
-
-
-
-
-                setFilteredAddon(filtered); // Set the filtered addons
-            } else {
-                setFilteredAddon([]); // If no category, reset the filtered addons
-                setRegAmount(0); // Reset regAmount if no addonticket
+      
+                    // Set the processingAmount state
+                    setProcessingAmount(roundTo(processingAmount));
+      
+                    // Final log to verify the values
+                    console.log("Final Processing Amount:", processingAmount);
+                    console.log("Final Total Amount after all calculations:", totalAmount);
+      
+                  } else {
+                    // If processing fee is not included, set processingAmount to 0
+                    console.log("Processing fee is not applied.");
+                    setProcessingAmount(0);
+                  }
+      
+      
+                }
+      
+      
+      
+                setgstamount(roundTo(gstAmount)); // Store the calculated GST amount
+      
+                // Calculate processing fee
+                console.log("totalAmount2", totalAmount);
+      
+      
+      
+      
+                // if (processingfeeornot === 'Yes') {
+                //   // Ensure totalAmount and processingFee.cs_value are valid numbers
+                //   totalAmount = parseFloat(totalAmount) || 0; // Ensure it's a valid number
+                //   processingFee.cs_value = parseFloat(processingFee.cs_value) || 0; // Ensure it's a valid number
+      
+                //   // Log the values to ensure they're correct
+                //   console.log("Total Amount before calculation:", totalAmount);
+                //   console.log("Processing Fee Value:", processingFee.cs_value);
+      
+                //   // Initialize processingAmount
+                //   let processingAmount = 0;
+      
+                //   // Check the condition for excluding or including the processing fee
+                //   if (processinginclded === 'Exclude') {
+                //     console.log("Processing fee is excluded, adding to totalAmount");
+      
+                //     // Calculate processing amount based on percentage or fixed value
+                //     if (processingfeein === 'Percentage') {
+                //       processingAmount = (totalAmount * processingFee.cs_value) / 100;
+                //       console.log("Processing Amount (Percentage):", processingAmount);
+                //     } else {
+                //       processingAmount = processingFee.cs_value;
+                //       console.log("Processing Amount (Fixed):", processingAmount);
+                //     }
+      
+                //     // Add the processing fee to totalAmount if excluded
+                //     totalAmount += processingAmount;
+      
+                //     console.log("Total Amount after adding processing fee (Exclude):", totalAmount);
+                //   } else {
+                //     console.log("Processing fee is included, not adding to totalAmount");
+      
+                //     // Calculate processing amount but do not add to totalAmount
+                //     if (processingfeein === 'Percentage') {
+                //       const regAmount1 = totalAmount / (1 + parseFloat(processingFee.cs_value) / 100);
+                //       processingAmount = totalAmount - regAmount1;
+                //       // processingAmount = (totalAmount * processingFee.cs_value) / 100;
+                //       console.log("Processing Amount (Percentage):", processingAmount);
+                //     } else {
+                //       processingAmount = processingFee.cs_value;
+                //       console.log("Processing Amount (Fixed):", processingAmount);
+                //     }
+      
+                //     console.log("Total Amount remains unchanged:", totalAmount);
+                //   }
+      
+                //   // Set the processingAmount state
+                //   setProcessingAmount(roundTo(processingAmount));
+      
+                //   // Final log to verify the values
+                //   console.log("Final Processing Amount:", processingAmount);
+                //   console.log("Final Total Amount after all calculations:", totalAmount);
+      
+                // } else {
+                //   // If processing fee is not included, set processingAmount to 0
+                //   console.log("Processing fee is not applied.");
+                //   setProcessingAmount(0);
+                // }
+      
+      
+      
+                setRegAmount(roundTo(regAmount)); // Adjusted registration amount
+                settotalPaidAmount(roundTo(totalAmount)); // Total amount for display or further calculations
+              } else {
+                // Reset values if no match is found
+                setRegAmount(0);
                 setProcessingAmount(0);
                 settotalPaidAmount(0);
-
+                setgstamount(0);
+              }
+      
+      
+      
+              const filtered = addon.filter(addon => {
+                if (addon.addon_ticket_ids && addon.addon_ticket_ids !== 'null') {
+                  try {
+                    // Convert {2,4,3} to [2,4,3] format
+                    const normalizedTicketIds = addon.addon_ticket_ids.replace(/{/g, '[').replace(/}/g, ']');
+                    const parsedTicketIds = JSON.parse(normalizedTicketIds);
+                    //Console.log("Parsed Ticket Addon IDs:", parsedTicketIds);
+      
+                    return Array.isArray(parsedTicketIds) && parsedTicketIds.includes(parsedAddon);
+                  } catch (e) {
+                    //Console.error("Error parsing addon ticket IDs:", e);
+                    return false;
+                  }
+                }
+                return false;
+              });
+              console.log("withoutfiltered", addon);
+              console.log("filtered", filtered);
+              setFilteredAddon(filtered);
+            } else {
+              setFilteredAddon([]);
+              setRegAmount(0);
+              setProcessingAmount(0);
+              settotalPaidAmount(0);
+              setgstamount(0);
             }
-        };
+          };
 
         // Call the filter functions
         filterTickets(); // Call the filter function
@@ -995,7 +1305,6 @@ const AddRegUser = () => {
             });
 
             setData(response.data);
-            //Console.log("KHUSH", response.data);
             setLoading(false);
 
             // Extracting the data from the response
@@ -1015,7 +1324,7 @@ const AddRegUser = () => {
             const fetchProcessingFee = response.data.processingFees[0];
             const fetchfacultytype = response.data.facultytype;
             const fetchexhibitor = response.data.exhibitor;
-            const fetchcurrency = response.data.currency[0];
+            const fetchCurrency = response.data.currency[0]?.cs_value;
             const fetchgstfee = response.data.gstfee[0];
             const fetchgstinclded = response.data.gstinclded[0];
             const fetchprocessingfeein = response.data.processingfeein[0];
@@ -1062,7 +1371,7 @@ const AddRegUser = () => {
             setProcessingFee(fetchProcessingFee);
             setfacultytype(fetchfacultytype);
             setExhibitor(fetchexhibitor);
-            setcurrency(fetchcurrency.cs_value);
+            setCurrency({ value: fetchCurrency, label: fetchCurrency });
             setgstfee(fetchgstfee.cs_value);
             setgstinclded(fetchgstinclded.cs_value);
             setprocessingfeein(fetchprocessingfeein.cs_value);
@@ -1083,11 +1392,34 @@ const AddRegUser = () => {
         }
     };
 
+    const fetchCurrency = async () => {
+        try {
+            const token = getToken();
+            const response = await axios.get(`${BackendAPI}/paymentRoutes/getDropdownData`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            setLoading(false);
+
+            const { currency: fetchcurrency } = response.data;
+
+            setCurrencydata(fetchcurrency);
+        } catch (error) {
+            console.error('Error fetching dropdown data:', error);
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchCurrency();
+    }, []);
+
 
 
 
     const handleNavigation = () => {
-        navigate(`${process.env.PUBLIC_URL}registration/confirm-user-listing/Consoft`);
+        navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
     };
 
     const handleCheckboxChange = (e) => {
@@ -1127,7 +1459,9 @@ const AddRegUser = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            Use the <strong>Create User</strong> feature to register a new user and ensure all required information is accurately entered before creating.
+                            • The <strong>Create Confirm User</strong> feature allows for the registration of a new user by entering all required details accurately.<br />
+                            • Users can be added as complimentary (without registration fees) or with payment details included if necessary.<br />
+                            • If the checkbox for Confirmation mail is checked, a confirmation email will be sent after the registration process is completed.
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
@@ -1138,6 +1472,7 @@ const AddRegUser = () => {
                         <Card>
                             <CardBody>
                                 <Form onSubmit={onSubmit}
+                                    validate={required}
                                     render={({ handleSubmit, form }) => (
                                         <form className="needs-validation" noValidate="" onSubmit={handleSubmit}>
                                             {/* Main row for the first and second rows */}
@@ -1605,8 +1940,19 @@ const AddRegUser = () => {
                                                                             const validRegisteredUser = Array.isArray(registereduser) ? registereduser : [];
 
                                                                             let options = filteredTickets.map(ticket => {
-                                                                                const userTicketCount = validRegisteredUser.filter(user => user.cs_ticket === ticket.ticket_id).length;
-                                                                                const isLimitedAndFull = ticket.ticket_type === "Limited" && userTicketCount >= ticket.ticket_count;
+                                                                                const userTicketCount = registereduser.filter(user => parseInt(user.cs_ticket, 10) === ticket.ticket_id).length;
+                                                                                const isLimitedAndFull = ticket.ticket_type === "Limited" && userTicketCount >= parseInt(ticket.ticket_count);
+
+                                                                                const ticketCount = parseInt(ticket.ticket_count, 10) || 0; // Fallback to 0 if invalid
+                                                                                console.log("Parsed ticketCount for", ticket.ticket_id, ticketCount);
+                                    
+                                                                                const availableSeats = Math.max(0, ticketCount - userTicketCount); // Calculate available seats
+                                                                                console.log("Available seats for", ticket.ticket_id, availableSeats);
+                                                                                const maxSelectableTickets =
+                                                                                  ticket.ticket_type === "Limited"
+                                                                                    ? Math.min(availableSeats, parseInt(ticket.ticket_max_limit, 10) || 0)
+                                                                                    : parseInt(ticket.ticket_max_limit, 10) || 0;
+                                                                                console.log("maxSelectableTickets for", ticket.ticket_id, maxSelectableTickets);
 
                                                                                 let label = ticket.ticket_title;
 
@@ -1760,56 +2106,65 @@ const AddRegUser = () => {
                                                                     )
                                                                 } */}
 
-                                                                {
-                                                                    fieldType[index] === 'Dropdown' && (customfield[index] == 1) && (
-                                                                        <Field
-                                                                            name={`${fieldName[index]}`} // Use dynamic field name
-                                                                            validate={requiredfield[index] === '1' ? composeValidators(option) : (value) => composeValidators()(value)}
-                                                                        >
-                                                                            {({ input, meta }) => {
-                                                                                // Filter fetchCustomData based on matching cs_field_id with fieldId
-                                                                                const matchedOptions = custom.filter(option => option.cs_field_id === fieldId[index]);
+                                                                {fieldType[index] === 'Dropdown' && (customfield[index] === 1) && (
 
-                                                                                return (
-                                                                                    <div>
-                                                                                        <Label className='form-label' for={`displayname${index}`}>
-                                                                                            <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
-                                                                                        </Label>
-                                                                                        <Select
-                                                                                            {...input}
-                                                                                            options={requiredfield[index] === '1' ?
-                                                                                                matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option })) :
-                                                                                                [
-                                                                                                    { value: '', label: 'Select' }, // Adding the "Select" option as the first item
-                                                                                                    ...matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option }))
-                                                                                                ]
-                                                                                            }
+                                                                    <Field
+                                                                        name={`${fieldName[index]}`} // Dynamic field name
+                                                                        initialValue={Data?.[fieldName[index]] || ''} // Initial value from Data data
+                                                                        validate={requiredfield[index] === '1' ? composeValidators(option) : (value) => composeValidators()(value)}
+                                                                    >
+                                                                        {({ input, meta }) => {
+                                                                            const matchedOptions = custom.filter(option => option.cs_field_id === fieldId[index]);
 
-                                                                                            // options={[{ value: '', label: 'Select' }, // Adding the "Select" option as the first item
-                                                                                            // ...matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option }))]}
-                                                                                            placeholder={`Select ${label}`}
-                                                                                            isSearchable={true}
-                                                                                            onChange={(value) => input.onChange(value)}
-                                                                                            onBlur={input.onBlur}
-                                                                                            classNamePrefix="react-select"
-                                                                                        />
-                                                                                        {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                                                    </div>
-                                                                                );
-                                                                            }}
-                                                                        </Field>
-                                                                    )
-                                                                }
+                                                                            // Map matchedOptions to react-select format
+                                                                            let options = matchedOptions.map(option => ({
+                                                                                // value: option.cs_field_option_value,
+                                                                                value: option.cs_field_option,
+                                                                                label: option.cs_field_option,
+                                                                            }));
 
+                                                                            // Conditionally add the "Select" option based on requiredfield[index]
+                                                                            if (requiredfield[index] !== '1') {
+                                                                                options = [
+                                                                                    { value: '', label: 'Select' },
+                                                                                    ...options
+                                                                                ];
+                                                                            }
 
+                                                                            // Determine the selected option
+                                                                            const selectedOption = options.find(option => option.value === input.value);
 
+                                                                            return (
+                                                                                <div>
+                                                                                    <Label className='form-label' for={`displayname${index}`}>
+                                                                                        <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                    </Label>
+                                                                                    <Select
+                                                                                        {...input}
+                                                                                        options={options}
+                                                                                        placeholder={`Select ${label}`}
+                                                                                        isSearchable={true}
+                                                                                        onChange={(selectedOption) => {
+                                                                                            input.onChange(selectedOption ? selectedOption.value : '');
+                                                                                        }}
+                                                                                        onBlur={input.onBlur}
+                                                                                        classNamePrefix="react-select"
+                                                                                        value={selectedOption || null} // Set the selected option
+                                                                                    />
+                                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                                </div>
+                                                                            );
+                                                                        }}
+                                                                    </Field>
 
+                                                                )}
 
 
                                                                 {
                                                                     fieldType[index] === 'Long Text' && (
                                                                         <Field
                                                                             name={`${fieldName[index]}`} // Use dynamic field name
+                                                                            initialValue={Data?.[fieldName[index]] || ''}
                                                                             validate={requiredfield[index] === '1' ? composeValidators(required) : (value) => composeValidators()(value)}
                                                                         >
                                                                             {({ input, meta }) => (
@@ -1834,6 +2189,7 @@ const AddRegUser = () => {
                                                                     fieldType[index] === 'Number' && (
                                                                         <Field
                                                                             name={`${fieldName[index]}`} // Use dynamic field name
+                                                                            initialValue={Data?.[fieldName[index]] || ''}
                                                                             validate={requiredfield[index] === '1' ? composeValidators(number) : (value) => composeValidators()(value)}
                                                                         >
                                                                             {({ input, meta }) => (
@@ -1847,6 +2203,11 @@ const AddRegUser = () => {
                                                                                         id={`displayname${index}`}
                                                                                         type="number"
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1874,6 +2235,11 @@ const AddRegUser = () => {
                                                                                         type="text"
                                                                                         value={input.value || ''}
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1888,7 +2254,7 @@ const AddRegUser = () => {
                                                                     fieldType[index] === 'Email' && (
                                                                         <Field
                                                                             name={`${fieldName[index]}`} // Use dynamic field name
-                                                                            initialValue={Data?.cs_email}
+                                                                            initialValue={Data?.[fieldName[index]] || ''}
                                                                             validate={requiredfield[index] === '1' ? composeValidators(email) : (value) => composeValidators()(value)}
                                                                         >
                                                                             {({ input, meta }) => (
@@ -1902,6 +2268,11 @@ const AddRegUser = () => {
                                                                                         id={`displayname${index}`}
                                                                                         type="text"
                                                                                         placeholder={`Enter ${label}`}
+                                                                                        onBlur={(e) => {
+                                                                                            const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                            input.onBlur(trimmedValue);
+                                                                                            input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                        }}
                                                                                     />
                                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                                 </div>
@@ -1911,7 +2282,66 @@ const AddRegUser = () => {
                                                                 }
 
                                                                 {
-                                                                    fieldType[index] === 'Radio' && (
+                                                                    fieldType[index] === 'Radio' && fieldLabels[index] === 'Company Registration' && (
+                                                                        <Field
+                                                                            name={`cs_companyregistration`} // Use dynamic field name
+                                                                            initialValue={Data?.cs_companyregistration}
+                                                                            validate={requiredfield[index] === '1' ? composeValidators(radio) : (value) => composeValidators()(value)}
+                                                                        >
+                                                                            {({ input, meta }) => (
+                                                                                <div>
+                                                                                    <Label className='form-label' for={`radio${index}`}>
+                                                                                        <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                    </Label>
+                                                                                    <div>
+                                                                                        <Media body className="icon-state switch-sm">
+                                                                                            <Label className="switch">
+                                                                                                <Input
+                                                                                                    type="checkbox"
+                                                                                                    checked={input.value === 'Yes'}
+                                                                                                    onChange={(e) => {
+                                                                                                        const value = e.target.checked ? 'Yes' : 'No';
+                                                                                                        input.onChange(value); // Update form value
+                                                                                                        SetCompany(value); // Update local state
+                                                                                                    }}
+                                                                                                />
+                                                                                                <span className={"switch-state " + (input.value === 'Yes' ? "bg-success" : "bg-danger")}></span>
+                                                                                            </Label>
+                                                                                        </Media>
+                                                                                    </div>
+                                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                                </div>
+                                                                            )}
+                                                                        </Field>
+                                                                    )
+                                                                }
+
+                                                                {company === 'Yes' && fieldLabels[index] === 'Company Registration' && (
+
+                                                                    <Field name="cs_company_name">
+                                                                        {({ input, meta }) => (
+                                                                            <div>
+                                                                                {/* <Label className='form-label' htmlFor="cs_company_name"><strong>Designation</strong></Label> */}
+                                                                                <input
+                                                                                    {...input}
+                                                                                    className="form-control mt-2"
+                                                                                    id="cs_company_name"
+                                                                                    type="text"
+                                                                                    placeholder="Enter company name"
+                                                                                    onChange={(e) => {
+                                                                                        input.onChange(e); // Trigger onChange of the Field component
+                                                                                    }}
+                                                                                />
+                                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                            </div>
+                                                                        )}
+                                                                    </Field>
+
+                                                                )}
+
+
+                                                                {
+                                                                    fieldType[index] === 'Radio' && fieldLabels[index] !== 'Company Registration' && (
                                                                         <Field
                                                                             name={`${fieldName[index]}`} // Use dynamic field name
                                                                             initialValue={Data?.[fieldName[index]] || ''}
@@ -1944,6 +2374,7 @@ const AddRegUser = () => {
                                                                 {fieldType[index] === 'Username' && (
                                                                     <Field
                                                                         name={`${fieldName[index]}`} // Use dynamic field name
+                                                                        initialValue={Data?.[fieldName[index]] || ''}
                                                                         validate={requiredfield[index] === '1' ? composeValidators(username1, validateUniqueUsername) : (value) => composeValidators()(value)}
                                                                     >
                                                                         {({ input, meta }) => (
@@ -1956,7 +2387,13 @@ const AddRegUser = () => {
                                                                                     className="form-control"
                                                                                     id={`displayname${index}`}
                                                                                     type="text"
+                                                                                    // disabled={Data?.cs_username}
                                                                                     placeholder={`Enter ${label}`}
+                                                                                    onBlur={(e) => {
+                                                                                        const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                        input.onBlur(trimmedValue);
+                                                                                        input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                    }}
                                                                                 />
                                                                                 {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                             </div>
@@ -1967,6 +2404,7 @@ const AddRegUser = () => {
                                                                 {fieldType[index] === 'Password' && (
                                                                     <Field
                                                                         name={`${fieldName[index]}`} // Use dynamic field name
+                                                                        initialValue={Data?.[fieldName[index]] || ''}
                                                                         validate={requiredfield[index] === '1' ? composeValidators(password) : (value) => composeValidators()(value)}
                                                                     >
                                                                         {({ input, meta }) => (
@@ -1980,6 +2418,11 @@ const AddRegUser = () => {
                                                                                     id={`displayname${index}`}
                                                                                     type="text"
                                                                                     placeholder={`Enter ${label}`}
+                                                                                    onBlur={(e) => {
+                                                                                        const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                        input.onBlur(trimmedValue);
+                                                                                        input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                    }}
                                                                                 />
                                                                                 {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                             </div>
@@ -2255,14 +2698,13 @@ const AddRegUser = () => {
                                                     </>
                                                 )}
                                             </Row>
-                                            {!showNextStep && (
+                                            {!showNextStep && filteredAddon.length > 0 && (
 
                                                 <Row>
                                                     <Col md="12">
                                                         <Field
                                                             name="cs_addons"
                                                             initialValue={Data?.cs_addons || ''}
-                                                            validate={option}
                                                         >
                                                             {({ input, meta, form }) => {
                                                                 const selectedOptions = input.value ? input.value.split(',').map(id => parseInt(id)) : [];
@@ -2547,11 +2989,11 @@ const AddRegUser = () => {
 
 
                                                                                                                     }}
-                                                                                                                    // disabled={
-                                                                                                                    //     isLimitedAndFull ||
-                                                                                                                    //     (addon.addon_ispaid === 1 && !AddonAmountMap[addon.addon_id]) ||
-                                                                                                                    //     (selectedWorkshops[addon.addon_workshoprtype_id]?.selected_addon_id && selectedWorkshops[addon.addon_workshoprtype_id]?.selected_addon_id !== addon.addon_id)
-                                                                                                                    // }
+                                                                                                                // disabled={
+                                                                                                                //     isLimitedAndFull ||
+                                                                                                                //     (addon.addon_ispaid === 1 && !AddonAmountMap[addon.addon_id]) ||
+                                                                                                                //     (selectedWorkshops[addon.addon_workshoprtype_id]?.selected_addon_id && selectedWorkshops[addon.addon_workshoprtype_id]?.selected_addon_id !== addon.addon_id)
+                                                                                                                // }
                                                                                                                 >
                                                                                                                     {selectedOptions.includes(addon.addon_id) || (selectedWorkshops[addon.addon_workshoprtype_id]?.selected_addon_id === addon.addon_id) ? '- Remove' : '+ Add'}
                                                                                                                 </button>
@@ -2625,50 +3067,57 @@ const AddRegUser = () => {
 
 
                                             {/* Row for the checkbox - hide this when Next is clicked */}
+                                            {/* Row for the checkbox - hide this when Next is clicked */}
                                             {!showNextStep && (
                                                 <Row>
                                                     <Col md="8" className="mb-3">
                                                         <Field name="cs_iscomplimentary" type="checkbox">
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
                                                                     <input
                                                                         {...input}
                                                                         id="cs_iscomplimentary"
-                                                                        checked={input.checked} // Use input.checked to get the current checked state
+                                                                        checked={input.checked}
                                                                         onChange={(e) => {
-                                                                            const isChecked = e.target.checked ? 1 : 0; // Convert to 1 or 0
-                                                                            input.onChange(isChecked); // Update form state with 1 or 0
-                                                                            handleCheckboxChange(e); // Update checkbox state
+                                                                            const isChecked = e.target.checked ? 1 : 0;
+                                                                            input.onChange(isChecked);
+                                                                            handleCheckboxChange(e);
                                                                         }}
                                                                     />
-                                                                    <Label className='form-check-label' style={{ marginLeft: '10px' }} for="cs_iscomplimentary">
+                                                                    <Label
+                                                                        className="form-check-label ms-2"
+                                                                        for="cs_iscomplimentary"
+                                                                    >
                                                                         <strong>Is this a complimentary?</strong>
                                                                     </Label>
-                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                    {meta.error && meta.touched && (
+                                                                        <p className="d-block text-danger">{meta.error}</p>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                         </Field>
 
-
-                                                        <Field
-                                                            name="sendEmail"
-                                                            type="checkbox"
-                                                        >
+                                                        <Field name="sendEmail" type="checkbox">
                                                             {({ input, meta }) => (
-                                                                <div className="mb-2">
+                                                                <div className="d-flex align-items-center mb-2">
                                                                     <input
                                                                         {...input}
                                                                         id="sListing"
-                                                                        checked={sendEmail} // Controlled component
+                                                                        checked={sendEmail}
                                                                         onChange={(e) => {
-                                                                            input.onChange(e); // Trigger Field's onChange
-                                                                            setSendEmail(e.target.checked); // Update state
+                                                                            input.onChange(e);
+                                                                            setSendEmail(e.target.checked);
                                                                         }}
                                                                     />
-                                                                    <Label className='form-check-label' style={{ marginLeft: '10px' }} for="sListing">
-                                                                        <strong>Do you want to send a confirmation email to User ?</strong>
+                                                                    <Label
+                                                                        className="form-check-label ms-2"
+                                                                        for="sListing"
+                                                                    >
+                                                                        <strong>Do you want to send a confirmation email to User?</strong>
                                                                     </Label>
-                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                    {meta.error && meta.touched && (
+                                                                        <p className="d-block text-danger">{meta.error}</p>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                         </Field>
@@ -2676,13 +3125,14 @@ const AddRegUser = () => {
                                                 </Row>
                                             )}
 
+
                                             {/* Conditionally render the fields when showNextStep is true */}
                                             {showNextStep && (
-                                            <>
-                                                {/* First Row */}
-                                                <Row>
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        {/* <Field name="paymenttype_id">
+                                                <>
+                                                    {/* First Row */}
+                                                    <Row>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            {/* <Field name="paymenttype_id">
                                                                 {({ input, meta }) => (
                                                                     <div>
                                                                         <Label className="form-label" for="paymenttype_id">
@@ -2699,40 +3149,41 @@ const AddRegUser = () => {
                                                                 )}
                                                             </Field> */}
 
-                                                        <Field
-                                                            name="paymentstatus_id"
-                                                            initialValue={Data?.paymentstatus_id}
-                                                        >
-                                                            {({ input, meta }) => {
-                                                                const selectedOption = paymentStatusOptions.find(option => option.value === input.value);
+                                                            <Field
+                                                                name="paymentstatus_id"
+                                                                initialValue={Data?.paymentstatus_id}
+                                                                validate={option}
+                                                            >
+                                                                {({ input, meta }) => {
+                                                                    const selectedOption = paymentStatusOptions.find(option => option.value === input.value);
 
-                                                                console.log("Selected Option", selectedOption);
+                                                                    console.log("Selected Option", selectedOption);
 
-                                                                return (
-                                                                    <div>
-                                                                        <Label className='form-label' for="paymentstatus_id"><strong>Payment Status</strong></Label>
-                                                                        <Select
-                                                                            {...input}
-                                                                            options={paymentStatusOptions}
-                                                                            placeholder={`Select Payment Status`}
-                                                                            isSearchable={true}
-                                                                            onChange={(value) => {
-                                                                                input.onChange(value);
-                                                                            }}
-                                                                            onBlur={input.onBlur}
-                                                                            classNamePrefix="react-select"
-                                                                            isMulti={false}
-                                                                            value={selectedOption}
-                                                                        />
-                                                                        {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                                    </div>
-                                                                );
-                                                            }}
-                                                        </Field>
-                                                    </Col>
+                                                                    return (
+                                                                        <div>
+                                                                            <Label className='form-label' for="paymentstatus_id"><strong>Payment Status</strong><span className="text-danger"> *</span></Label>
+                                                                            <Select
+                                                                                {...input}
+                                                                                options={paymentStatusOptions}
+                                                                                placeholder={`Select Payment Status`}
+                                                                                isSearchable={true}
+                                                                                onChange={(value) => {
+                                                                                    input.onChange(value);
+                                                                                }}
+                                                                                onBlur={input.onBlur}
+                                                                                classNamePrefix="react-select"
+                                                                                isMulti={false}
+                                                                                value={selectedOption}
+                                                                            />
+                                                                            {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                        </div>
+                                                                    );
+                                                                }}
+                                                            </Field>
+                                                        </Col>
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        {/* <Field name="payment_mode">
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            {/* <Field name="payment_mode">
                                                                 {({ input, meta }) => (
                                                                     <div>
                                                                         <Label className="form-label" for="payment_mode">
@@ -2748,224 +3199,226 @@ const AddRegUser = () => {
                                                                     </div>
                                                                 )}
                                                             </Field> */}
-                                                        <Field
-                                                            name="paymenttype_id"
-                                                            initialValue={Data?.paymenttype_id}
-                                                        >
-                                                            {({ input, meta }) => {
-                                                                const selectedOption = paymentTypeOptions.find(option => option.value === input.value);
+                                                            <Field
+                                                                name="paymenttype_id"
+                                                                initialValue={Data?.paymenttype_id}
+                                                                validate={option}
+                                                            >
+                                                                {({ input, meta }) => {
+                                                                    const selectedOption = paymentTypeOptions.find(option => option.value === input.value);
 
-                                                                console.log("Selected Type Option", selectedOption);
+                                                                    console.log("Selected Type Option", selectedOption);
 
-                                                                return (
+                                                                    return (
+                                                                        <div>
+                                                                            <Label className='form-label' for="paymenttype_id"><strong>Payment Type</strong><span className="text-danger"> *</span></Label>
+                                                                            <Select
+                                                                                {...input}
+                                                                                options={paymentTypeOptions}
+                                                                                placeholder={`Select Payment Type`}
+                                                                                isSearchable={true}
+                                                                                onChange={(value) => {
+                                                                                    input.onChange(value);
+                                                                                }}
+                                                                                onBlur={input.onBlur}
+                                                                                classNamePrefix="react-select"
+                                                                                isMulti={false}
+                                                                                value={selectedOption}
+                                                                            />
+                                                                            {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                        </div>
+                                                                    );
+                                                                }}
+                                                            </Field>
+                                                        </Col>
+
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="cheque_no">
+                                                                {({ input, meta }) => (
                                                                     <div>
-                                                                        <Label className='form-label' for="paymenttype_id"><strong>Payment Type</strong></Label>
-                                                                        <Select
+                                                                        <Label className="form-label" for="cheque_no">
+                                                                            <strong>DD / CHEQUE NO. / TRANSACTION ID</strong>
+                                                                        </Label>
+                                                                        <input
                                                                             {...input}
-                                                                            options={paymentTypeOptions}
-                                                                            placeholder={`Select Payment Status`}
-                                                                            isSearchable={true}
-                                                                            onChange={(value) => {
-                                                                                input.onChange(value);
-                                                                            }}
-                                                                            onBlur={input.onBlur}
-                                                                            classNamePrefix="react-select"
-                                                                            isMulti={false}
-                                                                            value={selectedOption}
+                                                                            className="form-control"
+                                                                            id="cheque_no"
+                                                                            placeholder="Transaction ID"
                                                                         />
-                                                                        {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
                                                                     </div>
-                                                                );
-                                                            }}
-                                                        </Field>
-                                                    </Col>
-
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="cheque_no">
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="cheque_no">
-                                                                        <strong>DD / CHEQUE NO. / TRANSACTION ID</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="cheque_no"
-                                                                        placeholder="Transaction ID"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
 
 
-                                                </Row>
-                                                <Row>
+                                                    </Row>
+                                                    <Row>
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="payment_date">
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="payment_date">
-                                                                        <strong>Payment Date</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    {/* <input
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="payment_date">
+                                                                {({ input, meta }) => (
+                                                                    <div>
+                                                                        <Label className="form-label" for="payment_date">
+                                                                            <strong>Payment Date & Time</strong>
+                                                                        </Label>
+                                                                        {/* <input
                                                                             {...input}
                                                                             className="form-control"
                                                                             id="payment_date"
                                                                             placeholder="Payment Date"
                                                                         /> */}
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="payment_date"
-                                                                        type="date"
-                                                                        placeholder="Enter Payment Date"
-                                                                        // min={minDate}
-                                                                        max="9999-12-31"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
+                                                                        <input
+                                                                            {...input}
+                                                                            className="form-control"
+                                                                            id="payment_date"
+                                                                            type="datetime-local"
+                                                                            placeholder="Enter Payment Date"
+                                                                            // min={minDate}
+                                                                            max="9999-12-31T23:59"
+                                                                        />
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="bank">
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="bank">
-                                                                        <strong>Bank</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="bank"
-                                                                        placeholder="Bank"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="bank">
+                                                                {({ input, meta }) => (
+                                                                    <div>
+                                                                        <Label className="form-label" for="bank">
+                                                                            <strong>Bank</strong>
+                                                                        </Label>
+                                                                        <input
+                                                                            {...input}
+                                                                            className="form-control"
+                                                                            id="bank"
+                                                                            placeholder="Bank"
+                                                                        />
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="branch">
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="branch">
-                                                                        <strong>Branch</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="branch"
-                                                                        placeholder="Branch"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
-                                                </Row>
-                                                <Row>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="branch">
+                                                                {({ input, meta }) => (
+                                                                    <div>
+                                                                        <Label className="form-label" for="branch">
+                                                                            <strong>Branch</strong>
+                                                                        </Label>
+                                                                        <input
+                                                                            {...input}
+                                                                            className="form-control"
+                                                                            id="branch"
+                                                                            placeholder="Branch"
+                                                                        />
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
+                                                    </Row>
+                                                    <Row>
 
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="currency">
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="currency">
-                                                                        <strong>Payment Currency</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="currency"
-                                                                        placeholder="Currency"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+
+                                                            <div className="form-group">
+                                                                <Label><strong>Currency</strong></Label>
+                                                                <Select
+                                                                    name="currency"
+                                                                    value={currency} // Set the selected value as an object
+                                                                    onChange={(selectedOption) => setCurrency(selectedOption)} // Update currency with selected option
+                                                                    options={currencyOptions}
+                                                                    classNamePrefix="react-select"
+                                                                />
+                                                            </div>
+                                                        </Col>
 
 
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="conference_fees"
-                                                            initialValue={regAmount}
-                                                        >
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="conference_fees">
-                                                                        <strong>Registration Amount</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="conference_fees"
-                                                                        placeholder="Registration Amount"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="conference_fees"
+                                                                initialValue={regAmount}
+                                                                validate={required}
+                                                            >
+                                                                {({ input, meta }) => (
+                                                                    <div>
+                                                                        <Label className="form-label" for="conference_fees">
+                                                                            <strong>Registration Amount</strong><span className="text-danger"> *</span>
+                                                                        </Label>
+                                                                        <input
+                                                                            {...input}
+                                                                            className="form-control"
+                                                                            id="conference_fees"
+                                                                            placeholder="Registration Amount"
+                                                                        />
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
 
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="processing_fee"
-                                                            initialValue={processingAmount}                                                          >
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="processing_fee">
-                                                                        <strong>Processing Fees {processingFee.cs_value}%</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="processing_fee"
-                                                                        placeholder="Processing Fees"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
-                                                </Row>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="processing_fee"
+                                                                initialValue={processingAmount || Data?.processing_fee}                                                          >
+                                                                {({ input, meta }) => (
+                                                                    <div>
+                                                                        <Label className="form-label" for="processing_fee">
+                                                                            <strong>Processing Fees</strong>
+                                                                        </Label>
+                                                                        <input
+                                                                            {...input}
+                                                                            className="form-control"
+                                                                            id="processing_fee"
+                                                                            placeholder="Processing Fees"
+                                                                        />
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
+                                                    </Row>
 
-                                                <Row>
-                                                    <Col xs={12} sm={6} md={4} className="mb-3">
-                                                        <Field name="total_paid_amount"
-                                                            initialValue={totalPaidAmount}
-                                                        >
-                                                            {({ input, meta }) => (
-                                                                <div>
-                                                                    <Label className="form-label" for="total_paid_amount">
-                                                                        <strong>Total Paid Amount</strong><span className="text-danger"> *</span>
-                                                                    </Label>
-                                                                    <input
-                                                                        {...input}
-                                                                        className="form-control"
-                                                                        id="total_paid_amount"
-                                                                        placeholder="Total Paid Amount"
-                                                                    />
-                                                                    {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
-                                                                </div>
-                                                            )}
-                                                        </Field>
-                                                    </Col>
-                                                </Row>
-                                            </>
-                                             )} 
+                                                    <Row>
+                                                        <Col xs={12} sm={6} md={4} className="mb-3">
+                                                            <Field name="total_paid_amount"
+                                                                initialValue={totalPaidAmount || Data?.total_paid_amount}
+                                                                validate={required}
+                                                            >
+                                                                {({ input, meta }) => (
+                                                                    <div>
+                                                                        <Label className="form-label" for="total_paid_amount">
+                                                                            <strong>Total Paid Amount</strong><span className="text-danger"> *</span>
+                                                                        </Label>
+                                                                        <input
+                                                                            {...input}
+                                                                            className="form-control"
+                                                                            id="total_paid_amount"
+                                                                            placeholder="Total Paid Amount"
+                                                                        />
+                                                                        {meta.error && meta.touched && <p className="d-block text-danger">{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
+                                                        </Col>
+                                                    </Row>
+                                                </>
+                                            )}
 
 
                                             {/* Next button (shown when checkbox is unchecked and on the first step) */}
                                             {!showNextStep && !isChecked && (
-                                                <Row>
-                                                    <Col xs={12}>
-                                                        <Button color='primary' className="me-2 mt-3" onClick={handleNextClick}>Next</Button>
+                                                <Row className="d-flex justify-content-between align-items-center">
+                                                    <Col xs="auto">
+                                                        <Button color='primary' className="me-2 mt-3" type='submit' onClick={handleNextClick}>Next</Button>
+                                                    </Col>
+
+                                                    <Col xs="auto">
+                                                        <Button color='warning' className="me-2 mt-3" onClick={handleCancel}>Cancel</Button>
                                                     </Col>
                                                 </Row>
                                             )}
@@ -2977,10 +3430,11 @@ const AddRegUser = () => {
                                                         {/* Hide Back button when the checkbox is checked */}
                                                         {showNextStep && (
                                                             <Button color='success' className="me-2 mt-3" onClick={handleBackClick}>Back</Button>
+
                                                         )}
                                                     </Col>
                                                     <Col xs="auto">
-                                                        {/* <Button color='warning' className="me-2 mt-3">Cancel</Button> */}
+                                                        <Button color='warning' className="me-2 mt-3" onClick={handleCancel}>Cancel</Button>
                                                         <Button color='primary' type='submit' className="me-2 mt-3">Submit</Button>
                                                     </Col>
                                                 </Row>

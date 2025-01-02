@@ -450,6 +450,8 @@ const BasicUserListing = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        setSelectedItems([]);
     };
 
 
@@ -497,6 +499,7 @@ const BasicUserListing = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, 'User_Data.xlsx');
+        setSelectedItems([]);
     };
 
 
@@ -749,7 +752,7 @@ const BasicUserListing = () => {
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Manage User" title="Manage Basic Users" />
+            } parent="Manage Basic User" title="Manage Basic Users" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
@@ -848,6 +851,7 @@ const BasicUserListing = () => {
                                                         <input
                                                             type="checkbox"
                                                             onChange={handleSelectAll} // Function to handle 'select all' checkbox
+                                                            checked={selectedItems.length === users.length && users.length > 0} // Dynamically set checked status
                                                         />
                                                     </th>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
@@ -1007,6 +1011,7 @@ const BasicUserListing = () => {
                             }))}
                             onChange={handleColumnChange}
                             isClearable={false}
+                            classNamePrefix="react-select"
                             components={{
                                 MultiValueRemove: MultiValueRemoveWithCondition // Use custom MultiValueRemove component
                             }}

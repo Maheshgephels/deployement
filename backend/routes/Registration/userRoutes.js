@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { pool } = require('../../config/database');
-const moment = require('moment-timezone');
+const moment = require('moment-timezone'); // Import moment-timezone
 const multer = require('multer');
 const verifyToken = require('../api/middleware/authMiddleware');
 const queueMiddleware = require('../api/middleware/queueMiddleware');
@@ -12,12 +12,23 @@ const nodemailer = require('nodemailer'); // Import nodemailer
 
 
 // Create a transporter using Gmail SMTP
+// const transporter = nodemailer.createTransport({
+//   service: 'gmail',
+//   auth: {
+//     user: process.env.GMAIL_USER, // Your Gmail address
+//     pass: process.env.GMAIL_PASS,  // Your Gmail app password
+//   },
+// });
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER, // Your Gmail address
     pass: process.env.GMAIL_PASS,  // Your Gmail app password
   },
+  tls: {
+    rejectUnauthorized: false  // Allow self-signed certificates
+  }
 });
 
 // Set up multer for file uploads
@@ -138,7 +149,7 @@ router.get('/getBasicUser', verifyToken, async (req, res) => {
     FROM cs_os_field_data
     WHERE cs_visible_add_user = 1 
       AND cs_visible_reg_basicform = 1
-      AND cs_status IN (1, 2) 
+      AND cs_status IN (1, 2, 3) 
       AND cs_field_id != 1
     ORDER BY cs_field_order
   `;
@@ -154,7 +165,7 @@ router.get('/getBasicUser', verifyToken, async (req, res) => {
     const fieldDataQuery = `
       SELECT cs_field_name
       FROM cs_os_field_data
-      WHERE cs_status IN (1, 2) AND cs_visible_add_user = 1 AND cs_visible_reg_basicform = 1
+      WHERE cs_status IN (1, 2, 3) AND cs_visible_add_user = 1 AND cs_visible_reg_basicform = 1
       ORDER BY cs_field_order
     `;
 
@@ -485,7 +496,8 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
       search = '',
       catID,
       ticketId, // Capture ticketId from query parameters
-      sortColumn = 'id',
+      addonId,
+      sortColumn = 'cs_regno',
       sortOrder = 'DESC',
       opt = '',
       selectedColumns,
@@ -506,7 +518,7 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
     const allDataQuery = `
       SELECT cs_field_name, cs_field_label
       FROM cs_os_field_data
-      WHERE cs_status IN (1, 2) AND cs_visible_add_user = 1 OR cs_field_id = 1
+      WHERE cs_status IN (1, 3) AND cs_visible_add_user = 1 OR cs_field_id = 1
       ORDER BY cs_field_order
     `;
 
@@ -519,7 +531,7 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
     const fieldDataQuery = `
       SELECT cs_field_name
       FROM cs_os_field_data
-      WHERE cs_status IN (1, 2) AND cs_visible_add_user = 1 OR cs_field_id = 1
+      WHERE cs_status IN (1, 3) AND cs_visible_add_user = 1 OR cs_field_id = 1
       ORDER BY cs_field_order
     `;
 
@@ -529,7 +541,7 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
     console.log('fieldData', columnsToFetch);
 
     const validColumns = ['id', 'cs_first_name', 'cs_last_name', 'cs_reg_category', 'cs_title', 'cs_workshop_category', 'cs_country', 'cs_state', 'cs_city', 'cs_email', 'cs_address', 'cs_phone', 'cs_company_name', 'cs_reg_type', 'cs_status']; // Valid column names
-    const columnToSortBy = validColumns.includes(sortColumn) ? sortColumn : 'id';
+    const columnToSortBy = validColumns.includes(sortColumn) ? sortColumn : 'cs_regno';
 
     let query = `
       SELECT ${columnsToFetch}, id, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at, cs_status, cs_isduplicate, cs_reg_cat_id
@@ -559,7 +571,7 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
 
         searchConditions = `
           (
-            cs_first_name LIKE '%${firstName} ${middleInitial}%' AND cs_last_name LIKE '%${lastName}%'
+            cs_first_name LIKE '%${firstName}%' OR cs_middlename LIKE '${middleInitial}' AND cs_last_name LIKE '%${lastName}%'
           )
         `;
       } else if (searchTerms.length === 2) {
@@ -596,6 +608,10 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
     // Filter by ticket ID if provided
     if (ticketId) {
       query += ` AND cs_ticket = ${ticketId}`; // Adjust the column name if necessary
+    }
+
+    if (addonId) {
+      query += ` AND cs_addons = ${addonId}`; // Adjust the column name if necessary
     }
 
     // Filter by comilmentary if provided
@@ -638,6 +654,54 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
     }
 
     for (let user of userData) {
+      // Step 1: Handle tickets as before
+      const ticketQuery = `
+        SELECT ticket_title
+        FROM cs_reg_tickets
+        WHERE ticket_id = ?
+      `;
+    
+      try {
+        const [ticketData] = await pool.query(ticketQuery, [user.cs_ticket]);
+        if (ticketData.length > 0 && ticketData[0].ticket_title) {
+          user.cs_ticket = ticketData[0].ticket_title;
+        }
+      } catch (error) {
+        console.error("Error fetching ticket data:", error);
+      }
+    
+      // Step 2: Handle add-ons
+      if (user.cs_addons) {
+        const addonIds = user.cs_addons.split(',').map(id => parseInt(id.trim())); // Convert comma-separated string to array of integers
+    
+        const addonsQuery = `
+          SELECT addon_id, addon_title
+          FROM cs_reg_add_ons
+          WHERE addon_id IN (?)
+        `;
+    
+        try {
+          const [addonsData] = await pool.query(addonsQuery, [addonIds]);
+          if (addonsData.length > 0) {
+            // Create a mapping of addon_id to addon_title
+            const addonMapping = addonsData.reduce((acc, addon) => {
+              acc[addon.addon_id] = addon.addon_title;
+              return acc;
+            }, {});
+    
+            // Replace cs_addons with their respective titles
+            user.cs_addons = addonIds
+              .map(id => addonMapping[id]) // Map IDs to their titles
+              .filter(Boolean) // Remove undefined values if any ID doesn't match
+              .join(', '); // Join titles with commas
+          }
+        } catch (error) {
+          console.error("Error fetching add-on data:", error);
+        }
+      }
+    }
+    
+    for (let user of userData) {
       const eventdaysQuery = `
         SELECT cs_reg_daytype_name
         FROM cs_os_reg_daytype
@@ -653,6 +717,8 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
         console.error("Error fetching eventday data:", error);
       }
     }
+
+    console.log("Query", query);
 
     let totalCountQuery = `
       SELECT COUNT(*) AS total
@@ -709,6 +775,10 @@ router.get('/getConfirmUser', verifyToken, async (req, res) => {
       totalCountQuery += ` AND cs_ticket = ${ticketId}`; // Adjust the column name if necessary
     }
 
+    if (addonId) {
+      totalCountQuery += ` AND cs_addons = ${addonId}`; // Adjust the column name if necessary
+    }
+
     if (iscomplimentary) {
       totalCountQuery += ` AND cs_iscomplimentary = 1`; // Adjust the column name if necessary
     }
@@ -757,7 +827,7 @@ router.get('/getTempUser', verifyToken, async (req, res) => {
     const allDataQuery = `
       SELECT cs_field_name, cs_field_label
       FROM cs_os_field_data
-      WHERE cs_visible_add_user = 1 AND cs_status IN (1, 2)
+      WHERE cs_visible_add_user = 1 AND cs_status IN (1, 3)
       ORDER BY cs_field_order
     `;
 
@@ -772,7 +842,7 @@ router.get('/getTempUser', verifyToken, async (req, res) => {
     const fieldDataQuery = `
       SELECT cs_field_name
       FROM cs_os_field_data
-      WHERE cs_status IN (1, 2) AND cs_visible_add_user = 1 
+      WHERE cs_status IN (1, 3) AND cs_visible_add_user = 1 
       ORDER BY cs_field_order
     `;
 
@@ -799,7 +869,10 @@ router.get('/getTempUser', verifyToken, async (req, res) => {
         u.cs_isduplicate,
         u.cs_reg_cat_id,
         u.cs_regno,
+        u.cs_ticket,
+        u.cs_addons,
         p.total_paid_amount,      -- From cs_reg_temp_payment
+        p.current_paid_amount,    -- From cs_reg_temp_payment
         p.processing_fee,         -- From cs_reg_temp_payment
         p.conference_fees,        -- From cs_reg_temp_payment
         p.branch,                 -- From cs_reg_temp_payment
@@ -820,7 +893,7 @@ router.get('/getTempUser', verifyToken, async (req, res) => {
       FROM cs_os_users u
       INNER JOIN cs_reg_temp_payment p ON u.id = p.user_id
       LEFT JOIN cs_reg_tickets t ON u.cs_ticket = t.ticket_id
-      LEFT JOIN cs_reg_add_ons a ON u.cs_addons = a.addon_id
+      LEFT JOIN cs_reg_add_ons a ON FIND_IN_SET(a.addon_id, u.cs_addons)
       WHERE u.cs_isconfirm = 0
       AND p.confirm_payment = 0
       AND p.payment_mode = 'online'
@@ -841,6 +914,7 @@ router.get('/getTempUser', verifyToken, async (req, res) => {
         u.cs_reg_cat_id,
         u.cs_regno,
         p.total_paid_amount,      -- From cs_reg_temp_payment
+        p.current_paid_amount,      -- From cs_reg_temp_payment
         p.processing_fee,         -- From cs_reg_temp_payment
         p.conference_fees,        -- From cs_reg_temp_payment
         p.branch,                 -- From cs_reg_temp_payment
@@ -880,6 +954,7 @@ router.get('/getTempUser', verifyToken, async (req, res) => {
         u.cs_reg_cat_id,
         u.cs_regno,
         p.total_paid_amount,      -- From cs_reg_temp_payment
+        p.current_paid_amount,      -- From cs_reg_temp_payment
         p.processing_fee,         -- From cs_reg_temp_payment
         p.conference_fees,        -- From cs_reg_temp_payment
         p.branch,                 -- From cs_reg_temp_payment
@@ -1115,7 +1190,8 @@ router.get('/getField', verifyToken, async (req, res) => {
     SELECT ${columnsToFetch}
     FROM cs_os_field_data
     LEFT JOIN cs_os_field_type ON cs_os_field_data.cs_field_type = cs_os_field_type.cs_field_type
-    WHERE cs_visible_reg_adminform = 1
+    WHERE cs_visible_reg_adminform = 1 AND cs_os_field_data.cs_status IN (1, 3) AND cs_field_name <> 'cs_addons'
+
     ORDER BY cs_field_order; 
 `;
 
@@ -1139,7 +1215,7 @@ router.get('/getEditField', verifyToken, async (req, res) => {
       SELECT ${columnsToFetch}
       FROM cs_os_field_data
       LEFT JOIN cs_os_field_type ON cs_os_field_data.cs_field_type = cs_os_field_type.cs_field_type
-      WHERE  cs_visible_reg_adminform = 1
+      WHERE  cs_visible_reg_adminform = 1 AND cs_os_field_data.cs_status IN (1, 3)
         AND cs_os_field_data.cs_field_id NOT IN (12, 13, 24, 25)
       ORDER BY cs_field_order; 
     `;
@@ -1272,8 +1348,8 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const reg_cat = ['cs_reg_category', 'cs_reg_cat_id'];
     const work_cat = ['cs_workshop_name', 'cs_workshop_id'];
     const day_type = ['cs_reg_daytype_name', 'cs_reg_daytype_id'];
-    const ticket = ['ticket_id', 'ticket_title', 'ticket_type', 'ticket_category','ticket_ispaid','ticket_type','ticket_count'];
-    const addon = ['addon_id', 'addon_title', 'addon_ticket_ids','addon_cat_type','addon_workshop_id','addon_accper_type','	addon_accper_limit','addon_type','addon_count','addon_ispaid','addon_workshoprtype_id'];
+    const ticket = ['ticket_id', 'ticket_title', 'ticket_type', 'ticket_category', 'ticket_ispaid', 'ticket_type', 'ticket_count'];
+    const addon = ['addon_id', 'addon_title', 'addon_ticket_ids', 'addon_cat_type', 'addon_workshop_id', 'addon_accper_type', '	addon_accper_limit', 'addon_type', 'addon_count', 'addon_ispaid', 'addon_workshoprtype_id'];
     const paymenttype = ['paymenttype_id', 'paymenttype_name'];
     const paymentstatus = ['paymentstatus_id', 'paymentstatus_name'];
     const ticketAmount = ['ticket_id', 'tick_amount', 'tick_duration_start_date', 'tick_duration_till_date'];
@@ -1299,7 +1375,13 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const [facilitytypeData] = await pool.query(`SELECT ${facilitytype.join(',')} FROM cs_os_facilitytype`);
     const [prefixData] = await pool.query(`SELECT ${prefix.join(',')} FROM cs_os_name_prefixes`);
     const [countryData] = await pool.query(`SELECT ${country.join(',')} FROM cs_tbl_country`);
-    const [statesData] = await pool.query(`SELECT ${states.join(',')} FROM cs_tbl_states`);
+    // const [statesData] = await pool.query(`SELECT ${states.join(',')} FROM cs_tbl_states`);
+    const [statesData] = await pool.query(
+      `SELECT ${states.join(',')} 
+       FROM cs_tbl_states 
+       WHERE cs_country_id = 101
+       ORDER BY cs_state_name ASC`
+    );
     // const [regCatData] = await pool.query(`SELECT ${reg_cat.join(',')} FROM cs_os_category WHERE cs_status = 1`);
     const [regCatData] = await pool.query(`SELECT ${reg_cat.join(',')} FROM cs_os_category WHERE cs_status = 1 AND cs_show_conference_form = 1`);
     const [workshopData] = await pool.query(`SELECT ${work_cat.join(',')} FROM cs_os_workshop WHERE cs_status = 1`);
@@ -1310,13 +1392,15 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
     const [paymentTypeData] = await pool.query(`SELECT ${paymenttype.join(',')} FROM cs_reg_payment_type WHERE status = 1`);
     const [paymentStatusData] = await pool.query(`SELECT ${paymentstatus.join(',')} FROM cs_reg_payment_status WHERE status = 1`);
     const [workshoptypeData] = await pool.query(`SELECT ${workshop_type.join(',')} FROM cs_os_workshop_type WHERE cs_status = 1`);
-    // const [ticketAmountData] = await pool.query(`SELECT ${ticketAmount.join(',')} FROM cs_reg_ticket_duration WHERE status = 1`);
+    const [timezoneData] = await pool.query(`SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter = "Time Zone"`);
     // Assuming `ticketAmount` is an array of columns you want to select
     const currentDate = new Date(); // Get the current date
-    const formattedCurrentDate = currentDate.toISOString().split('T')[0]; // Get the date in 'YYYY-MM-DD' format
+    const AdminTimezone = timezoneData[0]?.cs_value;
+    console.log("Timezone", AdminTimezone);
 
-
-    console.log("Formatted Current Date", formattedCurrentDate);
+    // Format current date in AdminTimezone
+    const formattedCurrentDate = moment().tz(AdminTimezone).format('YYYY-MM-DD');
+    console.log("Date", formattedCurrentDate);
 
     const [ticketAmountData] = await pool.query(`
       SELECT ${ticketAmount.join(', ')} 
@@ -1326,7 +1410,7 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
       AND Status = 1
     `, [formattedCurrentDate, formattedCurrentDate]);
 
-    console.log(ticketAmountData);
+    // console.log("Ticket DATA",ticketAmountData);
 
     // const [addonAmountData] = await pool.query(`SELECT ${addonAmount.join(',')} FROM cs_reg_addon_duration WHERE status = 1`);
 
@@ -1334,11 +1418,11 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
       SELECT ${addonAmount.join(', ')} 
       FROM cs_reg_addon_duration 
       WHERE addon_duration_start_date <= ? 
-      AND 	addon_duration_till_date >= ? 
+      AND addon_duration_till_date >= ? 
       AND Status = 1
     `, [formattedCurrentDate, formattedCurrentDate]);
 
-    console.log(addonAmountData);
+    // console.log(addonAmountData);
     const [processingFeesData] = await pool.query(processingFeesQuery);
     const [facultytypeData] = await pool.query(`SELECT ${facultytype.join(',')} FROM cs_app_facultytype WHERE status = 1`);
     const [exhibitorData] = await pool.query(`SELECT ${exhibitor.join(',')} FROM cs_app_exhibitor WHERE status = 1`);
@@ -1380,7 +1464,7 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
       processinginclded: processingincldedData,
       processingfeeornot: processingfeeornotData,
       gstamount: gstamount,
-      paymentmode : paymentmodeData,
+      paymentmode: paymentmodeData,
       workshoptype: workshoptypeData
 
     };
@@ -1394,19 +1478,93 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
 });
 
 
+// router.post('/addBasicUser', verifyToken, async (req, res) => {
+//   console.log(req.body);
+
+//   try {
+//     const userData = req.body;
+
+//     // Exclude 'sendEmail' field from userData
+//     const { sendEmail, ...filteredUserData } = userData;
+
+//     // Get the columns (keys) and values from the filtered user data
+//     const columns = Object.keys(filteredUserData);
+//     const values = Object.values(filteredUserData);
+
+//     // Add 'cs_module' column and its value if it's constant or from req.body
+//     columns.push('cs_module');
+//     values.push(1); // Set your desired value for cs_module
+
+//     // Create placeholders for the values in the SQL query
+//     const placeholders = values.map(() => '?').join(', ');
+
+//     // Construct the dynamic SQL query for inserting the new user
+//     const insertQuery = `
+//       INSERT INTO cs_os_users (${columns.join(', ')})
+//       VALUES (${placeholders})
+//     `;
+
+//     // Execute the query and retrieve the new user ID
+//     const [insertResult] = await pool.query(insertQuery, values);
+//     const newUserId = insertResult.insertId;
+
+//     // Sending email with error handling
+//     if (userData.sendEmail) { // Use the 'sendEmail' field separately
+//       try {
+//         const [userRow] = await pool.query('SELECT * FROM cs_os_users WHERE id = ?', [newUserId]);
+//         if (userRow.length > 0) {
+//           await sendBasicEmail(userRow[0]);
+
+//           // Update cs_basicmail to 1 after successfully sending the email
+//           await pool.query(
+//             'UPDATE cs_os_users SET cs_basicmail = ? WHERE id = ?',
+//             [1, newUserId]
+//           );
+//           console.log("cs_basicmail updated successfully for UserId:", newUserId);
+//         }
+//       } catch (emailError) {
+//         console.error('Error sending email:', emailError);
+
+//         // Set cs_basicmail to 0 if there is an error
+//         await pool.query(
+//           'UPDATE cs_os_users SET cs_basicmail = ? WHERE id = ?',
+//           [0, newUserId]
+//         );
+
+//         return res.status(500).json({ error: 'Error sending email' });
+//       }
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: "User added successfully",
+//       data: { ...filteredUserData }
+//     });
+//   } catch (error) {
+//     console.error('Error adding user:', error);
+//     return res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
+
+
 router.post('/addBasicUser', verifyToken, async (req, res) => {
   console.log(req.body);
 
   try {
     const userData = req.body;
 
-    // Get the columns (keys) and values from the request body dynamically
-    const columns = Object.keys(userData);
-    const values = Object.values(userData);
+    // Exclude 'sendEmail' field from userData
+    const { sendEmail, ...filteredUserData } = userData;
+
+    // Get the columns (keys) and values from the filtered user data
+    const columns = Object.keys(filteredUserData);
+    const values = Object.values(filteredUserData);
 
     // Add 'cs_module' column and its value if it's constant or from req.body
-    columns.push('cs_module');
-    values.push(1);  // Set your desired value for cs_module
+    columns.push('cs_module', 'cs_source');
+    values.push(1, 2); // Set your desired value for cs_module
+
+        //cs_source define from where user inserted into a database
 
     // Create placeholders for the values in the SQL query
     const placeholders = values.map(() => '?').join(', ');
@@ -1421,13 +1579,77 @@ router.post('/addBasicUser', verifyToken, async (req, res) => {
     const [insertResult] = await pool.query(insertQuery, values);
     const newUserId = insertResult.insertId;
 
+    // Function to remove special characters
+    const sanitizeString = (str) => str.replace(/[^a-zA-Z0-9]/g, '');
 
-    res.status(200).json({ success: true, message: "User added successfully", data: { ...userData } });
+    // Generate username and password only if they are not provided
+    let username = filteredUserData.cs_username;
+    let password = filteredUserData.cs_password;
+
+    if (!username || !password) {
+      // If username or password is not available, generate them
+
+      // Sanitize and format the first and last names
+      const sanitizedFirstName = sanitizeString(filteredUserData['cs_first_name'].toLowerCase());
+      const sanitizedLastNameInitial = sanitizeString(filteredUserData['cs_last_name'][0].toLowerCase());
+      const sanitizedLastName = sanitizeString(filteredUserData['cs_last_name'].toLowerCase());
+      const sanitizedFirstNameInitial = sanitizeString(filteredUserData['cs_first_name'][0].toUpperCase());
+
+      // Generate username and password
+      username = `${sanitizedFirstName}${sanitizedLastNameInitial}${newUserId}`;
+      password = `${sanitizedFirstNameInitial}${sanitizedLastName.substring(0, 5)}@${newUserId}`;
+
+      console.log("Generated Username:", username);
+      console.log("Generated Password:", password);
+    }
+
+    // Update the user's username and password if needed
+    const updateUserQuery = `
+      UPDATE cs_os_users
+      SET cs_username = ?, cs_password = ?
+      WHERE id = ?
+    `;
+
+    await pool.query(updateUserQuery, [username, password, newUserId]);
+
+    // Sending email with error handling
+    if (sendEmail) {
+      try {
+        const [userRow] = await pool.query('SELECT * FROM cs_os_users WHERE id = ?', [newUserId]);
+        if (userRow.length > 0) {
+          await sendBasicEmail(userRow[0]);
+
+          // Update cs_basicmail to 1 after successfully sending the email
+          await pool.query(
+            'UPDATE cs_os_users SET cs_basicmail = ? WHERE id = ?',
+            [1, newUserId]
+          );
+          console.log("cs_basicmail updated successfully for UserId:", newUserId);
+        }
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+
+        // Set cs_basicmail to 0 if there is an error
+        await pool.query(
+          'UPDATE cs_os_users SET cs_basicmail = ? WHERE id = ?',
+          [0, newUserId]
+        );
+
+        return res.status(500).json({ error: 'Error sending email' });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User added and credentials generated successfully",
+      data: { ...filteredUserData, username, password }
+    });
   } catch (error) {
     console.error('Error adding user:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
 router.post('/editBasicUser', verifyToken, async (req, res) => {
@@ -1791,7 +2013,7 @@ router.post('/editConfirmUser', verifyToken, async (req, res) => {
 router.post('/addConfirmUser', verifyToken, upload.fields([
   { name: 'photo', maxCount: 1 }, { name: 'resume', maxCount: 1 }
 ]), async (req, res) => {
-  console.log('Request Body khushboo:', req.body); // Log the incoming request body
+  console.log('Request Body:', req.body); // Log the incoming request body
   const photo = req.files.photo ? req.files.photo[0].path : null;
   const resume = req.files.resume ? req.files.resume[0].path : null;
 
@@ -1807,17 +2029,18 @@ router.post('/addConfirmUser', verifyToken, upload.fields([
     const UserId = req.body.Id; // Ensure this is being sent in the request
     const payment = req.body.paymentDetails ? JSON.parse(req.body.paymentDetails) : {};
     const faculty = req.body.facultyDetails ? JSON.parse(req.body.facultyDetails) : {};
+    const accompany_person_data = req.body.accompany_person_data;
 
 
     console.log('User Data:', userData); // Log userData
     console.log('User ID:', UserId); // Log UserId
     console.log('Payment Details:', payment); // Log payment details
     console.log('Faculty Details:', faculty); // Log faculty details
-    console.log('Received accompany_person_data:', accompany_person_data);
-    
+    // console.log('Received accompany_person_data:', accompany_person_data);
+
 
     // Exclude sendEmail from userData
-    const { sendEmail, facultytype_id, description, long_description, accompany_person_data, ...filteredUserData } = userData;
+    const { sendEmail, facultytype_id, description, long_description, ...filteredUserData } = userData;
 
     // Get columns and values from the filtered userData
     const columns = Object.keys(filteredUserData);
@@ -1865,8 +2088,10 @@ router.post('/addConfirmUser', verifyToken, upload.fields([
     console.log("New Registration Number:", regNo); // Log new registration number
 
     // Add cs_reg_cat_id to columns and values
-    columns.push('cs_reg_cat_id', 'cs_reg_category', 'cs_regno', 'cs_module', 'cs_isconfirm');
-    values.push(userData.cs_reg_category, csRegCat, regNo, csModuleValue, 1);
+    columns.push('cs_reg_cat_id', 'cs_reg_category', 'cs_regno', 'cs_module', 'cs_isconfirm', 'cs_source');
+    values.push(userData.cs_reg_category, csRegCat, regNo, csModuleValue, 1, 2);
+
+        //cs_source define from where user inserted into a database
 
     console.log('Updated Columns for SQL:', columns); // Log updated columns
     console.log('Updated Values for SQL:', values); // Log updated values
@@ -1885,15 +2110,41 @@ router.post('/addConfirmUser', verifyToken, upload.fields([
     const [updateResult] = await pool.query(updateQuery, [...values, UserId]);
     console.log("Update Result:", updateResult); // Log update result
 
+    const sanitizeString = (str) => str.replace(/[^a-zA-Z0-9]/g, '');
+
+    let username = filteredUserData.cs_username;
+    let password = filteredUserData.cs_password;
+
+    if (!username || !password) {
+      const sanitizedFirstName = sanitizeString(filteredUserData['cs_first_name'].toLowerCase());
+      const sanitizedLastNameInitial = sanitizeString(filteredUserData['cs_last_name'][0].toLowerCase());
+      const sanitizedLastName = sanitizeString(filteredUserData['cs_last_name'].toLowerCase());
+      const sanitizedFirstNameInitial = sanitizeString(filteredUserData['cs_first_name'][0].toUpperCase());
+
+      username = `${sanitizedFirstName}${sanitizedLastNameInitial}${UserId}`;
+      password = `${sanitizedFirstNameInitial}${sanitizedLastName.substring(0, 5)}@${UserId}`;
+
+      console.log("Generated Username:", username);
+      console.log("Generated Password:", password);
+
+      const updateUserQuery = `
+        UPDATE cs_os_users
+        SET cs_username = ?, cs_password = ?
+        WHERE id = ?
+      `;
+      await pool.query(updateUserQuery, [username, password, UserId]);
+    }
+
+
     console.log('Received accompany_person_data:', accompany_person_data);
 
     // Step 1: Parse the string into an object
     let parsedData;
     try {
-        parsedData = JSON.parse(accompany_person_data);
+      parsedData = JSON.parse(accompany_person_data);
     } catch (error) {
-        console.error('Error parsing accompany_person_data:', error);
-        return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
+      console.error('Error parsing accompany_person_data:', error);
+      return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
     }
 
     console.log('Parsed Data:', parsedData);
@@ -1902,43 +2153,45 @@ router.post('/addConfirmUser', verifyToken, upload.fields([
     const firstKey = Object.keys(parsedData)[0];  // Get the first key (e.g., "18")
     const personArray = parsedData[firstKey];  // Get the array associated with that key
 
+
+
     console.log('Extracted personArray:', personArray);
 
     if (Array.isArray(personArray)) {
-        // Step 3: Process each person in the array
-        personArray.forEach(person => {
-            // Here, you get each person's name and age
-            console.log('Person:', person);
+      // Step 3: Process each person in the array
+      personArray.forEach(person => {
+        // Here, you get each person's name and age
+        console.log('Person:', person);
 
-            // If you want to process or store the data, you can now map this information
-            const accperData = {
+        // If you want to process or store the data, you can now map this information
+        const accperData = {
 
-                accper_name: person.name,
-                accper_age: person.age || null, // Handle if age is missing
-            };
+          accper_name: person.name,
+          accper_age: person.age || null, // Handle if age is missing
+        };
 
-            console.log('Mapped accperData:', accperData);
+        console.log('Mapped accperData:', accperData);
 
-            // Optionally, you can insert this data into the database or process it as needed
-            // For example, if you're inserting this data:
-            const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id,accper_name, accper_age) VALUES ?';
-            const insertData = [[userid,accperData.accper_name, accperData.accper_age]];
+        // Optionally, you can insert this data into the database or process it as needed
+        // For example, if you're inserting this data:
+        const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id,accper_name, accper_age) VALUES ?';
+        const insertData = [[UserId, accperData.accper_name, accperData.accper_age]];
 
-            console.log('Data to insert into the database:', insertData);
+        console.log('Data to insert into the database:', insertData);
 
-            try {
-                // Insert into the database (example using a pool)
-                 pool.query(insertAccperQuery, [insertData]);
-                console.log('Accompanying person inserted:', accperData);
-            } catch (error) {
-                console.error('Error inserting accompanying person:', error);
-            }
-        });
+        try {
+          // Insert into the database (example using a pool)
+          pool.query(insertAccperQuery, [insertData]);
+          console.log('Accompanying person inserted:', accperData);
+        } catch (error) {
+          console.error('Error inserting accompanying person:', error);
+        }
+      });
 
-        // return res.status(200).json({ message: 'Accompanying persons processed successfully' });
+      // return res.status(200).json({ message: 'Accompanying persons processed successfully' });
     } else {
-        console.log('Expected personArray, but found:', personArray);
-        // return res.status(400).json({ message: 'No valid array of persons found in the parsed data' });
+      console.log('Expected personArray, but found:', personArray);
+      // return res.status(400).json({ message: 'No valid array of persons found in the parsed data' });
     }
 
 
@@ -2029,7 +2282,7 @@ router.post('/addConfirmUser', verifyToken, upload.fields([
     const [warnings] = await pool.query('SHOW WARNINGS');
     console.log("Warnings:", warnings); // Log any SQL warnings
 
-   
+
     // Sending email with error handling
     if (userData.sendEmail) {
       try {
@@ -2085,19 +2338,11 @@ router.post('/addBasConfUser', verifyToken, upload.fields([
     const UserId = req.body.Id; // Ensure this is being sent in the request
     const payment = req.body.paymentDetails ? JSON.parse(req.body.paymentDetails) : {};
     const faculty = req.body.facultyDetails ? JSON.parse(req.body.facultyDetails) : {};
-    const accompany_person_data = req.body.accompany_person_data ;
+    const accompany_person_data = req.body.accompany_person_data;
 
     console.log('User Data:', userData); // Log userData
     console.log('Payment Details:', payment); // Log payment details
     console.log('Faculty Details:', faculty); // Log faculty details
-
-    // console.log("Email", sendEmail);
-
-    // Get the columns (keys) from the userData, excluding `sendEmail`
-    // const columns = Object.keys(userData);
-    // const values = Object.values(userData);
-    //     const columns = Object.keys(userData).filter(col => col !== 'sendEmail'); // Exclude sendEmail
-    // const values = Object.values(userData).filter((_, index) => columns[index] !== 'sendEmail');
 
     // Exclude sendEmail from userData
     const { sendEmail, ...filteredUserData } = userData;
@@ -2152,10 +2397,11 @@ router.post('/addBasConfUser', verifyToken, upload.fields([
 
     // Add cs_reg_cat_id and other necessary fields to columns and values
     // Add cs_reg_cat_id and other necessary fields to columns and values
-    columns.push('cs_reg_cat_id', 'cs_regno', 'cs_module', 'cs_isconfirm');
-    values.push(userData.cs_reg_category, regNo, csModuleValue, 1);
+    columns.push('cs_reg_cat_id', 'cs_regno', 'cs_module', 'cs_isconfirm', 'cs_source');
+    values.push(userData.cs_reg_category, regNo, csModuleValue, 1, 2);
 
-
+        //cs_source define from where user inserted into a database
+        
     // Create columns and placeholders for the SQL INSERT query
     const insertColumns = columns.join(', ');
     const placeholders = columns.map(() => '?').join(', ');
@@ -2175,41 +2421,40 @@ router.post('/addBasConfUser', verifyToken, upload.fields([
 
     console.log("Warnings:", warnings);
 
-    // if (payment && Object.keys(payment).length > 0) {
-    //   try {
-    //     // Insert the payment data into cs_reg_payment if there are payment details
-    //     const paymentColumns = Object.keys(payment);
-    //     const paymentValues = Object.values(payment);
+    const sanitizeString = (str) => str.replace(/[^a-zA-Z0-9]/g, '');
 
-    //     // Add the additional column and value
-    //     const additionalColumn = 'user_id'; // Replace with actual column name
-    //     const additionalValue = insertResult.insertId; // Use the ID of the newly inserted user
+    let username = filteredUserData.cs_username;
+    let password = filteredUserData.cs_password;
 
-    //     paymentColumns.push(additionalColumn);
-    //     paymentValues.push(additionalValue);
+    if (!username || !password) {
+      const sanitizedFirstName = sanitizeString(filteredUserData['cs_first_name'].toLowerCase());
+      const sanitizedLastNameInitial = sanitizeString(filteredUserData['cs_last_name'][0].toLowerCase());
+      const sanitizedLastName = sanitizeString(filteredUserData['cs_last_name'].toLowerCase());
+      const sanitizedFirstNameInitial = sanitizeString(filteredUserData['cs_first_name'][0].toUpperCase());
 
-    //     // Prepare the SQL query for payment insertion
-    //     const paymentInsertQuery = `
-    //       INSERT INTO cs_reg_payment (${paymentColumns.join(', ')})
-    //       VALUES (${paymentColumns.map(() => '?').join(', ')})
-    //     `;
+      username = `${sanitizedFirstName}${sanitizedLastNameInitial}${insertResult.insertId}`;
+      password = `${sanitizedFirstNameInitial}${sanitizedLastName.substring(0, 5)}@${insertResult.insertId}`;
 
-    //     // Execute the payment insertion query
-    //     await pool.query(paymentInsertQuery, paymentValues);
-    //   } catch (paymentError) {
-    //     console.error('Error inserting payment data:', paymentError);
-    //     return res.status(500).json({ error: 'Error inserting payment data' });
-    //   }
-    // }
+      console.log("Generated Username:", username);
+      console.log("Generated Password:", password);
+
+      const updateUserQuery = `
+        UPDATE cs_os_users
+        SET cs_username = ?, cs_password = ?
+        WHERE id = ?
+      `;
+      await pool.query(updateUserQuery, [username, password, insertResult.insertId]);
+    }
+
     console.log('Received accompany_person_data:', accompany_person_data);
 
     // Step 1: Parse the string into an object
     let parsedData;
     try {
-        parsedData = JSON.parse(accompany_person_data);
+      parsedData = JSON.parse(accompany_person_data);
     } catch (error) {
-        console.error('Error parsing accompany_person_data:', error);
-        return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
+      console.error('Error parsing accompany_person_data:', error);
+      return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
     }
 
     console.log('Parsed Data:', parsedData);
@@ -2220,41 +2465,43 @@ router.post('/addBasConfUser', verifyToken, upload.fields([
 
     console.log('Extracted personArray:', personArray);
 
+
+
     if (Array.isArray(personArray)) {
-        // Step 3: Process each person in the array
-        personArray.forEach(person => {
-            // Here, you get each person's name and age
-            console.log('Person:', person);
+      // Step 3: Process each person in the array
+      personArray.forEach(person => {
+        // Here, you get each person's name and age
+        console.log('Person:', person);
 
-            // If you want to process or store the data, you can now map this information
-            const accperData = {
+        // If you want to process or store the data, you can now map this information
+        const accperData = {
 
-                accper_name: person.name,
-                accper_age: person.age || null, // Handle if age is missing
-            };
+          accper_name: person.name,
+          accper_age: person.age || null, // Handle if age is missing
+        };
 
-            console.log('Mapped accperData:', accperData);
+        console.log('Mapped accperData:', accperData);
 
-            // Optionally, you can insert this data into the database or process it as needed
-            // For example, if you're inserting this data:
-            const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id,accper_name, accper_age) VALUES ?';
-            const insertData = [[insertResult.insertId,accperData.accper_name, accperData.accper_age]];
+        // Optionally, you can insert this data into the database or process it as needed
+        // For example, if you're inserting this data:
+        const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id,accper_name, accper_age) VALUES ?';
+        const insertData = [[insertResult.insertId, accperData.accper_name, accperData.accper_age]];
 
-            console.log('Data to insert into the database:', insertData);
+        console.log('Data to insert into the database:', insertData);
 
-            try {
-                // Insert into the database (example using a pool)
-                 pool.query(insertAccperQuery, [insertData]);
-                console.log('Accompanying person inserted:', accperData);
-            } catch (error) {
-                console.error('Error inserting accompanying person:', error);
-            }
-        });
+        try {
+          // Insert into the database (example using a pool)
+          pool.query(insertAccperQuery, [insertData]);
+          console.log('Accompanying person inserted:', accperData);
+        } catch (error) {
+          console.error('Error inserting accompanying person:', error);
+        }
+      });
 
-        // return res.status(200).json({ message: 'Accompanying persons processed successfully' });
+      // return res.status(200).json({ message: 'Accompanying persons processed successfully' });
     } else {
-        console.log('Expected personArray, but found:', personArray);
-        // return res.status(400).json({ message: 'No valid array of persons found in the parsed data' });
+      console.log('Expected personArray, but found:', personArray);
+      // return res.status(400).json({ message: 'No valid array of persons found in the parsed data' });
     }
 
     if (payment && Object.keys(payment).length > 0) {
@@ -2386,13 +2633,15 @@ router.post('/addTempConfirmUser', verifyToken, async (req, res) => {
     const userData = req.body.data;
     const UserId = req.body.Id;
     const payment = req.body.paymentDetails;
+    const Remark = req.body.remark;
+    
 
     console.log('User Data:', userData); // Log userData
     console.log('User ID:', UserId); // Log UserId
     console.log('Payment Details:', payment); // Log payment details
 
     // Exclude sendEmail from userData
-    const { sendEmail, ...filteredUserData } = userData;
+    const { sendEmail,accompany_person_data, ...filteredUserData } = userData;
 
     // Get columns and values from the filtered userData
     const columns = Object.keys(filteredUserData);
@@ -2440,8 +2689,11 @@ router.post('/addTempConfirmUser', verifyToken, async (req, res) => {
     console.log("New Registration Number:", regNo); // Log new registration number
 
     // Add cs_reg_cat_id to columns and values
-    columns.push('cs_reg_cat_id', 'cs_reg_category', 'cs_regno', 'cs_module', 'cs_isconfirm');
-    values.push(userData.cs_reg_category, csRegCat, regNo, csModuleValue, 1);
+    columns.push('cs_reg_cat_id', 'cs_reg_category', 'cs_regno', 'cs_module', 'cs_isconfirm', 'cs_remark', 'cs_source');
+    values.push(userData.cs_reg_category, csRegCat, regNo, csModuleValue, 1, Remark, 2);
+
+        //cs_source define from where user inserted into a database
+
 
     console.log('Updated Columns for SQL:', columns); // Log updated columns
     console.log('Updated Values for SQL:', values); // Log updated values
@@ -2459,6 +2711,40 @@ router.post('/addTempConfirmUser', verifyToken, async (req, res) => {
     // Execute the query with the dynamically generated values
     const [updateResult] = await pool.query(updateQuery, [...values, UserId]);
     console.log("Update Result:", updateResult); // Log update result
+
+
+    const sanitizeString = (str) => str.replace(/[^a-zA-Z0-9]/g, '');
+
+    // Generate username and password only if they are not provided
+    let username = filteredUserData.cs_username;
+    let password = filteredUserData.cs_password;
+
+    if (!username || !password) {
+      // If username or password is not available, generate them
+
+      // Sanitize and format the first and last names
+      const sanitizedFirstName = sanitizeString(filteredUserData['cs_first_name'].toLowerCase());
+      const sanitizedLastNameInitial = sanitizeString(filteredUserData['cs_last_name'][0].toLowerCase());
+      const sanitizedLastName = sanitizeString(filteredUserData['cs_last_name'].toLowerCase());
+      const sanitizedFirstNameInitial = sanitizeString(filteredUserData['cs_first_name'][0].toUpperCase());
+
+      // Generate username and password
+      username = `${sanitizedFirstName}${sanitizedLastNameInitial}${UserId}`;
+      password = `${sanitizedFirstNameInitial}${sanitizedLastName.substring(0, 5)}@${UserId}`;
+
+      console.log("Generated Username:", username);
+      console.log("Generated Password:", password);
+    }
+
+    // Update the user's username and password if needed
+    const updateUserQuery = `
+      UPDATE cs_os_users
+      SET cs_username = ?, cs_password = ?
+      WHERE id = ?
+    `;
+
+    await pool.query(updateUserQuery, [username, password, UserId]);
+
 
     if (payment) {
       try {
@@ -2508,6 +2794,46 @@ router.post('/addTempConfirmUser', verifyToken, async (req, res) => {
     const [warnings] = await pool.query('SHOW WARNINGS');
     console.log("Warnings:", warnings); // Log any SQL warnings
 
+
+    if (userData.accompany_person_data) {
+      try {
+          const parsedData = JSON.parse(userData.accompany_person_data);
+          const firstKey = Object.keys(parsedData)[0];
+          const personArray = parsedData[firstKey];
+  
+          if (Array.isArray(personArray)) {
+              // Separate new and existing records
+              const newPersons = personArray.filter(person => !person.id || person.id === ""); // New entries
+              const existingPersons = personArray.filter(person => person.id && person.id !== ""); // Existing entries
+  
+              // Insert new persons
+              if (newPersons.length > 0) {
+                  const insertAccperQuery = 'INSERT INTO cs_reg_accper (user_id, accper_name, accper_age) VALUES ?';
+                  const insertData = newPersons.map(person => [UserId, person.name, person.age || null]);
+  
+                  await pool.query(insertAccperQuery, [insertData]);
+                  console.log('New accompanying persons inserted successfully');
+              }
+  
+              // Update existing persons
+              if (existingPersons.length > 0) {
+                  for (const person of existingPersons) {
+                      const updateAccperQuery = `
+                          UPDATE cs_reg_accper
+                          SET accper_name = ?, accper_age = ?
+                          WHERE accper_id = ? AND user_id = ?
+                      `;
+                      await pool.query(updateAccperQuery, [person.name, person.age || null, person.id, UserId]);
+                  }
+                  console.log('Existing accompanying persons updated successfully');
+              }
+          }
+      } catch (error) {
+          console.error('Error processing accompany_person_data:', error);
+          return res.status(400).json({ message: 'Invalid JSON format for accompany_person_data' });
+      }
+    }
+
     // Sending email with error handling
     if (userData.sendEmail) {
       try {
@@ -2534,6 +2860,7 @@ router.post('/addTempConfirmUser', verifyToken, async (req, res) => {
         return res.status(500).json({ error: 'Error sending email' });
       }
     }
+
 
     res.status(200).json({ success: true, message: "User updated successfully", data: userData });
   } catch (error) {
@@ -3733,11 +4060,14 @@ router.post('/addBulkUser', verifyToken, queueMiddleware, async (req, res) => {
 
       // Insert the user data into the database
       const insertUserQuery = `
-        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?
+        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?, cs_source = ?
       `;
 
+          //cs_source define from where user inserted into a database
+
+
       // await pool.query(insertUserQuery, [userDataWithFields, 1, currentTimestamp, currentTimestamp]);
-      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 0, 1]);
+      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 0, 1, 4]);
 
       const newUserId = insertResult.insertId;
 
@@ -3861,10 +4191,10 @@ router.get('/Confirmsamplefilewithregno', async (req, res) => {
     const [dynamicFields] = await pool.query(`
       SELECT cs_field_label, cs_is_required
       FROM cs_os_field_data 
-      WHERE cs_visible_reg_adminform = 1 AND cs_field_id != 12 OR cs_field_id = 13 
+      WHERE cs_visible_reg_adminform = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13 
           ORDER BY 
               CASE 
-                  WHEN cs_status = 1 THEN cs_field_order 
+                  WHEN cs_status IN (1, 3) THEN cs_field_order 
                   ELSE 999999 
               END
   `);
@@ -3967,7 +4297,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     const [fieldData] = await pool.query(`
           SELECT cs_field_name, cs_visible_reg_adminform 
           FROM cs_os_field_data 
-          WHERE cs_field_name = 'cs_workshop_category' AND cs_visible_reg_adminform = 1
+          WHERE cs_field_name = 'cs_workshop_category' AND cs_visible_reg_adminform = 1 AND cs_status IN (1, 3)
       `);
 
     // If the condition is met, fetch workshop data
@@ -3998,7 +4328,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     }
     // }
 
-    const [prefixes] = await pool.query('SELECT cs_prefix, cs_prefix_id FROM cs_os_name_prefixes');
+    const [prefixes] = await pool.query('SELECT cs_prefix, cs_prefix_id FROM cs_os_name_prefixes Where cs_status = 1');
     if (prefixes.length > 0) {
       worksheet.addRow([]);
       worksheet.addRow(['Tittle', 'Tittle ID']);
@@ -4007,7 +4337,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
       });
     }
 
-    const [tickets] = await pool.query('SELECT ticket_id, ticket_title FROM cs_reg_tickets');
+    const [tickets] = await pool.query('SELECT ticket_id, ticket_title FROM cs_reg_tickets Where ticket_visibility = 1');
     console.log('Tickets:', tickets); // Debugging: log the fetched tickets
     if (tickets.length > 0) {
       worksheet.addRow([]); // Empty row for spacing
@@ -4018,7 +4348,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
       });
     }
 
-    const [addons] = await pool.query('SELECT addon_id, addon_title FROM cs_reg_add_ons');
+    const [addons] = await pool.query('SELECT addon_id, addon_title FROM cs_reg_add_ons WHERE addon_visiblility = 1');
     console.log('Add-ons:', addons); // Debugging: log the fetched add-ons
     if (addons.length > 0) {
       worksheet.addRow([]); // Empty row for spacing
@@ -4033,10 +4363,10 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     const [dynamicFields] = await pool.query(`
       SELECT cs_field_label, cs_is_required
       FROM cs_os_field_data 
-      WHERE cs_visible_reg_adminform = 1 AND cs_field_id != 12 OR cs_field_id = 13
+      WHERE cs_visible_reg_adminform = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13
           ORDER BY 
               CASE 
-                  WHEN cs_status = 1 THEN cs_field_order 
+                  WHEN cs_status IN (1, 3) THEN cs_field_order 
                   ELSE 999999 
               END
   `);
@@ -4053,7 +4383,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     worksheet.addRow([]);
 
     const [mandatoryfields] = await pool.query(`
-      SELECT cs_field_label, cs_is_required FROM cs_os_field_data WHERE cs_visible_reg_adminform = 1 AND cs_is_required = 1 AND cs_field_id != 12 OR cs_field_id = 13;
+      SELECT cs_field_label, cs_is_required FROM cs_os_field_data WHERE cs_visible_reg_adminform = 1 AND cs_is_required = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13;
 `);
 
     worksheet.addRow(["Mandatory fields"]);
@@ -4178,7 +4508,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     const [fieldData] = await pool.query(`
           SELECT cs_field_name, cs_visible_reg_adminform 
           FROM cs_os_field_data 
-          WHERE cs_field_name = 'cs_workshop_category' AND cs_visible_reg_adminform = 1
+          WHERE cs_field_name = 'cs_workshop_category' AND cs_visible_reg_adminform = 1 AND cs_status IN (1, 3)
       `);
 
     // If the condition is met, fetch workshop data
@@ -4218,7 +4548,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
       });
     }
 
-    const [tickets] = await pool.query('SELECT ticket_id, ticket_title FROM cs_reg_tickets');
+    const [tickets] = await pool.query('SELECT ticket_id, ticket_title FROM cs_reg_tickets Where ticket_visibility = 1');
     console.log('Tickets:', tickets); // Debugging: log the fetched tickets
     if (tickets.length > 0) {
       worksheet.addRow([]); // Empty row for spacing
@@ -4229,7 +4559,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
       });
     }
 
-    const [addons] = await pool.query('SELECT addon_id, addon_title FROM cs_reg_add_ons');
+    const [addons] = await pool.query('SELECT addon_id, addon_title FROM cs_reg_add_ons WHERE addon_visiblility = 1');
     console.log('Add-ons:', addons); // Debugging: log the fetched add-ons
     if (addons.length > 0) {
       worksheet.addRow([]); // Empty row for spacing
@@ -4244,10 +4574,10 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     const [dynamicFields] = await pool.query(`
       SELECT cs_field_label, cs_is_required
       FROM cs_os_field_data 
-      WHERE cs_visible_reg_adminform = 1 AND cs_field_id != 12 OR cs_field_id = 13
+      WHERE cs_visible_reg_adminform = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13
           ORDER BY 
               CASE 
-                  WHEN cs_status = 1 THEN cs_field_order 
+                  WHEN cs_status IN (1, 3) THEN cs_field_order 
                   ELSE 999999 
               END
   `);
@@ -4264,7 +4594,7 @@ router.get('/ConfirmInstructionfilewithregno', async (req, res) => {
     worksheet.addRow([]);
 
     const [mandatoryfields] = await pool.query(`
-      SELECT cs_field_label, cs_is_required FROM cs_os_field_data WHERE cs_visible_reg_adminform = 1 AND cs_is_required = 1 AND cs_field_id != 12 OR cs_field_id = 13;
+      SELECT cs_field_label, cs_is_required FROM cs_os_field_data WHERE cs_visible_reg_adminform = 1 AND cs_is_required = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13;
 `);
 
     worksheet.addRow(["Mandatory fields"]);
@@ -4370,180 +4700,64 @@ router.post('/addBulkConfirmUser', verifyToken, queueMiddleware, async (req, res
         }
       }
 
-      // Fetch facility data based on regId for each user
-      const regId = userDataWithFields.cs_reg_cat_id;
-      const workshop = parseInt(userDataWithFields.cs_workshop_category, 10);
-      // const workshop = userData.cs_workshop_category;
-
-      const [rows] = await pool.query(`
-        SELECT fd.cs_facility_name, fc.cs_allow_count, fd.cs_facility_id
-        FROM cs_os_facility_category fc
-        JOIN cs_os_facility_detail fd ON fc.cs_facility_detail_id = fd.cs_facility_detail_id
-        WHERE fc.cs_reg_cat_id = ? AND fd.cs_status = 1
-      `, [regId]);
-
-      // Initialize badgeData object for each user
-      const badgeData = {};
-      console.log("userDataWithFields.cs_reg_type", userDataWithFields.cs_reg_type);
-
-
-      if (userDataWithFields.cs_reg_type && userDataWithFields.cs_reg_type !== "101") {
-        console.log("Processing daywise data");
-
-        for (const row of rows) {
-          const facilityName = row.cs_facility_name;
-          const allowCount = row.cs_allow_count;
-          const facilityId = row.cs_facility_id;
-
-          const [typeRows] = await pool.query(`
-            SELECT cs_type 
-            FROM cs_os_facilitytype 
-            WHERE cs_facility_id = ?
-          `, [facilityId]);
-
-          const facilityType = typeRows[0]?.cs_type;
-
-          if (facilityType === 'workshop') {
-            const [workshopRows] = await pool.query(`
-              SELECT cs_workshop_id 
-              FROM cs_os_workshop 
-              WHERE cs_facility_id = ? 
-            `, [facilityId]);
-
-            const workshopId = workshopRows[0]?.cs_workshop_id;
-            if (workshopId === workshop) {
-              badgeData[facilityName] = allowCount;
-              badgeData[facilityName + '_status'] = "0";
-            } else {
-              badgeData[facilityName] = "0";
-              badgeData[facilityName + '_status'] = "0";
-            }
-          } else {
-            if (facilityName.includes(userDataWithFields.cs_reg_type) || !/\d$/.test(facilityName)) {
-              // Facility matches, set the count fetched from the table
-              badgeData[facilityName] = allowCount;
-              // Set the status to "0" for each facility
-              badgeData[facilityName + '_status'] = "0";
-            } else {
-              // Facility doesn't match, set count to 0
-              badgeData[facilityName] = "0";
-              // Set the status to "0" for each facility
-              badgeData[facilityName + '_status'] = "0";
-            }
-          }
-        }
-      } else {
-        console.log("Processing all-day data");
-
-        for (const row of rows) {
-          const facilityName = row.cs_facility_name;
-          const allowCount = row.cs_allow_count;
-          const facilityId = row.cs_facility_id;
-
-          const [typeRows] = await pool.query(`
-            SELECT cs_type 
-            FROM cs_os_facilitytype 
-            WHERE cs_facility_id = ?
-          `, [facilityId]);
-
-          const facilityType = typeRows[0]?.cs_type;
-
-          if (facilityType === 'workshop') {
-            const [workshopRows] = await pool.query(`
-              SELECT cs_workshop_id 
-              FROM cs_os_workshop 
-              WHERE cs_facility_id = ? 
-            `, [facilityId]);
-
-            const workshopId = workshopRows[0]?.cs_workshop_id;
-            if (workshopId === workshop) {
-              badgeData[facilityName] = allowCount;
-              badgeData[facilityName + '_status'] = "0";
-            } else {
-              badgeData[facilityName] = "0";
-              badgeData[facilityName + '_status'] = "0";
-            }
-          } else {
-            badgeData[facilityName] = allowCount;
-            badgeData[facilityName + '_status'] = "0";
-          }
-        }
-      }
-
-      // let lastRegNo = 0; // Initialize regNo
-      // let regNo = 0;
-      // // Check if cs_regno already has a value
-      // if (!userDataWithFields.cs_regno) {
-      //   // Get the last inserted cs_regno from cs_os_users table
-      //   // const [lastRegCatIdRow] = await pool.query('SELECT MAX(cs_regno) AS max_regno FROM cs_os_users');
-      //   // const lastRegCatId = lastRegCatIdRow[0].max_regno || 0; // If no records exist, default to 0
-      //   // regNo = lastRegCatId + 1;
-
-      //   const siteSettingResult = await pool.query('SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter ="Admin Reg Start Number"');
-      //   // console.log("siteSettingResult", siteSettingResult[0][0].cs_value);
-      //   lastRegNo = siteSettingResult.length > 0 ? parseInt(siteSettingResult[0][0].cs_value, 10) : 0;
-      //   console.log("lastRegNo", lastRegNo);
-      //   // Step 2: Check if the incremented regNo already exists, if yes, find a unique one
-      //   let regNoExists = true;
-      //   while (regNoExists) {
-      //     const existingRegNoResult = await pool.query('SELECT COUNT(*) AS count FROM cs_os_users WHERE cs_regno = ?', [lastRegNo]);
-      //     console.log("existingRegNoResult", existingRegNoResult);
-      //     const existingRegNoCount = existingRegNoResult[0][0].count || 0;
-      //     if (existingRegNoCount > 0) {
-      //       lastRegNo++;
-      //     } else {
-      //       regNoExists = false;
-      //     }
-      //   }
-
-      //   let regNo = lastRegNo + 1;
-
-      //   // Step 3: Update the cs_tbl_sitesetting table with the new regNo
-      //   await pool.query('UPDATE cs_tbl_sitesetting SET cs_value = ? WHERE cs_parameter ="Admin Reg Start Number"', [regNo]);
-      //   userDataWithFields.cs_regno = lastRegNo;
-
-      //   // Step 4: Now regNo is a unique value, use it in your userData
-      //   userData.cs_regno = lastRegNo;
-      // } else {
-      //   // Use the existing value of cs_regno
-      //   lastRegNo = userDataWithFields.cs_regno;
-      //   userDataWithFields.cs_regno = lastRegNo;
-      // }
-
-
-
-
-      // Now regNo is either a newly generated unique value or the existing value, use it in your userData
-
-      console.log('Registration number for user:', userDataWithFields.cs_reg_cat_id);
-      console.log('Badge data for user:', badgeData);
-
-      // Fetch cs_reg_category from cs_os_category based on cs_reg_cat_id
-      const catId = userDataWithFields.cs_reg_cat_id;
-      console.log('catId:', catId); // Add this line to log the catId
-      const [categoryRows] = await pool.query('SELECT cs_reg_category FROM cs_os_category WHERE cs_reg_cat_id = ?', [catId]);
-      console.log('categoryRows:', categoryRows); // Add this line to log the query results
-      const csRegCategory = categoryRows[0]?.cs_reg_category;
-      console.log('Category:', csRegCategory);
-
-      // Assign the fetched cs_reg_category to userDataWithFields
-      userDataWithFields.cs_reg_category = csRegCategory;
-
-      // Map fields containing IDs to their corresponding values from different tables
-      // await Promise.all([
-      //   mapFieldById(userDataWithFields, 'cs_reg_category', 'cs_os_category', 'cs_reg_cat_id', 'cs_reg_category'),
-      //   mapRegCategory(userDataWithFields) // Handle cs_reg_category and cs_reg_cat_id together
-      // ]);
 
       // Insert the user data into the database
       const insertUserQuery = `
-        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?
+        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?, cs_source = ?
       `;
 
+          //cs_source define from where user inserted into a database
+
+
       // await pool.query(insertUserQuery, [userDataWithFields, 1, currentTimestamp, currentTimestamp]);
-      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 1, 1]);
+      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 1, 1, 4]);
 
       const newUserId = insertResult.insertId;
+
+      const addonIds = userData.Addons ? userData.Addons.split(',').map(id => parseInt(id.trim())) : [];
+
+      console.log("addonIds", addonIds);
+
+      for (let addonId of addonIds) {
+        // Step 1: Fetch addon details
+        const [addonRows] = await pool.query(
+          'SELECT addon_cat_type, addon_workshoprtype_id,addon_workshop_id FROM cs_reg_add_ons WHERE addon_id = ?',
+          [addonId]
+        );
+
+        if (addonRows.length > 0) {
+          const addon = addonRows[0];
+
+          // Step 2: Check if addon_cat_type is 1
+          if (addon.addon_cat_type === "1") {
+            const addonWorkshopTypeId = addon.addon_workshoprtype_id;
+            const addonWorkshopId = addon.addon_workshop_id;
+
+
+            // Step 3: Validate addon_workshoprtype_id in cs_os_field_data
+            const [fieldDataRows] = await pool.query(
+              'SELECT cs_field_name FROM cs_os_field_data WHERE cs_workshoptype_id = ?',
+              [addonWorkshopTypeId]
+            );
+
+            if (fieldDataRows.length > 0) {
+              const csFieldName = fieldDataRows[0].cs_field_name;
+
+              // Step 4: Update the user's record in cs_os_users
+              const updateUserAddonQuery = `
+                UPDATE cs_os_users
+                SET ${csFieldName} = ?
+                WHERE id = ?
+              `;
+              await pool.query(updateUserAddonQuery, [addonWorkshopId, newUserId]);
+
+              console.log(`Updated user ID ${newUserId} with addon field ${csFieldName}`);
+            } else {
+              console.warn(`No matching field data found for addon_workshoprtype_id: ${addonWorkshopTypeId}`);
+            }
+          }
+        }
+      }
 
       const firstName = userDataWithFields.cs_first_name ? userDataWithFields.cs_first_name : 'Dammy';
       const lastName = userDataWithFields.cs_last_name ? userDataWithFields.cs_last_name : 'Dammy';
@@ -4613,9 +4827,78 @@ router.post('/addBulkConfirmUser', verifyToken, queueMiddleware, async (req, res
 });
 
 // Reuse Basic sendEmail function
+
+const sendBasicEmail = async (userData, userId) => {
+  const templateQuery = `SELECT template_content, template_subject FROM cs_tbl_email_template WHERE template_id = ?`;
+  const [templateData] = await pool.query(templateQuery, [1]);
+
+  if (!templateData || templateData.length === 0) {
+    console.log("No email template found");
+    throw new Error('No email template found');
+  }
+
+  const userEmail = userData.cs_email;
+  if (!userEmail) {
+    console.log("User email is not defined");
+    throw new Error('User email is not defined');
+  }
+
+  let emailBody = templateData[0].template_content;
+  const emailSubject = templateData[0].template_subject;
+
+  const replacePlaceholders = (template, data) => {
+    return template.replace(/{{(\w+)}}/g, (_, key) => data[key] || '');
+  };
+
+  emailBody = replacePlaceholders(emailBody, userData);
+
+  const mailOptions = {
+    from: process.env.GMAIL_USER,
+    to: userEmail,
+    subject: emailSubject,
+    html: emailBody,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email sent successfully to ${userEmail}`);
+  } catch (error) {
+    console.error(`Error sending email to ${userEmail}:`, error.message);
+  }
+};
+
+
+// Reuse Confrim sendEmail function
 const sendConfirmEmail = async (userData, userId) => {
+  console.log("User Data", userData);
   const templateQuery = `SELECT template_content, template_subject FROM cs_tbl_email_template WHERE template_id = ?`;
   const [templateData] = await pool.query(templateQuery, [7]);
+
+  // Fetch ticket details if cs_ticket exists
+  let ticketData = [];
+  if (userData.cs_ticket) {
+    const ticketQuery = `
+      SELECT ticket_title, ticket_mail_description AS ticket_message 
+      FROM cs_reg_tickets 
+      WHERE ticket_id = ?`;
+    [ticketData] = await pool.query(ticketQuery, [userData.cs_ticket]);
+    console.log("Ticket", ticketData);
+
+    // Merge ticket data into userData
+    if (ticketData && ticketData.length > 0) {
+      userData.ticket_title = ticketData[0].ticket_title;
+      userData.ticket_message = ticketData[0].ticket_message;
+    } else {
+      userData.ticket_title = '';
+      userData.ticket_message = '';
+    }
+  } else {
+    console.log("No valid ticket ID found for this user.");
+    userData.ticket_title = '';
+    userData.ticket_message = '';
+  }
+
+  console.log("Final User Data with Ticket", userData);
 
   if (!templateData || templateData.length === 0) {
     console.log("No email template found");
@@ -5224,10 +5507,10 @@ router.get('/Confirmsamplefilewithoutregno', async (req, res) => {
     const [dynamicFields] = await pool.query(`
       SELECT cs_field_label, cs_is_required
       FROM cs_os_field_data 
-      WHERE cs_visible_reg_adminform = 1 AND cs_field_id != 12 OR cs_field_id = 13
+      WHERE cs_visible_reg_adminform = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13
           ORDER BY 
               CASE 
-                  WHEN cs_status = 1 THEN cs_field_order 
+                  WHEN cs_status IN (1, 3) THEN cs_field_order 
                   ELSE 999999 
               END
   `);
@@ -5328,7 +5611,7 @@ router.get('/ConfirmInstructionfilewithoutregno', async (req, res) => {
     const [fieldData] = await pool.query(`
           SELECT cs_field_name, cs_visible_reg_adminform 
           FROM cs_os_field_data 
-          WHERE cs_field_name = 'cs_workshop_category' AND cs_visible_reg_adminform = 1
+          WHERE cs_field_name = 'cs_workshop_category' AND cs_visible_reg_adminform = 1 AND cs_status IN (1, 3)
       `);
 
     // If the condition is met, fetch workshop data
@@ -5368,7 +5651,7 @@ router.get('/ConfirmInstructionfilewithoutregno', async (req, res) => {
       });
     }
 
-    const [tickets] = await pool.query('SELECT ticket_id, ticket_title FROM cs_reg_tickets');
+    const [tickets] = await pool.query('SELECT ticket_id, ticket_title FROM cs_reg_tickets Where ticket_visibility = 1');
     console.log('Tickets:', tickets); // Debugging: log the fetched tickets
     if (tickets.length > 0) {
       worksheet.addRow([]); // Empty row for spacing
@@ -5379,7 +5662,7 @@ router.get('/ConfirmInstructionfilewithoutregno', async (req, res) => {
       });
     }
 
-    const [addons] = await pool.query('SELECT addon_id, addon_title FROM cs_reg_add_ons');
+    const [addons] = await pool.query('SELECT addon_id, addon_title FROM cs_reg_add_ons WHERE addon_visiblility = 1');
     console.log('Add-ons:', addons); // Debugging: log the fetched add-ons
     if (addons.length > 0) {
       worksheet.addRow([]); // Empty row for spacing
@@ -5394,10 +5677,10 @@ router.get('/ConfirmInstructionfilewithoutregno', async (req, res) => {
     const [dynamicFields] = await pool.query(`
       SELECT cs_field_label, cs_is_required
       FROM cs_os_field_data 
-      WHERE cs_visible_reg_adminform = 1 AND cs_field_id != 12 OR cs_field_id = 13
+      WHERE cs_visible_reg_adminform = 1 AND cs_status IN (1, 3) AND cs_field_id != 12 OR cs_field_id = 13
           ORDER BY 
               CASE 
-                  WHEN cs_status = 1 THEN cs_field_order 
+                  WHEN cs_status IN (1, 3) THEN cs_field_order 
                   ELSE 999999 
               END
   `);
@@ -5414,7 +5697,7 @@ router.get('/ConfirmInstructionfilewithoutregno', async (req, res) => {
     worksheet.addRow([]);
 
     const [mandatoryfields] = await pool.query(`
-      SELECT cs_field_label, cs_is_required FROM cs_os_field_data WHERE cs_visible_reg_adminform = 1 AND cs_is_required = 1 AND cs_field_id != 12 OR cs_field_id = 13;
+      SELECT cs_field_label, cs_is_required FROM cs_os_field_data WHERE cs_visible_reg_adminform = 1 AND cs_status IN (1, 3) AND cs_is_required = 1 AND cs_field_id != 12 OR cs_field_id = 13;
 `);
 
     worksheet.addRow(["Mandatory fields"]);
@@ -5513,6 +5796,8 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, queueMiddleware, async
         }
       });
 
+
+
       if (userDataWithFields.cs_title) {
         const title = await getTitleById(userDataWithFields.cs_title);
         if (title) {
@@ -5520,105 +5805,8 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, queueMiddleware, async
         }
       }
 
-      // Fetch facility data based on regId for each user
-      const regId = userDataWithFields.cs_reg_cat_id;
-      const workshop = parseInt(userDataWithFields.cs_workshop_category, 10);
-      // const workshop = userData.cs_workshop_category;
-
-      const [rows] = await pool.query(`
-        SELECT fd.cs_facility_name, fc.cs_allow_count, fd.cs_facility_id
-        FROM cs_os_facility_category fc
-        JOIN cs_os_facility_detail fd ON fc.cs_facility_detail_id = fd.cs_facility_detail_id
-        WHERE fc.cs_reg_cat_id = ? AND fd.cs_status = 1
-      `, [regId]);
-
-      // Initialize badgeData object for each user
-      const badgeData = {};
-      console.log("userDataWithFields.cs_reg_type", userDataWithFields.cs_reg_type);
 
 
-      if (userDataWithFields.cs_reg_type && userDataWithFields.cs_reg_type !== "101") {
-        console.log("Processing daywise data");
-
-        for (const row of rows) {
-          const facilityName = row.cs_facility_name;
-          const allowCount = row.cs_allow_count;
-          const facilityId = row.cs_facility_id;
-
-          const [typeRows] = await pool.query(`
-            SELECT cs_type 
-            FROM cs_os_facilitytype 
-            WHERE cs_facility_id = ?
-          `, [facilityId]);
-
-          const facilityType = typeRows[0]?.cs_type;
-
-          if (facilityType === 'workshop') {
-            const [workshopRows] = await pool.query(`
-              SELECT cs_workshop_id 
-              FROM cs_os_workshop 
-              WHERE cs_facility_id = ? 
-            `, [facilityId]);
-
-            const workshopId = workshopRows[0]?.cs_workshop_id;
-            if (workshopId === workshop) {
-              badgeData[facilityName] = allowCount;
-              badgeData[facilityName + '_status'] = "0";
-            } else {
-              badgeData[facilityName] = "0";
-              badgeData[facilityName + '_status'] = "0";
-            }
-          } else {
-            if (facilityName.includes(userDataWithFields.cs_reg_type) || !/\d$/.test(facilityName)) {
-              // Facility matches, set the count fetched from the table
-              badgeData[facilityName] = allowCount;
-              // Set the status to "0" for each facility
-              badgeData[facilityName + '_status'] = "0";
-            } else {
-              // Facility doesn't match, set count to 0
-              badgeData[facilityName] = "0";
-              // Set the status to "0" for each facility
-              badgeData[facilityName + '_status'] = "0";
-            }
-          }
-        }
-      } else {
-        console.log("Processing all-day data");
-
-        for (const row of rows) {
-          const facilityName = row.cs_facility_name;
-          const allowCount = row.cs_allow_count;
-          const facilityId = row.cs_facility_id;
-
-          const [typeRows] = await pool.query(`
-            SELECT cs_type 
-            FROM cs_os_facilitytype 
-            WHERE cs_facility_id = ?
-          `, [facilityId]);
-
-          const facilityType = typeRows[0]?.cs_type;
-
-          if (facilityType === 'workshop') {
-            const [workshopRows] = await pool.query(`
-              SELECT cs_workshop_id 
-              FROM cs_os_workshop 
-              WHERE cs_facility_id = ? 
-            `, [facilityId]);
-
-            const workshopId = workshopRows[0]?.cs_workshop_id;
-            if (workshopId === workshop) {
-              badgeData[facilityName] = allowCount;
-              badgeData[facilityName + '_status'] = "0";
-            } else {
-              badgeData[facilityName] = "0";
-              badgeData[facilityName + '_status'] = "0";
-            }
-          } else {
-            badgeData[facilityName] = allowCount;
-            badgeData[facilityName + '_status'] = "0";
-          }
-        }
-      }
 
       let lastRegNo = 0; // Initialize regNo
       let regNo = 0;
@@ -5659,41 +5847,63 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, queueMiddleware, async
         lastRegNo = userDataWithFields.cs_regno;
         userDataWithFields.cs_regno = lastRegNo;
       }
-
-
-
-
-      // Now regNo is either a newly generated unique value or the existing value, use it in your userData
-
-      console.log('Registration number for user:', userDataWithFields.cs_reg_cat_id);
-      console.log('Badge data for user:', badgeData);
-
-      // Fetch cs_reg_category from cs_os_category based on cs_reg_cat_id
-      const catId = userDataWithFields.cs_reg_cat_id;
-      console.log('catId:', catId); // Add this line to log the catId
-      const [categoryRows] = await pool.query('SELECT cs_reg_category FROM cs_os_category WHERE cs_reg_cat_id = ?', [catId]);
-      console.log('categoryRows:', categoryRows); // Add this line to log the query results
-      const csRegCategory = categoryRows[0]?.cs_reg_category;
-      console.log('Category:', csRegCategory);
-
-      // Assign the fetched cs_reg_category to userDataWithFields
-      userDataWithFields.cs_reg_category = csRegCategory;
-
-      // Map fields containing IDs to their corresponding values from different tables
-      // await Promise.all([
-      //   mapFieldById(userDataWithFields, 'cs_reg_category', 'cs_os_category', 'cs_reg_cat_id', 'cs_reg_category'),
-      //   mapRegCategory(userDataWithFields) // Handle cs_reg_category and cs_reg_cat_id together
-      // ]);
-
-      // Insert the user data into the database
       const insertUserQuery = `
-        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?
-      `;
+      INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?, cs_source = ?
+    `;
+
+        //cs_source define from where user inserted into a database
+
 
       // await pool.query(insertUserQuery, [userDataWithFields, 1, currentTimestamp, currentTimestamp]);
-      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 1, 1]);
+      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 1, 1, 4]);
 
       const newUserId = insertResult.insertId;
+
+
+      const addonIds = userData.Addons ? userData.Addons.split(',').map(id => parseInt(id.trim())) : [];
+
+      console.log("addonIds", addonIds);
+
+      for (let addonId of addonIds) {
+        // Step 1: Fetch addon details
+        const [addonRows] = await pool.query(
+          'SELECT addon_cat_type, addon_workshoprtype_id,addon_workshop_id FROM cs_reg_add_ons WHERE addon_id = ?',
+          [addonId]
+        );
+
+        if (addonRows.length > 0) {
+          const addon = addonRows[0];
+
+          // Step 2: Check if addon_cat_type is 1
+          if (addon.addon_cat_type === "1") {
+            const addonWorkshopTypeId = addon.addon_workshoprtype_id;
+            const addonWorkshopId = addon.addon_workshop_id;
+
+
+            // Step 3: Validate addon_workshoprtype_id in cs_os_field_data
+            const [fieldDataRows] = await pool.query(
+              'SELECT cs_field_name FROM cs_os_field_data WHERE cs_workshoptype_id = ?',
+              [addonWorkshopTypeId]
+            );
+
+            if (fieldDataRows.length > 0) {
+              const csFieldName = fieldDataRows[0].cs_field_name;
+
+              // Step 4: Update the user's record in cs_os_users
+              const updateUserAddonQuery = `
+                UPDATE cs_os_users
+                SET ${csFieldName} = ?
+                WHERE id = ?
+              `;
+              await pool.query(updateUserAddonQuery, [addonWorkshopId, newUserId]);
+
+              console.log(`Updated user ID ${newUserId} with addon field ${csFieldName}`);
+            } else {
+              console.warn(`No matching field data found for addon_workshoprtype_id: ${addonWorkshopTypeId}`);
+            }
+          }
+        }
+      }
 
       const firstName = userDataWithFields.cs_first_name ? userDataWithFields.cs_first_name : 'Dammy';
       const lastName = userDataWithFields.cs_last_name ? userDataWithFields.cs_last_name : 'Dammy';
@@ -5713,6 +5923,9 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, queueMiddleware, async
 
 
 
+
+
+
       const updateUserQuery = `
         UPDATE cs_os_users
         SET cs_username = ?, cs_password = ?
@@ -5721,6 +5934,10 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, queueMiddleware, async
 
 
       await pool.query(updateUserQuery, [username, password, newUserId]);
+
+
+
+
 
       // Send email if email flag is true
       if (email) {
@@ -5966,9 +6183,12 @@ router.post('/importfaculty', verifyToken, async (req, res) => {
 
       // Insert the user without the password and username
       const insertUserQuery = `
-      INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_isfaculty, cs_module)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_isfaculty, cs_module, cs_source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+
+    //cs_source define from where user inserted into a database
+
 
 
       const [result] = await pool.query(insertUserQuery, [
@@ -5983,6 +6203,7 @@ router.post('/importfaculty', verifyToken, async (req, res) => {
         1, // Example default value for cs_status
         1, // Example default value for cs_isconfir
         1,
+        4
       ]);
 
       const newUserId = result.insertId;
@@ -6102,12 +6323,22 @@ router.put('/UpdateStatus', verifyToken, async (req, res) => {
 
 router.put('/CancelStatus', verifyToken, async (req, res) => {
   try {
-    const { Id, status, sendEmail, temp_id } = req.body;
+    const { Id, status, sendEmail, temp_id, canMessage } = req.body;
     console.log("Data", req.body);
 
     // Update cs_status in cs_os_users
-    const updateQuery = `UPDATE cs_os_users SET cs_status = ? WHERE id = ?`;
-    await pool.query(updateQuery, [status, Id]);
+    let updateQuery = `UPDATE cs_os_users SET cs_status = ?`;
+    const queryParams = [status];
+
+    if (canMessage) {
+      updateQuery += `, cancellation_reason = ?`;
+      queryParams.push(canMessage);
+    }
+
+    updateQuery += ` WHERE id = ?`;
+    queryParams.push(Id);
+
+    await pool.query(updateQuery, queryParams);
 
     // Update cs_reg_payment based on the status
     const updatePaymentQuery = `UPDATE cs_reg_payment SET status = ?, is_cancel = ? WHERE user_id = ?`;
@@ -6123,16 +6354,13 @@ router.put('/CancelStatus', verifyToken, async (req, res) => {
         const [userRow] = await pool.query('SELECT * FROM cs_os_users WHERE id = ?', [Id]);
         if (userRow.length > 0) {
           await sendCancellationEmail(userRow[0], temp_id);
-
-          console.log("Changed package mail send successfully for UserId:", Id); // Log success
+          console.log("Changed package mail sent successfully for UserId:", Id); // Log success
         }
       } catch (emailError) {
         console.error('Error sending email:', emailError);
-
         return res.status(500).json({ error: 'Error sending email' });
       }
     }
-
 
     return res.status(200).json({ message: 'Status updated successfully' });
   } catch (error) {
@@ -6141,10 +6369,37 @@ router.put('/CancelStatus', verifyToken, async (req, res) => {
   }
 });
 
+
 // Reuse Basic sendEmail function
 const sendCancellationEmail = async (userData, tempId) => {
   const templateQuery = `SELECT template_content, template_subject FROM cs_tbl_email_template WHERE template_id = ?`;
   const [templateData] = await pool.query(templateQuery, tempId);
+
+  // Fetch ticket details if cs_ticket exists
+  let ticketData = [];
+  if (userData.cs_ticket) {
+    const ticketQuery = `
+          SELECT ticket_title, ticket_mail_description AS ticket_message 
+          FROM cs_reg_tickets 
+          WHERE ticket_id = ?`;
+    [ticketData] = await pool.query(ticketQuery, [userData.cs_ticket]);
+    console.log("Ticket", ticketData);
+
+    // Merge ticket data into userData
+    if (ticketData && ticketData.length > 0) {
+      userData.ticket_title = ticketData[0].ticket_title;
+      userData.ticket_message = ticketData[0].ticket_message;
+    } else {
+      userData.ticket_title = '';
+      userData.ticket_message = '';
+    }
+  } else {
+    console.log("No valid ticket ID found for this user.");
+    userData.ticket_title = '';
+    userData.ticket_message = '';
+  }
+
+  console.log("Final User Data with Ticket", userData);
 
   if (!templateData || templateData.length === 0) {
     console.log("No email template found");
@@ -6284,17 +6539,55 @@ router.put('/DiscardEntry', verifyToken, async (req, res) => {
 router.get('/check-username/:username', verifyToken, async (req, res) => {
   const { username } = req.params;
   try {
-      const query = 'SELECT COUNT(*) AS count FROM cs_os_users WHERE cs_username = ?';
-      const [rows] = await pool.execute(query, [username]);
+    const query = 'SELECT COUNT(*) AS count FROM cs_os_users WHERE cs_username = ?';
+    const [rows] = await pool.execute(query, [username]);
 
-      if (rows[0].count > 0) {
-          return res.status(200).json({ exists: true });
-      } else {
-          return res.status(200).json({ exists: false });
-      }
+    if (rows[0].count > 0) {
+      return res.status(200).json({ exists: true });
+    } else {
+      return res.status(200).json({ exists: false });
+    }
   } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Database error' });
+    console.error(error);
+    return res.status(500).json({ message: 'Database error' });
+  }
+});
+
+
+const getUserDataById = async (userId) => {
+  try {
+    const query = 'SELECT cs_ticket , cs_addons FROM cs_os_users WHERE id = ?';
+    const [rows] = await pool.execute(query, [userId]);
+    return rows.length > 0 ? rows[0] : null;
+  } catch (error) {
+    console.error('Database query error:', error);
+    throw new Error('Failed to fetch user data');
+  }
+};
+
+// Define the POST route to get user ticket counts
+router.post('/getconfirmusers', async (req, res) => {
+  try {
+    const { userId } = req.body;  // Extract the userId from the request body
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // Fetch user data by ID
+    const userData = await getUserDataById(userId);
+
+    if (!userData) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+  
+
+    // Respond with the user data and their ticket data
+    res.status(200).json({ user: userData});
+  } catch (error) {
+    console.error('Error fetching user tickets:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

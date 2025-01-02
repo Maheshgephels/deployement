@@ -9,7 +9,7 @@ import { Breadcrumbs } from '../../AbstractElements';
 import { Link, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import { Field, Form } from 'react-final-form'; // Import Field and Form from react-final-form
-import { required, email, Name, Img, PDF } from '../Utils/validationUtils';
+import { required, email, Name, Img, PDF, option } from '../Utils/validationUtils';
 import debounce from 'lodash.debounce';
 
 
@@ -317,7 +317,7 @@ const CreateRegWorkshop = () => {
                                                     <Label className='form-label' for="type">
                                                         <strong>Workshop Type <span className="red-asterisk">*</span></strong>
                                                     </Label>
-                                                    <Field name="workshoptype_id">
+                                                    <Field name="workshoptype_id" validate={option}>
                                                         {({ input, meta }) => (
                                                             <div>
                                                                 <Select

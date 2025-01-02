@@ -1,13 +1,13 @@
 import React, { Fragment, useState, useEffect } from 'react';
 import {
-  Container, Row, Col, Button, Card, CardBody, CardHeader, FormFeedback, Label, Input, Table, Media, Modal, ModalBody, ModalFooter,
+  Container, Row, Col, Button, Card, CardBody, CardHeader, FormFeedback, Label, Input, Table, Media, Modal, ModalBody, ModalHeader, ModalFooter,
 } from 'reactstrap';
 import axios from 'axios';
 import SweetAlert from 'sweetalert2';
 import { Breadcrumbs } from '../../AbstractElements';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Field, Form } from 'react-final-form';
-import { required, Name, selection } from '../Utils/validationUtils';
+import { required, Name, selection, option } from '../Utils/validationUtils';
 import useAuth from '../../Auth/protectedAuth';
 import { getToken } from '../../Auth/Auth';
 import debounce from 'lodash.debounce';
@@ -50,6 +50,17 @@ const EditTicket = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState([]);
+  const [selectedAccommodation, setSelectedAccommodation] = useState(ticket.residentional_type);
+  const [formError, setFormError] = useState("");
+
+  const maxWordCount = 50;
+
+  const handleWordCount = (value) => {
+    if (!value) return 0; // If value is undefined or empty, return 0
+    const words = value.trim().split(/\s+/); // Splitting based on spaces
+    return words.length; // Returns word count
+  };
+
 
   console.log("ticket", ticket);
 
@@ -118,6 +129,14 @@ const EditTicket = () => {
 
     // console.log("selectedCategory",selectedCategory);
 
+    if (priceType === 'Paid' && (!durations || durations.length === 0)) {
+      setFormError("Please add at least one duration for a paid ticket.");
+      return; // Prevent form submission
+    }
+  
+    // Clear any previous error
+    setFormError("");
+
     const formData = {
       ticketId: ticket.ticket_id,
       ticketTitle: values.ticketTitle,
@@ -134,6 +153,7 @@ const EditTicket = () => {
       isPrivate: values.isPrivate ? 1 : 0,
       maxBuyingLimit: values.maxBuyingLimit,
       mailDescription: value,
+      selectedAccommodation: selectedAccommodation,
     };
 
 
@@ -182,15 +202,16 @@ const EditTicket = () => {
 
 
 
-  const handleSeatTypeChange = (e, form) => {
-    const value = e.target.value;
+  const handleSeatTypeChange = (selectedOption) => {
+    const value = selectedOption.value;
     setSeatType(value);
 
     // Clear seat count if the type is changed to Unlimited
     if (value === 'Unlimited') {
-      setSeatCount('');
+      setSeatCount(''); // Reset seat count when seat type is Unlimited
     }
   };
+
 
   // Handle seat count change
   const handleSeatCountChange = (e) => {
@@ -307,6 +328,10 @@ const EditTicket = () => {
                     isVisible: Boolean(ticket.ticket_visibility),
                     maxBuyingLimit: ticket.ticket_max_limit,
                     Body: ticket.ticket_mail_description,
+                    category: regCat
+                    .filter((cat) => selectedCategory.includes(cat.cs_reg_cat_id))
+                    .map((cat) => ({ value: cat.cs_reg_cat_id, label: cat.cs_reg_category })), // Map selectedCategory to objects
+                    seatType : seatType
 
 
                     // Add other initial values for the form
@@ -314,14 +339,17 @@ const EditTicket = () => {
                   render={({ handleSubmit, form }) => (
                     <form onSubmit={handleSubmit}>
                       <Row>
-                        <Col md="12" className="mb-3">
+                        {/* <Col md="12" className="mb-3">
                           <Field
                             name="ticketTitle"
                             validate={composeValidators(required, Name)}
                           >
                             {({ input, meta }) => (
                               <div className="form-group">
-                                <label><strong>Title</strong><span className="red-asterisk">*</span></label>
+                                <label className="d-flex justify-content-between align-items-center">
+                                  <strong>Title<span className="red-asterisk">*</span></strong>
+                                  <small>(0/50)</small>
+                                </label>
                                 <input
                                   {...input}
                                   type="text"
@@ -333,23 +361,94 @@ const EditTicket = () => {
                               </div>
                             )}
                           </Field>
-                        </Col>
+                        </Col> */}
+
                         <Col md="12" className="mb-3">
                           <Field
-                            name="ticketDescription"
-                            validate={required}
+                            name="ticketTitle"
+                            validate={(value) => {
+                              const words = handleWordCount(value);
+                              if (!value) return 'Title is required';
+                              if (words > maxWordCount) return `Title cannot exceed ${maxWordCount} words`;
+                              return undefined;
+                            }}
                           >
-                            {({ input, meta }) => (
-                              <div className="form-group">
-                                <label><strong>Description</strong><span className="red-asterisk">*</span></label>
-                                <textarea
-                                  {...input}
-                                  placeholder="Enter Ticket Description"
-                                  className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
-                                />
-                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                              </div>
-                            )}
+                            {({ input, meta }) => {
+                              const currentWordCount = handleWordCount(input.value);
+                              return (
+                                <div className="form-group">
+                                  <label className="d-flex justify-content-between align-items-center">
+                                    <strong>
+                                      Title<span className="red-asterisk">*</span>
+                                    </strong>
+                                    <small>
+                                      ({currentWordCount}/{maxWordCount})
+                                    </small>
+                                  </label>
+                                  <input
+                                    {...input}
+                                    type="text"
+                                    placeholder="Enter Ticket Title"
+                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                    onChange={(e) => {
+                                      const inputText = e.target.value;
+                                      const words = inputText.trim().split(/\s+/);
+
+                                      // Truncate input if word count exceeds maxWordCount
+                                      if (words.length > maxWordCount) {
+                                        const truncatedText = words.slice(0, maxWordCount).join(' ');
+                                        input.onChange(truncatedText); // Set truncated text
+                                      } else {
+                                        input.onChange(inputText); // Update normally
+                                      }
+                                    }}
+                                  />
+                                  {meta.error && meta.touched && (
+                                    <p className="d-block text-danger">{meta.error}</p>
+                                  )}
+                                </div>
+                              );
+                            }}
+                          </Field>
+                        </Col>
+                        <Col md="12" className="mb-3">
+                          <Field name="ticketDescription">
+                            {({ input, meta }) => {
+                              const handleWordCount = (value) => {
+                                if (!value) return 0; // If value is undefined or empty, return 0
+                                const words = value.trim().split(/\s+/); // Splitting based on spaces
+                                return words.length; // Returns word count
+                              };
+
+                              const maxWordCount = 200;
+                              const currentWordCount = handleWordCount(input.value);
+
+                              return (
+                                <div className="form-group">
+                                  <label className="d-flex justify-content-between align-items-center">
+                                    <strong>Description</strong>
+                                    <small>({currentWordCount}/{maxWordCount})</small>
+                                  </label>
+                                  <textarea
+                                    {...input}
+                                    placeholder="Enter Ticket Description"
+                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                    onChange={(e) => {
+                                      const inputText = e.target.value;
+                                      const words = inputText.trim().split(/\s+/);
+
+                                      // Truncate input if word count exceeds maxWordCount
+                                      if (words.length > maxWordCount) {
+                                        const truncatedText = words.slice(0, maxWordCount).join(' ');
+                                        input.onChange(truncatedText); // Set truncated text
+                                      } else {
+                                        input.onChange(inputText); // Update normally
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              );
+                            }}
                           </Field>
                         </Col>
 
@@ -395,6 +494,24 @@ const EditTicket = () => {
                           </div>
                         </Col>
 
+                        {selectedType === "1" && (
+                          <Col md="6" className="mb-3">
+                            <div className="form-group">
+                              <label><strong>Accommodation Type</strong></label>
+                              <Input
+                                type="select"
+                                className="form-control"
+                                onChange={(e) => setSelectedAccommodation(e.target.value)}
+                                value={selectedAccommodation}
+                              >
+                                <option value="" disabled selected>Select Accommodation</option>
+                                <option value="1">Twin Sharing</option>
+                                <option value="2">Single Occupancy</option>
+                              </Input>
+                            </div>
+                          </Col>
+                        )}
+
                         <Col md="6" className="mb-3">
                           <Field
                             name="ticketStatus"
@@ -423,7 +540,7 @@ const EditTicket = () => {
                             )}
                           </Field>
                         </Col>
-                        <Col md="12" className="mb-3">
+                        {/* <Col md="12" className="mb-3">
                           <div className="form-group">
                             <label><strong>Number of Seats</strong></label>
                             <Select
@@ -458,82 +575,59 @@ const EditTicket = () => {
                               )}
                             </Field>
                           )}
-                        </Col>
-                        {/* <Col md="12" className="mb-3">
-                          <Field name="category">
-                            {({ input }) => {
-                              // Parse the ticket_category: it could be either a single number or an array of numbers
-                              let selectedCategoryIds = [];
-
-                              // Check if the category is a single number or an array
-                              if (ticket.ticket_category) {
-                                if (ticket.ticket_category.startsWith('[') && ticket.ticket_category.endsWith(']')) {
-                                  // Handle array format [0,1]
-                                  selectedCategoryIds = ticket.ticket_category
-                                    .replace(/[\[\]{}]/g, '') // Remove brackets and curly braces
-                                    .split(',') // Split by comma
-                                    .map(Number); // Convert strings to numbers
-                                } else {
-                                  // Handle single value
-                                  selectedCategoryIds = [Number(ticket.ticket_category)];
-                                }
-                              }
-
-                              // Map selected category IDs to select option format
-                              const selectedOptions = selectedCategoryIds.map(catId => {
-                                const category = regCat.find(pref => pref.cs_reg_cat_id === catId);
-                                return category ? { value: category.cs_reg_cat_id, label: category.cs_reg_category } : null;
-                              }).filter(Boolean); // Filter out null values
-
-                              return (
-                                <div>
-                                  <Label className="form-label" htmlFor="category">
-                                    <strong>Category</strong>
-                                  </Label>
-                                  <Select
-                                    {...input}
-                                    options={[
-                                      ...regCat.map(pref => ({ value: pref.cs_reg_cat_id, label: pref.cs_reg_category }))
-                                    ]}
-                                    placeholder="Select Category"
-                                    isSearchable={true}
-                                    isMulti={true} // Enable multi-select
-                                    value={selectedOptions} // Set the value to selected category options
-                                    onChange={(value) => {
-                                      // If "Select All" is chosen
-                                      if (value && value.length > 0 && value[0].value === 'all') {
-                                        const allCategoryOptions = regCat.map(pref => ({
-                                          value: pref.cs_reg_cat_id,
-                                          label: pref.cs_reg_category
-                                        }));
-                                        input.onChange(allCategoryOptions); // Select all categories
-                                      } else {
-                                        // If new options are selected, merge them with existing selections
-                                        const selectedValues = value.map(option => option.value);
-                                        const currentValues = selectedOptions.map(option => option.value);
-
-                                        // Combine and filter duplicates
-                                        const newValues = Array.from(new Set([...currentValues, ...selectedValues]));
-
-                                        // Map back to the format expected by the Select component
-                                        const newOptions = newValues.map(val => {
-                                          const category = regCat.find(pref => pref.cs_reg_cat_id === val);
-                                          return category ? { value: category.cs_reg_cat_id, label: category.cs_reg_category } : null;
-                                        }).filter(Boolean);
-
-                                        input.onChange(newOptions); // Update selected options
-                                      }
-                                    }}
-                                    onBlur={input.onBlur}
-                                    classNamePrefix="react-select"
-                                  />
-                                </div>
-                              );
-                            }}
-                          </Field>
                         </Col> */}
                         <Col md="12" className="mb-3">
-                          <Field name="category">
+                          <div className="form-group">
+                            <label><strong>Number of Seats  <span className="red-asterisk">*</span></strong></label>
+                            <Field
+                              name="seatType"  // The name for the seatType field
+                              validate={option}  // Apply the required validation
+                              initialValue={seatType}
+                            >
+                              {({ input, meta }) => (
+                                <div>
+                                  <Select
+                                    {...input}
+                                    value={{ label: seatType, value: seatType }}  // Set selected value
+                                    onChange={handleSeatTypeChange}  // Directly pass selectedOption to handleSeatTypeChange
+                                    options={[
+                                      { value: 'Unlimited', label: 'Unlimited' },
+                                      { value: 'Limited', label: 'Limited' },
+                                    ]}
+                                    classNamePrefix="react-select"
+                                  />
+                                  {meta.touched && meta.error && (
+                                    <FormFeedback className="d-block text-danger">{meta.error}</FormFeedback>
+                                  )}
+                                </div>
+                              )}
+                            </Field>
+                          </div>
+
+                          {seatType === 'Limited' && (
+                            <Field name="seatCount">
+                              {({ input, meta }) => (
+                                <div className="form-group mt-2">
+                                  <label><strong>Seat Count </strong></label>
+                                  <input
+                                    {...input}
+                                    type="number"
+                                    placeholder="Enter Seat Count"
+                                    value={seatCount}
+                                    onChange={handleSeatCountChange}  // Update seat count state
+                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                  />
+                                  {meta.touched && meta.error && (
+                                    <FormFeedback className="d-block text-danger">{meta.error}</FormFeedback>
+                                  )}
+                                </div>
+                              )}
+                            </Field>
+                          )}
+                        </Col>
+
+                        {/* <Col md="12" className="mb-3">
+                          <Field name="category"  validate={option}>
                             {({ input, meta }) => {
                               // Ensure the selectedCategory is handled as an array of IDs or objects with value/label
                               const selectedOptions = selectedCategory.map((catId) => {
@@ -567,10 +661,61 @@ const EditTicket = () => {
                                     classNamePrefix="react-select"
                                   />
                                 </div>
+                                
+                              );
+
+                            }
+                            }
+                             
+                          </Field>
+                        </Col> */}
+
+                        <Col md="12" className="mb-3">
+                          <Field name="category" validate={option}>
+                            {({ input, meta }) => {
+                              // Ensure the selectedCategory is handled as an array of IDs or objects with value/label
+                              const selectedOptions = selectedCategory
+                                .map((catId) => {
+                                  const category = regCat.find((pref) => pref.cs_reg_cat_id === catId);
+                                  return category ? { value: category.cs_reg_cat_id, label: category.cs_reg_category } : null;
+                                })
+                                .filter(Boolean);
+
+                              return (
+                                <div>
+                                  <Label className="form-label" htmlFor="category">
+                                    <strong>Category <span className="red-asterisk">*</span></strong>
+                                  </Label>
+                                  <Select
+                                    {...input}
+                                    options={regCat.map((pref) => ({
+                                      value: pref.cs_reg_cat_id,
+                                      label: pref.cs_reg_category,
+                                    }))}
+                                    placeholder="Select Category"
+                                    isSearchable={true}
+                                    isMulti={true} // Enable multi-select
+                                    value={selectedOptions} // Ensure the correct value is passed to Select
+                                    onChange={(selected) => {
+                                      // Extract IDs from the selected options and update the form state
+                                      const newValues = selected.map((option) => option.value); // Ensure only IDs are passed
+                                      console.log("newValues", newValues);
+                                      setSelectedCategory(newValues); // Update local state with new selected IDs
+                                      input.onChange(newValues); // Update form state with new IDs
+                                    }}
+                                    onBlur={input.onBlur}
+                                    classNamePrefix="react-select"
+                                  />
+                                  {/* Display validation error if touched and error exists */}
+                                  {meta.error && meta.touched && (
+                                    <p className="d-block text-danger">{meta.error}</p>
+                                  )}
+                                </div>
                               );
                             }}
                           </Field>
                         </Col>
+
 
 
 
@@ -590,7 +735,8 @@ const EditTicket = () => {
                                   onChange={handlePercentageChange}  // Update slider state
                                   marks={{ 0: '0', 50: '50', 100: '100' }}
                                   step={1}
-
+                                  handleStyle={{ color: 'orange', borderColor: 'orange', height: 20, width: 20, zIndex: 0 }}
+                                  trackStyle={{ backgroundColor: 'orange' }}
                                 />
 
 
@@ -682,10 +828,10 @@ const EditTicket = () => {
                       {priceType === 'Paid' && (
 
                         <Card className='mt-3'>
-                          <CardHeader>
-                            <h5><strong>Duration Management</strong></h5>
-                          </CardHeader>
                           <CardBody>
+                            <Row className='mb-2'>
+                              <h5><strong>Duration Management</strong></h5>
+                            </Row>
                             <Row>
                               <Col md="12" className='mb-2'>
                                 <div className="form-group">
@@ -719,6 +865,7 @@ const EditTicket = () => {
                                   <DatePicker
                                     selected={newDuration.endDate}
                                     onChange={handleDateChange}
+                                    minDate={newDuration.startDate}
                                     className="form-control"
                                     showMonthDropdown
                                     showYearDropdown
@@ -774,44 +921,54 @@ const EditTicket = () => {
                                 </div>
                               </Col>
                             </Row>
-                            <Table striped>
-                              <thead>
-                                <tr>
-                                  <th>Name</th>
-                                  <th>Start Date</th>
-                                  <th>End Date</th>
-                                  <th>Amount</th>
-                                  {/* <th>Currency</th> */}
-                                  <th>Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {durations.map((duration, index) => (
-                                  <tr key={index}>
-                                    <td>{duration.name}</td>
-                                    <td>{duration.startDate.toLocaleDateString()}</td>
-                                    <td>{duration.endDate.toLocaleDateString()}</td>
-                                    <td>{duration.amount}</td>
-                                    {/* <td>{duration.currency}</td> */}
-                                    {/* <td>
+                            {durations.length > 0 && (
+                            <div className="table-responsive">
+                              <Table striped>
+                                <thead>
+                                  <tr>
+                                    <th>Name</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Amount</th>
+                                    {/* <th>Currency</th> */}
+                                    <th>Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {durations.map((duration, index) => (
+                                    <tr key={index}>
+                                      <td>{duration.name}</td>
+                                      <td>{duration.startDate.toLocaleDateString()}</td>
+                                      <td>{duration.endDate.toLocaleDateString()}</td>
+                                      <td>{duration.amount}</td>
+                                      {/* <td>{duration.currency}</td> */}
+                                      {/* <td>
                                       <Button color="info" onClick={() => handleEditDuration(index)}>Edit</Button>
                                       <Button color="danger" onClick={() => handleDeleteDuration(index)}>Delete</Button>
                                     </td> */}
-                                    <td>
-                                      <Button size="sm" color="warning" onClick={() => { handleEditDuration(index) }}>
-                                        <FaEdit />
-                                      </Button>
-                                      <Button size="sm" color="danger" onClick={() => { handleDeleteDuration(index) }}>
-                                        <MdDelete />
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </Table>
+                                      <td>
+                                        <Button size="sm" color="warning" onClick={() => { handleEditDuration(index) }}>
+                                          <FaEdit />
+                                        </Button>
+                                        <Button size="sm" color="danger" onClick={() => { handleDeleteDuration(index) }}>
+                                          <MdDelete />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </Table>
+                            </div>
+                            )}
                           </CardBody>
                         </Card>
+                        
                       )}
+                      {formError && (
+  <div className="text-danger mb-3">
+    {formError}
+  </div>
+)}
 
                       <Modal isOpen={modalOpen} toggle={() => setModalOpen(!modalOpen)}>
                         <ModalBody>
@@ -848,6 +1005,7 @@ const EditTicket = () => {
                                 <DatePicker
                                   selected={newDuration.endDate}
                                   onChange={handleDateChange}
+                                  minDate={newDuration.startDate}
                                   className="form-control"
                                   showMonthDropdown
                                   showYearDropdown
@@ -944,6 +1102,8 @@ const EditTicket = () => {
                         </Col>
                       </Row>
                       <Button type="submit" color="primary" className="mt-5">Submit</Button>
+                      <Button color='warning' onClick={handleCancel} className="ms-2 mt-5">Cancel</Button>
+
                     </form>
                   )}
                 />
@@ -952,6 +1112,24 @@ const EditTicket = () => {
           </Col>
         </Row>
       </Container>
+      {/* Modal */}
+      <Modal isOpen={modal} toggle={() => setModal(!modal)} centered>
+        <ModalHeader toggle={() => setModal(!modal)}>Confirmation</ModalHeader>
+        <ModalBody>
+          <div>
+            <p>
+              Your changes will be discarded. Are you sure you want to cancel?
+            </p>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button onClick={handleNavigation} className="btn btn-warning">
+            Yes
+          </button>
+          {/* <Link to="/manage-facility/Consoft" className="btn btn-warning">Yes</Link> */}
+          <Button color="primary" onClick={() => setModal(!modal)}>No</Button>
+        </ModalFooter>
+      </Modal>
     </Fragment>
   );
 };

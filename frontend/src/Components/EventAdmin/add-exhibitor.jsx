@@ -605,7 +605,7 @@ const AddExhibitor = () => {
                                                         type="checkbox"
                                                     >
                                                         {({ input, meta }) => (
-                                                            <div>
+                                                            <div className="d-flex align-items-center mb-2">
                                                                 <input
                                                                     {...input}
                                                                     id="sType"
@@ -633,7 +633,7 @@ const AddExhibitor = () => {
                                                                 type="checkbox"
                                                             >
                                                                 {({ input, meta }) => (
-                                                                    <div>
+                                                                    <div className="d-flex align-items-center mb-2">
                                                                         <input
                                                                             {...input}
                                                                             id="sListing"
@@ -655,7 +655,7 @@ const AddExhibitor = () => {
                                                                 type="checkbox"
                                                             >
                                                                 {({ input, meta }) => (
-                                                                    <div>
+                                                                    <div className="d-flex align-items-center mb-2">
                                                                         <input
                                                                             {...input}
                                                                             id="sDetail"

@@ -25,8 +25,8 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath;
     if (file.fieldname === 'logoimage') {
-      uploadPath = 'Header_Footer/'; // Save 'Facultycv' files to 'faculty-cv' directory
-    } else {
+      uploadPath = 'eventlogoimage/'; // Save 'Facultycv' files to 'faculty-cv' directory
+    }else {
       uploadPath = 'Header_Footer/'; // Save other files to 'faculty-profile' directory
     }
     cb(null, uploadPath);
@@ -36,7 +36,7 @@ const storage = multer.diskStorage({
     const dateTime = new Date().toLocaleString('en-US', { hour12: false }).replace(/[^\w\s]/gi, '').replace(/ /g, '_'); // Get current date and time in a formatted string without AM/PM
     let filename;
     if (file.fieldname === 'logoimage') {
-      filename = `${dName}-header${path.extname(file.originalname)}`;
+      filename = `EventIcon-${path.extname(file.originalname)}`;
     } else if (file.fieldname === 'Facultycv') {
       filename = `${dName}-facultycv${path.extname(file.originalname)}`;
     } else {
@@ -58,7 +58,7 @@ const upload = multer({
 router.get('/getSetting', verifyToken, async (req, res) => {
   try {
     // Query to fetch cs_value for id 38 from cs_tbl_sitesetting table
-    const query = "SELECT cs_parameter,cs_value FROM cs_tbl_sitesetting WHERE cs_parameter IN ('Time Zone', 'Event Days', 'Event Name', 'Banner Image', 'Token Expiry Time')";
+    const query = "SELECT cs_parameter,cs_value FROM cs_tbl_sitesetting WHERE cs_parameter IN ('Time Zone', 'Event Days', 'Event Name', 'Banner Image', 'Token Expiry Time', user_panel)";
 
     // Execute the query
     const [results] = await pool.query(query);
@@ -134,6 +134,7 @@ let isProcessing = false;
 
 router.post('/updateAdminSettings', verifyToken, upload.fields([
   { name: 'logoimage', maxCount: 1 },
+  { name: 'header', maxCount: 1 },
   { name: 'backgroundimg', maxCount: 1 }
 ]), async (req, res) => {
 
@@ -163,11 +164,11 @@ async function processRequest() {
   console.log(req.body);
   const { eventName, tokenExpiryTime, timezone, email, from, cc, bcc, replyto, regstart, eventstartdate, eventvenue, eventMode, eventenddate, eventtime } = req.body;
 
-
-  const header = req.files['logoimage'] ? req.files['logoimage'][0] : null;
+  const eventIcon = req.files['logoimage'] ? req.files['logoimage'][0] : null;
+  const header = req.files['header'] ? req.files['header'][0] : null;
   const footer = req.files['backgroundimg'] ? req.files['backgroundimg'][0] : null;
 
-
+  console.log("Logo", eventIcon);
   console.log("header", header);
 
   const adminPathQuery = `SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter = ?`;
@@ -200,11 +201,15 @@ async function processRequest() {
     await pool.query(updateQuery, [cc, 'CC']);
     await pool.query(updateQuery, [bcc, 'BCC']);
     await pool.query(updateQuery, [replyto, 'Reply-To']);
+    await pool.query(updateQuery, [regstart, 'Admin Reg Start Number']);
     await pool.query(updateQuery, [eventstartdate, 'Event Start Date']);
     await pool.query(updateQuery, [eventvenue, 'event_venue']);
     await pool.query(updateQuery, [eventMode, 'dynamiclogin_id']);
     await pool.query(updateQuery, [eventenddate, 'event_end_date']);
     await pool.query(updateQuery, [eventtime, 'event_time']);
+    if (eventIcon) {
+      await pool.query(updateQuery, [eventIcon.path, 'event_image_url']);
+    }
     if (header) {
       await pool.query(updateQuery, [header.path, 'payment_receipt_head']);
     }
@@ -322,14 +327,14 @@ async function processRequest() {
     //   ]);
     // }
 
-    if (header) {
+    if (eventIcon) {
       const updateEventDetailsQueryImage = `
         UPDATE cs_app_eventdetails
         SET event_image_url = ?
         WHERE event_host = ?`;
     
       await pool2.query(updateEventDetailsQueryImage, [
-        adminPath + header.path, // Concatenate AdminPath with the image path
+        adminPath + eventIcon.path, // Concatenate AdminPath with the image path
         updatedResults[0].cs_value // Use the actual event host identifier
       ]);
     }

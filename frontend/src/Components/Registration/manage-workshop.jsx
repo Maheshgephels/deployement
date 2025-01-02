@@ -30,6 +30,7 @@ const RegWorkshop = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
     const [pageSize, setPageSize] = useState(10);
+    const [count, setCount] = useState();
     const [searchText, setSearchText] = useState('');
     const [sortColumn, setSortColumn] = useState(''); // Column to sort by
     const [sortOrder, setSortOrder] = useState('desc'); // Sort order (asc/desc)
@@ -78,9 +79,12 @@ const RegWorkshop = () => {
                     Authorization: `Bearer ${token}`
                 }
             });
+            console.log("data", Response.data);
             setData(Response.data.categories);
             setTotalItems(Response.data.totalItems);
             setCatIds(catIds);
+            const Count = Response.data.Count;
+            setCount(Count);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -95,6 +99,7 @@ const RegWorkshop = () => {
 
     const handleSearch = (value) => {
         setSearchText(value);
+        setCurrentPage(1);
     };
 
     const handleSort = (column) => {
@@ -264,8 +269,28 @@ const RegWorkshop = () => {
     };
 
     const handleNavigation = () => {
-        navigate(`${process.env.PUBLIC_URL}/registration/add-reg-workshop/Consoft`);
+        if (count > 0) {
+            navigate(`${process.env.PUBLIC_URL}/registration/add-reg-workshop/Consoft`);
+        } else {
+            SweetAlert.fire({
+                title: 'Warning!',
+                text: 'Create Workshop type before creating a workshop!',
+                icon: 'warning',
+                showConfirmButton: true,
+                confirmButtonText: 'Create Workshop Type', // Custom button text
+                showCancelButton: true, // Display the Cancel button
+                cancelButtonText: 'Close', // Text for the close button
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Navigate to the Create Workshop Type page
+                    navigate(`${process.env.PUBLIC_URL}/registration/add-reg-workshoptype/Consoft`);
+                }
+            });
+        }
     };
+
 
     // Function to open the warning modal
     const openWarningModal = (workshopName) => {

@@ -795,7 +795,7 @@ const EditExhibitor = () => {
                                                         initialValue={item.show_type}
                                                     >
                                                         {({ input, meta }) => (
-                                                            <div>
+                                                            <div className="d-flex align-items-center mb-2">
                                                                 <input
                                                                     {...input}
                                                                     id="sType"
@@ -826,7 +826,7 @@ const EditExhibitor = () => {
                                                                 initialValue={item.show_listing}
                                                             >
                                                                 {({ input, meta }) => (
-                                                                    <div>
+                                                                    <div className="d-flex align-items-center mb-2">
                                                                         <input
                                                                             {...input}
                                                                             id="sListing"
@@ -849,7 +849,7 @@ const EditExhibitor = () => {
                                                                 initialValue={item.show_detail}
                                                             >
                                                                 {({ input, meta }) => (
-                                                                    <div>
+                                                                    <div className="d-flex align-items-center mb-2">
                                                                         <input
                                                                             {...input}
                                                                             id="sDetail"

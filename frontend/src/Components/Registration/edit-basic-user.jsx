@@ -46,9 +46,17 @@ const EditBasicUser = () => {
     console.log("Current Path:", location.pathname);
 
     console.log("FieldName", fieldName);
+    console.log("Field ID", fieldId);
+
     console.log("Required", requiredfield);
 
     console.log("User", Data);
+
+    const toSentenceCase = (str) => {
+        if (!str) return ''; // Handle empty or undefined strings
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      };
+
 
 
 
@@ -122,6 +130,14 @@ const EditBasicUser = () => {
                     values[field] = ''; // Ensure field is included if missing
                 }
             });
+
+            if (values.cs_first_name) {
+                values.cs_first_name = toSentenceCase(values.cs_first_name);
+              }
+        
+              if (values.cs_last_name) {
+                values.cs_last_name = toSentenceCase(values.cs_last_name);
+              }
 
             console.log('Formatted form data to send:', values);
 
@@ -199,7 +215,7 @@ const EditBasicUser = () => {
     };
 
     const handleNavigation = () => {
-        navigate(`${process.env.PUBLIC_URL}/Registration/basic-user-listing/Consoft`);
+        navigate(`${process.env.PUBLIC_URL}/registration/basic-user-listing/Consoft`);
     };
 
     const validateUniqueUsername = async (value) => {
@@ -224,7 +240,7 @@ const EditBasicUser = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Edit User" parent="Manage User" title="Edit User" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Edit Basic User" parent="Manage Basic User" title="Edit Basic User" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
@@ -667,7 +683,8 @@ const EditBasicUser = () => {
 
                                                                         // Map matchedOptions to react-select format
                                                                         let options = matchedOptions.map(option => ({
-                                                                            value: option.cs_field_option_value,
+                                                                            // value: option.cs_field_option_value,
+                                                                            value: option.cs_field_option,
                                                                             label: option.cs_field_option,
                                                                         }));
 
@@ -759,6 +776,11 @@ const EditBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="number"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -784,6 +806,11 @@ const EditBasicUser = () => {
                                                                                 type="text"
                                                                                 value={input.value || ''}
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -809,6 +836,11 @@ const EditBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -816,70 +848,70 @@ const EditBasicUser = () => {
                                                                 </Field>
                                                             )}
 
-{
-                                                                    fieldType[index] === 'Radio' && (
-                                                                        <Field
-                                                                            name={`${fieldName[index]}`} // Use dynamic field name
-                                                                            initialValue={Data?.[fieldName[index]] || ''}
-                                                                            validate={requiredfield[index] === '1' ? composeValidators(radio) : (value) => composeValidators()(value)}
-                                                                        >
-                                                                            {({ input, meta }) => (
+                                                            {
+                                                                fieldType[index] === 'Radio' && (
+                                                                    <Field
+                                                                        name={`${fieldName[index]}`} // Use dynamic field name
+                                                                        initialValue={Data?.[fieldName[index]] || ''}
+                                                                        validate={requiredfield[index] === '1' ? composeValidators(radio) : (value) => composeValidators()(value)}
+                                                                    >
+                                                                        {({ input, meta }) => (
+                                                                            <div>
+                                                                                <Label className='form-label' for={`radio${index}`}>
+                                                                                    <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                </Label>
                                                                                 <div>
-                                                                                    <Label className='form-label' for={`radio${index}`}>
-                                                                                        <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
-                                                                                    </Label>
-                                                                                    <div>
-                                                                                        <Media body className="icon-state switch-sm">
-                                                                                            <Label className="switch">
-                                                                                                <Input
-                                                                                                    type="checkbox"
-                                                                                                    checked={input.value === 'Yes'}
-                                                                                                    onChange={(e) => input.onChange(e.target.checked ? 'Yes' : 'No')}
-                                                                                                />
-                                                                                                <span className={"switch-state " + (input.value === 'Yes' ? "bg-success" : "bg-danger")}></span>
-                                                                                            </Label>
-                                                                                        </Media>
-                                                                                    </div>
-                                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                                    <Media body className="icon-state switch-sm">
+                                                                                        <Label className="switch">
+                                                                                            <Input
+                                                                                                type="checkbox"
+                                                                                                checked={input.value === 'Yes'}
+                                                                                                onChange={(e) => input.onChange(e.target.checked ? 'Yes' : 'No')}
+                                                                                            />
+                                                                                            <span className={"switch-state " + (input.value === 'Yes' ? "bg-success" : "bg-danger")}></span>
+                                                                                        </Label>
+                                                                                    </Media>
                                                                                 </div>
-                                                                            )}
-                                                                        </Field>
-                                                                    )
-                                                                }
+                                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                            </div>
+                                                                        )}
+                                                                    </Field>
+                                                                )
+                                                            }
 
-                                                                {
-                                                                    fieldType[index] === 'Date' && (
-                                                                        <Field
-                                                                            name={`${fieldName[index]}`} // Use dynamic field name
-                                                                            initialValue={Data?.[fieldName[index]]
-                                                                                ? moment(Data[fieldName[index]]).isValid()
-                                                                                    ? moment(Data[fieldName[index]]).format('YYYY-MM-DD')
-                                                                                    : Data[fieldName[index]]
-                                                                                : ''}
-                                                                            validate={requiredfield[index] === '1' ? composeValidators(expiryDate) : (value) => composeValidators()(value)}
-                                                                        >
-                                                                            {({ input, meta }) => (
-                                                                                <div>
-                                                                                    <Label className='form-label' for={`displayname${index}`}>
-                                                                                        <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
-                                                                                    </Label>
-                                                                                    <input
-                                                                                        {...input}
-                                                                                        className="form-control"
-                                                                                        id={`displayname${index}`}
-                                                                                        type="date"
-                                                                                        placeholder={`Enter ${label}`}
-                                                                                        // min={minDate}
-                                                                                        max="9999-12-31"
-                                                                                    />
-                                                                                    {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                                                </div>
-                                                                            )}
-                                                                        </Field>
-                                                                    )
-                                                                }
+                                                            {
+                                                                fieldType[index] === 'Date' && (
+                                                                    <Field
+                                                                        name={`${fieldName[index]}`} // Use dynamic field name
+                                                                        initialValue={Data?.[fieldName[index]]
+                                                                            ? moment(Data[fieldName[index]]).isValid()
+                                                                                ? moment(Data[fieldName[index]]).format('YYYY-MM-DD')
+                                                                                : Data[fieldName[index]]
+                                                                            : ''}
+                                                                        validate={requiredfield[index] === '1' ? composeValidators(expiryDate) : (value) => composeValidators()(value)}
+                                                                    >
+                                                                        {({ input, meta }) => (
+                                                                            <div>
+                                                                                <Label className='form-label' for={`displayname${index}`}>
+                                                                                    <strong>{label}</strong>{requiredfield[index] === '1' && <span className="text-danger"> *</span>}
+                                                                                </Label>
+                                                                                <input
+                                                                                    {...input}
+                                                                                    className="form-control"
+                                                                                    id={`displayname${index}`}
+                                                                                    type="date"
+                                                                                    placeholder={`Enter ${label}`}
+                                                                                    // min={minDate}
+                                                                                    max="9999-12-31"
+                                                                                />
+                                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                            </div>
+                                                                        )}
+                                                                    </Field>
+                                                                )
+                                                            }
 
-{fieldType[index] === 'Username' && (
+                                                            {fieldType[index] === 'Username' && (
                                                                 <Field
                                                                     name={`${fieldName[index]}`} // Use dynamic field name
                                                                     initialValue={Data[fieldName[index]] || ''}
@@ -895,7 +927,13 @@ const EditBasicUser = () => {
                                                                                 className="form-control"
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
+                                                                                disabled={Data?.cs_username}
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -920,6 +958,11 @@ const EditBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>

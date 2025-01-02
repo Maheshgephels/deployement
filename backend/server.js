@@ -174,11 +174,14 @@ const paymentRoutes = require('./routes/Registration/paymentRoutes');
 const regreportRoutes = require('./routes/Registration/reportRoutes');
 const regWidgets = require('./routes/Registration/regWidgets');
 const regsetting = require('./routes/Registration/RegSettingRoutes');
+const allocationRoutes = require('./routes/Registration/allocationRoute');
 
 // User
 const userdashboardroutes = require('./routes/User/Dashbaord');
 // const packageroutes =require('./routes/Registration/packageRoute')
 const UuserRoutes = require('./routes/User/userRoutes');
+
+const directuserRoutes = require('./routes/User/dIrectUserRoutes');
 
 
 
@@ -281,9 +284,12 @@ app.use('/api/regsetting', regsetting);
 
 app.use('/api/regWidgets',regWidgets);
 
+app.use('/api/allocation',allocationRoutes);
+
 //User
 app.use('/api/userdashboard',userdashboardroutes);
 app.use('/api/register',UuserRoutes);
+app.use('/api/directuser',directuserRoutes);
 
 
 

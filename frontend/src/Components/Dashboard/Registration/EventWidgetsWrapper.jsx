@@ -18,15 +18,19 @@ import styled from 'styled-components';
 
 
 const EventWidgetsWrapper = () => {
+  const [basicuserCount, setBasicUserCount] = useState(0);
   const [userCount, setUserCount] = useState(0);
   const [compCount, setCompCount] = useState(0);
   const [cancelCount, setCancelCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
+  const [tempCount, setTempCount] = useState(0);
+  const [discardedCount, setDiscardedCount] = useState(0);
   const [loginuserCount, setLoginUserCount] = useState(0);
   const [totalFacultyCount, setTotalFacultyCount] = useState(0);
   const [activeFacultyCount, setActiveFacultyCount] = useState(0);
   const [inactiveFacultyCount, setInactiveFacultyCount] = useState(0);
   const [selectedWidgets, setSelectedWidgets] = useState([]);
+  const [show, setShow] = useState('');
   const [apiData, setApiData] = useState([]);
   const navigate = useNavigate();
 
@@ -36,7 +40,24 @@ const EventWidgetsWrapper = () => {
   useEffect(() => {
     fetchCounts();
     fetchData();
+    fetchSettings();
   }, []);
+
+
+  const fetchSettings = async () => {
+    try {
+
+      const response = await axios.get(`${BackendAPI}/auth/getsettings`, {});
+      const fetchedSettings = response.data.settings;
+
+      console.log("Fetch Setting", fetchedSettings);
+      setShow(fetchedSettings);
+
+
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -63,11 +84,14 @@ const EventWidgetsWrapper = () => {
           Authorization: `Bearer ${token}`
         }
       });
+      setBasicUserCount(responseUser.data.BasicuserCount);
       setUserCount(responseUser.data.userCount);
       setLoginUserCount(responseUser.data.userloggedinCount);
       setCompCount(responseUser.data.compCount);
       setCancelCount(responseUser.data.cancelledCount);
       setInactiveCount(responseUser.data.inactiveCount);
+      setDiscardedCount(responseUser.data.discCount);
+      setTempCount(responseUser.data.tempCount);
 
       // Fetch faculty counts
       const responseFaculty = await axios.get(`${BackendAPI}/regWidgets/facultyCount`, {
@@ -95,12 +119,59 @@ const EventWidgetsWrapper = () => {
     navigate(`${process.env.PUBLIC_URL}/event/loggedin-user/Consoft`);
   };
 
+  const handleTotalUser = () => {
+    navigate(`${process.env.PUBLIC_URL}/registration/confirm-user-listing/Consoft`);
+  };
+
+  const handleBasicUser = () => {
+    navigate(`${process.env.PUBLIC_URL}/registration/basic-user-listing/Consoft`);
+  };
+
+  const handleTempViewDetails = () => {
+    navigate(`${process.env.PUBLIC_URL}/registration/temp-user-listing/Consoft`);
+  };
+
+  const handleDiscardedViewDetails = () => {
+    navigate(`${process.env.PUBLIC_URL}/registration/discarded-temp-user-listing/Consoft`);
+  };
+
   return (
     <>
-      <TransparentBreadcrumbs mainTitle="Ticket wise Counts" />
-      <TicketCount />
       <TransparentBreadcrumbs mainTitle="Category Counts" />
       <Row>
+        {/*Basic User Count Card */}
+        {show === 'Yes' && (
+          <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+            <Row>
+              <Col xl='12'>
+                <Card className="course-box card">
+                  <CardBody>
+                    <div className='course-widget'>
+                      <div className='course-icon secondary'>
+                        <SvgIcon className='fill-icon' iconId='course-1' />
+                      </div>
+                      <div>
+                        <H4 attrH4={{ className: 'mb-0' }}>{basicuserCount || '0'}</H4>
+                        <span className='f-light'>Total Basic Users</span>
+                        <a
+                          type='button'
+                          className='btn btn-light f-light d-flex justify-content-center'
+                          onClick={() => handleBasicUser('user')}
+                        >
+                          View details
+                          <span className='ms-2'>
+                            <SvgIcon className='fill-icon f-light' iconId='arrowright' />
+                          </span>
+                        </a>
+                      </div>
+                    </div>
+                  </CardBody>
+                  <SquareGroupUi />
+                </Card>
+              </Col>
+            </Row>
+          </Col>
+        )}
         {/* User Count Card */}
         <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
           <Row>
@@ -113,11 +184,11 @@ const EventWidgetsWrapper = () => {
                     </div>
                     <div>
                       <H4 attrH4={{ className: 'mb-0' }}>{userCount || '0'}</H4>
-                      <span className='f-light'>Total Users</span>
+                      <span className='f-light'>Total Confirm Users</span>
                       <a
                         type='button'
                         className='btn btn-light f-light d-flex justify-content-center'
-                        onClick={() => handleUserViewDetails('user')}
+                        onClick={() => handleTotalUser('user')}
                       >
                         View details
                         <span className='ms-2'>
@@ -134,7 +205,7 @@ const EventWidgetsWrapper = () => {
         </Col>
 
         {/* Total Faculty Count Card */}
-        <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+        {/* <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
           <Row>
             <Col xl='12'>
               <Card className="course-box card">
@@ -163,10 +234,10 @@ const EventWidgetsWrapper = () => {
               </Card>
             </Col>
           </Row>
-        </Col>
+        </Col> */}
 
         {/* Active Faculty Count Card */}
-        <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+        {/* <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
           <Row>
             <Col xl='12'>
               <Card className="course-box card">
@@ -195,10 +266,10 @@ const EventWidgetsWrapper = () => {
               </Card>
             </Col>
           </Row>
-        </Col>
+        </Col> */}
 
         {/* Inactive Faculty Count Card */}
-        <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+        {/* <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
           <Row>
             <Col xl='12'>
               <Card className="course-box card">
@@ -228,40 +299,41 @@ const EventWidgetsWrapper = () => {
               </Card>
             </Col>
           </Row>
-        </Col>
+        </Col> */}
 
-
-        <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
-          <Row>
-            <Col xl='12'>
-              <Card className="course-box card">
-                <CardBody>
-                  <div className='course-widget'>
-                    <div className='course-icon secondary'>
-                      <SvgIcon className='fill-icon' iconId='course-1' />
+        {show === 'Yes' && (
+          <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+            <Row>
+              <Col xl='12'>
+                <Card className="course-box card">
+                  <CardBody>
+                    <div className='course-widget'>
+                      <div className='course-icon secondary'>
+                        <SvgIcon className='fill-icon' iconId='course-1' />
+                      </div>
+                      <div>
+                        <H4 attrH4={{ className: 'mb-0' }}>{loginuserCount || '0'}</H4>
+                        <span className='f-light'>LoggedIn User</span>
+                        <a
+                          type='button'
+                          className='btn btn-light f-light d-flex justify-content-center'
+                          onClick={() => handleloggedinViewDetails('inactive')}
+                        >
+                          View details
+                          <span className='ms-2'>
+                            <SvgIcon className='fill-icon f-light' iconId='arrowright' />
+                          </span>
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <H4 attrH4={{ className: 'mb-0' }}>{loginuserCount || '0'}</H4>
-                      <span className='f-light'>LoggedIn User</span>
-                      <a
-                        type='button'
-                        className='btn btn-light f-light d-flex justify-content-center'
-                        onClick={() => handleloggedinViewDetails('inactive')}
-                      >
-                        View details
-                        <span className='ms-2'>
-                          <SvgIcon className='fill-icon f-light' iconId='arrowright' />
-                        </span>
-                      </a>
-                    </div>
-                  </div>
-                </CardBody>
-                <SquareGroupUi />
+                  </CardBody>
+                  <SquareGroupUi />
 
-              </Card>
-            </Col>
-          </Row>
-        </Col>
+                </Card>
+              </Col>
+            </Row>
+          </Col>
+        )}
         {/* <Row> */}
         {selectedWidgets.map((widgetData, index) => (
           <Col key={index} xxl='auto' xl='4' sm='6' className='box-col-6'>
@@ -274,7 +346,45 @@ const EventWidgetsWrapper = () => {
         ))}
         {/* </Row> */}
 
+        <TransparentBreadcrumbs mainTitle="Ticket wise Counts" />
+        <TicketCount />
+
         <TransparentBreadcrumbs mainTitle="Advance Counts" />
+
+        {/* Total Temp user Count Card */}
+        <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+          <Row>
+            <Col xl='12'>
+              <Card className="course-box card">
+                <CardBody>
+                  <div className='course-widget'>
+                    <div className='course-icon secondary'>
+                      <SvgIcon className='fill-icon' iconId='course-1' />
+                    </div>
+                    <div>
+                      <H4 attrH4={{ className: 'mb-0' }}>{tempCount || '0'}</H4>
+                      <span className='f-light'>Temp User
+
+                      </span>
+                      <a
+                        type='button'
+                        className='btn btn-light f-light d-flex justify-content-center'
+                        onClick={() => handleTempViewDetails()}
+                      >
+                        View details
+                        <span className='ms-2'>
+                          <SvgIcon className='fill-icon f-light' iconId='arrowright' />
+                        </span>
+                      </a>
+                    </div>
+                  </div>
+                </CardBody>
+                <SquareGroupUi />
+              </Card>
+            </Col>
+          </Row>
+        </Col>
+
 
         {/* Total Complimentary Count Card */}
         <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
@@ -378,10 +488,44 @@ const EventWidgetsWrapper = () => {
           </Row>
         </Col>
 
+        {/* Total Temp user Count Card */}
+        <Col xxl='auto' xl='4' sm='6' className='box-col-6'>
+          <Row>
+            <Col xl='12'>
+              <Card className="course-box card">
+                <CardBody>
+                  <div className='course-widget'>
+                    <div className='course-icon secondary'>
+                      <SvgIcon className='fill-icon' iconId='course-1' />
+                    </div>
+                    <div>
+                      <H4 attrH4={{ className: 'mb-0' }}>{discardedCount || '0'}</H4>
+                      <span className='f-light'>Discarded User
+
+                      </span>
+                      <a
+                        type='button'
+                        className='btn btn-light f-light d-flex justify-content-center'
+                        onClick={() => handleDiscardedViewDetails()}
+                      >
+                        View details
+                        <span className='ms-2'>
+                          <SvgIcon className='fill-icon f-light' iconId='arrowright' />
+                        </span>
+                      </a>
+                    </div>
+                  </div>
+                </CardBody>
+                <SquareGroupUi />
+              </Card>
+            </Col>
+          </Row>
+        </Col>
+
 
 
         {/* <LoggedInUsers /> */}
-        <LatestRegUsers />
+        {/* <LatestRegUsers /> */}
         <UserRegistrationGraph />
 
       </Row>

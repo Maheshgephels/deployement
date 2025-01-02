@@ -32,10 +32,12 @@ const PaymentReport = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(false);
+    const [error, setError] = useState('');
     const [selectedFields, setSelectedFields] = useState([]);
     const [reportName, setReportName] = useState(''); // Default to an empty string or a default name
     const [reportType, setReportType] = useState('');
     const [startDate, setStartDate] = useState("");
+    const [isInternational, setIsInternational] = useState('');
     const { permissions } = useContext(PermissionsContext);
 
 
@@ -43,6 +45,7 @@ const PaymentReport = () => {
 
     useEffect(() => {
         fetchUser();
+        fetchSettings();
     }, [permissions]);
 
     // Extract Facultys component
@@ -58,9 +61,9 @@ const PaymentReport = () => {
             });
             console.log("Response", response.data);
 
-            // Ensure userData is an array and set the field options from fieldData
-            setData(response.data.userData || []);
-            setUser(response.data.userData[0] || {});
+            // Ensure updatedPaymentData is an array and set the field options from fieldData
+            setData(response.data.updatedPaymentData || []);
+            setUser(response.data.updatedPaymentData[0] || {});
 
             // Set options dynamically from fieldData
             // const dynamicOptions = response.data.fieldData.map(field => ({
@@ -76,9 +79,28 @@ const PaymentReport = () => {
         }
     };
 
-    const handlePriceChange = (e) => {
-        setReportType(e.target.value);
+    const fetchSettings = async () => {
+        try {
+
+            const response = await axios.get(`${BackendAPI}/setting/getsettings`, {});
+            const fetchedSettings = response.data.settings;
+
+            console.log("Fetch Setting", fetchedSettings);
+            // setShow(fetchedSettings);
+            const isInternationalSetting = fetchedSettings.find(setting => setting.cs_parameter === 'is_international');
+            setIsInternational(isInternationalSetting?.cs_value === 'Yes');
+
+        } catch (error) {
+            console.error("Error fetching settings:", error);
+        }
     };
+
+    const handlePriceChange = (e) => {
+        setReportType(e.target.value); // Update the report type state
+        setError(''); // Clear any errors
+        setSelectedFields([]); // Correctly update the selectedFields state to an empty array
+    };
+
 
 
 
@@ -95,16 +117,37 @@ const PaymentReport = () => {
         cs_first_name: 'First Name',
         cs_last_name: 'Last Name',
         cs_reg_category: 'Registration Category',
-        cs_phone: 'Contact Number',
         cs_email: 'Email',
-        paymentstatus_name: 'Payment Status',
+        cs_phone: 'Contact Number',
+        cs_state: 'State',
         paymenttype_name: 'Payment Type',
+        cheque_no: 'Transaction No/Cheque No/DD No',
         tracking_id: 'Tracking Id',
+        bank: 'Bank',
+        branch: 'Branch',
         currency: 'Currency',
-        total_paid_amount: 'Total Paid Amount',
-        payment_date: 'Payment Date'
-        // Add more mappings here as needed
+        conference_fees: 'Registration Amount',
+        addon_fees: 'Add-on Amount'
+        // Add more static mappings here as needed
     };
+
+    // Conditionally add keys based on 'isInternational'
+    if (!isInternational) {
+        keyLabelMapping.cgst_amount = 'CGST';
+        keyLabelMapping.sgst_amount = 'SGST';
+        keyLabelMapping.igst_amount = 'IGST';
+        keyLabelMapping.tax_amount = 'Total Tax Amount';
+    } else {
+        keyLabelMapping.tax_amount = 'Total Tax Amount';
+    }
+
+    // Add other common keys (if needed)
+    keyLabelMapping.processing_fee = 'Processing Fee';
+    keyLabelMapping.total_paid_amount = 'Total Paid Amount'
+    keyLabelMapping.payment_date = 'Payment Date';
+    keyLabelMapping.status = 'Payment Status';
+    keyLabelMapping.is_cancel = 'User Status';
+
 
     // Create an array of options maintaining the order defined in keyLabelMapping
     const exhOptions = Object.entries(keyLabelMapping).map(([key, label]) => ({
@@ -146,6 +189,12 @@ const PaymentReport = () => {
     const handleReportDownload = (form) => {
         form.submit(); // Trigger validation
 
+        // Validate price type selection
+        if (!reportType) {
+            setError('Please select any one of the above options.');
+            return;
+        }
+
         // Check if there are errors in the form
         const errors = form.getState().errors;
         if (Object.keys(errors).length === 0 && selectedFields.length > 0) {
@@ -165,6 +214,11 @@ const PaymentReport = () => {
         // Filter data based on reportType
         const typeFilteredData = data.filter(item => {
             const paymentMode = item.payment_mode; // Extract payment_mode
+
+            // Include all records when reportType is '*' or empty
+            if (reportType === "" || reportType === "*" || reportType.toLowerCase() === "payment") {
+                return true; // Include all records
+            }
 
             // Check if payment_mode is not null and matches the reportType
             return reportType === "" || (paymentMode !== null && paymentMode.toLowerCase() === String(reportType).toLowerCase());
@@ -216,11 +270,24 @@ const PaymentReport = () => {
                     rowData.push(
                         item.cs_dob ? moment(item.cs_dob).format('YYYY-MM-DD') : '' // Keep empty if cs_dob is not available
                     );
-                } else if (field.label === 'Status') {
+                } else if (field.label === 'IGST') {
                     rowData.push(
-                        item.cs_status ? 'Active' : 'Inactive' // Correct handling of status
+                        !item.isStateMatched
+                            ? item.igst_amount || '' // If state matches, push IGST amount, or an empty string if undefined
+                            : '' // Otherwise, push an empty string
                     );
-                } else {
+                }
+
+                else if (field.label === 'Payment Status') {
+                    rowData.push(
+                        item.status ? 'Active' : 'Inactive' // Correct handling of status
+                    );
+                } else if (field.label === 'User Status') {
+                    rowData.push(
+                        item.is_cancel ? 'Cancelled' : 'Active' // Correct handling of status
+                    );
+                }
+                else {
                     rowData.push(item[field.value] || '');
                 }
             });
@@ -277,14 +344,16 @@ const PaymentReport = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            Customize and download a report of users by selecting the category, event days, date range of registration.
+                            • Create a custom report by entering a report name and selecting the Payment Mode (Online or Offline).<br />
+                            • Define the date range for the report by specifying the From Date and To Date.<br />
+                            • Choose the fields to include in the report by selecting them from the Select Field option.
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Registration Admin" title="Basic User Report" />
+            } parent="Registration Admin" title="Payment Report" />
             <Container fluid={true}>
-            <Row className='justify-content-center'>
-            <Col sm="6">
+                <Row className='justify-content-center'>
+                    <Col sm="8">
                         <Card>
                             <CardBody>
                                 <Form
@@ -292,7 +361,7 @@ const PaymentReport = () => {
                                     render={({ handleSubmit, form }) => (
                                         <form className='needs-validation' noValidate onSubmit={handleSubmit}>
                                             <Row>
-                                            <Col md="12" className="mb-3">
+                                                <Col md="12" className="mb-3">
                                                     <Field
                                                         name="repName"
                                                         validate={composeValidators(required)}
@@ -318,34 +387,50 @@ const PaymentReport = () => {
                                                     </Field>
                                                 </Col>
                                             </Row>
-                                            <Row>
+                                            <Row className="mb-3">
                                                 {/* Report Type Radio Buttons */}
-                                                <Col md="12" className="mb-3">
+                                                <Col md="12">
                                                     <div className="form-group">
-                                                        <strong>Payment Mode</strong>
-                                                        <div className="me-5 mt-3">
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="Online"
-                                                                onChange={handlePriceChange}
-                                                                className="me-2"
-                                                            />
-                                                            <strong>Online Paid Report</strong>
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="Offline"
-                                                                onChange={handlePriceChange}
-                                                                className="ms-3 me-2"
-                                                            />
-                                                            <strong>Offline Paid Report</strong>
+                                                        <strong>Payment Mode<span className="red-asterisk"> *</span></strong>
+                                                        <div className="d-flex flex-column flex-md-row mt-3">
+                                                            <div className="d-flex align-items-center mb-2 mb-md-0">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="*"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>All Payment Report</strong>
+                                                            </div>
+                                                            <div className="d-flex align-items-center mb-2 mb-md-0 ms-md-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="Online"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Online Paid Report</strong>
+                                                            </div>
+                                                            <div className="d-flex align-items-center ms-md-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="Offline"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Offline Paid Report</strong>
+                                                            </div>
                                                         </div>
+                                                        {error && <p className='d-block text-danger'>{error}</p>}
                                                     </div>
                                                 </Col>
                                             </Row>
+
                                             <Row>
-                                            <Col md="6" className="mb-3">
+                                                <Col md="6" className="mb-3">
                                                     <Field name="startDate">
                                                         {({ input }) => (
                                                             <div>
@@ -370,8 +455,10 @@ const PaymentReport = () => {
 
 
                                                 <Col md="6" className="mb-3">
-                                                <Field name="endDate">
-                                                        {({ input }) => (
+                                                    <Field name="endDate"
+                                                        validate={startDate ? required : undefined}
+                                                    >
+                                                        {({ input, meta }) => (
                                                             <div>
                                                                 <Label className='form-label' for="endDate"><strong>To Date</strong></Label>
                                                                 <input
@@ -383,6 +470,9 @@ const PaymentReport = () => {
                                                                     min={startDate}
                                                                     max="9999-12-31"
                                                                 />
+                                                                {meta.error && meta.touched && (
+                                                                    <p className="d-block text-danger">{meta.error}</p> // Display validation error
+                                                                )}
                                                             </div>
                                                         )}
 
@@ -390,13 +480,13 @@ const PaymentReport = () => {
                                                 </Col>
                                             </Row>
                                             <Row>
-                                            <Col md="12" className="mb-3">
+                                                <Col md="12" className="mb-3">
                                                     <Label className='form-label' htmlFor="fields"><strong>Select Field <span className="red-asterisk">*</span></strong></Label>
                                                     <Field name="fields"
                                                         validate={option}>
                                                         {({ input, meta }) => (
                                                             <div>
-                                                               <Select
+                                                                <Select
                                                                     {...input}
                                                                     options={[selectAllOption, ...exhOptions]}
                                                                     placeholder="Select Fields"

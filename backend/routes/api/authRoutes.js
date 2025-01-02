@@ -22,9 +22,15 @@ router.post('/login', async (req, res) => {
   // console.log(req.body);
 
   try {
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Username and password are required' });
+    if (!username) {
+      return res.status(401).json({ message: 'Invalid username' });
+    } else if (!password) {
+      return res.status(401).json({ message: 'Invalid password' });
     }
+    // if (!username || !password) {
+    //   return res.status(400).json({ message: 'Username and password are required' });
+    // }
+
 
     // The BINARY function converts a value to a binary string & match, Then its check the case also for comparison.
     const [users] = await pool.query('SELECT * FROM cs_ad_admins WHERE BINARY csa_uname = ?', [username]);
@@ -188,7 +194,7 @@ router.get('/getBasicField', async (req, res) => {
       SELECT ${columnsToFetch}
       FROM cs_os_field_data
       LEFT JOIN cs_os_field_type ON cs_os_field_data.cs_field_type = cs_os_field_type.cs_field_type
-      WHERE cs_os_field_data.cs_status IN(1,2) And cs_visible_reg_userform = 1 AND cs_visible_reg_basicform = 1  
+      WHERE cs_visible_reg_basicform = 1  
       ORDER BY cs_field_order; 
   `;
 
@@ -289,6 +295,12 @@ router.post('/addBasicUser', async (req, res) => {
     // Get the columns (keys) and values from the request body dynamically
     const columns = Object.keys(userData);
     const values = Object.values(userData);
+
+    // Add 'cs_module' column and its value if it's constant or from req.body
+    //cs_source define from where user inserted into a database
+    columns.push('cs_module', 'cs_source');
+    values.push(1, 1); // Set your desired value for cs_module
+
 
     // Create placeholders for the values in the SQL query
     const placeholders = values.map(() => '?').join(', ');
@@ -521,6 +533,30 @@ const sendEmail = async (userData) => {
     console.error(`Error sending email to ${userEmail}:`, error.message);
   }
 };
+
+
+router.get('/getsettings', async (req, res) => {
+
+  try {
+    // Query the database
+    const query = 'SELECT cs_value FROM cs_tbl_sitesetting WHERE cs_parameter = ?';
+    const [rows] = await pool.query(query, ['user_panel']);
+
+    // Check if data exists
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'No settings found for user_panel' });
+    }
+
+    console.log("rows", rows);
+
+    // Send the result to the frontend
+    res.status(200).json({ settings: rows[0].cs_value });
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ message: 'Failed to fetch settings' });
+  }
+});
+
 
 module.exports = router;
 

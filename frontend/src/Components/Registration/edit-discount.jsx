@@ -304,7 +304,7 @@ const EditDiscount = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs mainTitle="Edit Discount" parent="Registration Admin" title="Edit Discount" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Edit Discount" parent="Manage Discount" title="Edit Discount" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="8">
@@ -737,7 +737,7 @@ const EditDiscount = () => {
 
                                             <Row>
                                                 {/* Discount Start Date and Time */}
-                                                <Col md="6">
+                                                <Col md="12">
                                                     <FormGroup>
                                                         <label for="startDateTime"><strong>Discount Start Date and Time</strong><span className="red-asterisk">*</span></label>
                                                         <DatePicker
@@ -755,7 +755,7 @@ const EditDiscount = () => {
                                                 </Col>
 
                                                 {/* Discount End Date and Time */}
-                                                <Col md="6">
+                                                <Col md="12">
                                                     <FormGroup>
                                                         <label for="endDateTime">
                                                             <strong>Discount End Date and Time</strong><span className="red-asterisk">*</span>
@@ -768,6 +768,7 @@ const EditDiscount = () => {
                                                             timeIntervals={15}
                                                             dateFormat="yyyy-MM-dd HH:mm"
                                                             timeCaption="Time"
+                                                            minDate={startDateTime}
                                                             className="form-control"
                                                             placeholderText="Select End Date and Time"
                                                         />

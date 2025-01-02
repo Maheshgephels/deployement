@@ -32,6 +32,8 @@ const AllUserReport = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(false);
+    const [error, setError] = useState('');
+    const [show, setShow] = useState('');
     const [selectedFields, setSelectedFields] = useState([]);
     const [reportName, setReportName] = useState(''); // Default to an empty string or a default name
     const { permissions } = useContext(PermissionsContext);
@@ -59,6 +61,7 @@ const AllUserReport = () => {
     useEffect(() => {
         fetchUser();
         fetchDropdown();
+        fetchSettings();
     }, [permissions]);
 
     // Extract Facultys component
@@ -89,6 +92,21 @@ const AllUserReport = () => {
         } catch (error) {
             console.error('Error fetching exhibitor data:', error);
             setLoading(false);
+        }
+    };
+
+    const fetchSettings = async () => {
+        try {
+
+            const response = await axios.get(`${BackendAPI}/auth/getsettings`, {});
+            const fetchedSettings = response.data.settings;
+
+            console.log("Fetch Setting", fetchedSettings);
+            setShow(fetchedSettings);
+
+
+        } catch (error) {
+            console.error("Error fetching settings:", error);
         }
     };
 
@@ -128,6 +146,8 @@ const AllUserReport = () => {
 
     const handlePriceChange = (e) => {
         setReportType(e.target.value);
+        setError('');
+        setSelectedFields([])
     };
 
     const keyLabelMapping = {
@@ -139,7 +159,7 @@ const AllUserReport = () => {
         cs_email: 'Email',
         cs_username: 'User Name',
         cs_password: 'Password',
-        created_at: 'Created Date'
+        created_at: 'Registration Date'
         // Add more mappings here as needed
     };
 
@@ -151,15 +171,27 @@ const AllUserReport = () => {
     //     }));
 
     const exhOptions = [
+        ...(reportType === "*" || reportType === "1" || reportType === "iscomplimentary" || reportType === "isCompany" || reportType === "cancelUser"
+          ? [{ value: 'cs_regno', label: 'Registration Number' }]
+          : []), // Conditionally add option
         ...fielddata.map(field => ({
-            value: field.cs_field_name,
-            label: field.cs_field_label
+          value: field.cs_field_name,
+          label: field.cs_field_label
         })),
+        ...(reportType === "*" || reportType === "1" ? [{ value: 'cs_remark', label: 'General Remark' }] : []),
+        ...(reportType === "*" || reportType === "1" ? [{ value: 'cs_iscomplimentary', label: 'Payment Status' }] : []),
+        ...(reportType === "cancelUser" ? [{ value: 'cancellation_reason', label: 'Cancellation Reason' }] : []),
+        ...(reportType === "isCompany" || reportType === "1"
+          ? [
+              { value: 'cs_companyregistration', label: 'Company Registration' },
+              { value: 'cs_company_name', label: 'Company Name' }
+            ]
+          : []),
         { value: 'cs_status', label: 'Status' },
-        { value: 'created_at', label: 'Created Date' } // Hardcoded option at the end
-
-    ];
-
+        ...(reportType === "*" ? [{ value: 'cs_isconfirm', label: 'User Status' }] : []), // Conditionally add option
+        { value: 'created_at', label: 'Registration Date' } // Hardcoded option at the end
+      ];
+      
 
 
 
@@ -180,6 +212,12 @@ const AllUserReport = () => {
 
     const handleReportDownload = (form) => {
         form.submit(); // Trigger validation
+
+        // Validate price type selection
+        if (!reportType) {
+            setError('Please select any one of the above options.');
+            return;
+        }
 
         const errors = form.getState().errors;
         if (Object.keys(errors).length === 0 && selectedFields.length > 0) {
@@ -223,12 +261,12 @@ const AllUserReport = () => {
 
             // If reportType is 'cancelUser', check for confirm_payment
             if (reportType === 'cancelUser') {
-                return item.is_cancel === 1; // Only include items where cs_iscomplimentary is 1
+                return item.cs_status === 2; // Only include items where cs_status is 2
             }
 
-            // If reportType is 'cancelUser', check for confirm_payment
+            // If reportType is 'Company User', check for cs_companyregistration
             if (reportType === 'isCompany') {
-                return item.cs_companyregistration === 'Yes'; // Only include items where cs_iscomplimentary is 1
+                return item.cs_companyregistration === 'Yes'; // Only include items where cs_companyregistration is 1
             }
 
 
@@ -300,13 +338,27 @@ const AllUserReport = () => {
             const rowData = [index + 1]; // Sr. No.
 
             fields.forEach(field => {
-                if (field.label === 'Created Date') {
+                if (field.label === 'Registration Date') {
                     rowData.push(
                         moment(item.created_at)
                             .tz(AdminTimezone)
                             .format('YYYY-MM-DD HH:mm:ss')
                     );
-                } else if (field.label === 'DOB') {
+                } else if (field.label === 'Company Registration') {
+                    rowData.push(
+                        item.cs_companyregistration ? 'Company' : 'Direct' // Correct handling of status
+                    );
+                } else if (field.label === 'Payment Status') {
+                    rowData.push(
+                        item.cs_iscomplimentary ? 'Complimentary' : 'Fully Paid' // Correct handling of status
+                    );
+                }
+                else if (field.label === 'User Status') {
+                    rowData.push(
+                        item.cs_isconfirm ? 'Confirm' : 'Basic' // Correct handling of status
+                    );
+                }
+                else if (field.label === 'DOB') {
                     rowData.push(
                         item.cs_dob ? moment(item.cs_dob).format('YYYY-MM-DD') : '' // Keep empty if cs_dob is not available
                     );
@@ -370,11 +422,13 @@ const AllUserReport = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            Customize and download a report of users by selecting the category, event days, date range of registration.
+                            • Create and download a custom report of users by entering a report name and selecting the desired report type.<br />
+                            • To generate a report based on categories or ticket types, select the Confirm User Report option.<br />
+                            • Customize the report by choosing specific details to include, such as user information(Select Field) or ticket categories.
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Registration Admin" title="Basic User Report" />
+            } parent="Registration Admin" title="User Report" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="9">
@@ -411,91 +465,98 @@ const AllUserReport = () => {
                                                     </Field>
                                                 </Col>
                                             </Row>
-                                            <Row>
-                                                {/* Report Type Radio Buttons */}
-                                                <Col md="12" className="mb-3">
+                                            <Row className="mb-3">
+                                                <Col md="12">
                                                     <div className="form-group">
-                                                        <strong>Report Type</strong>
-                                                        <div className="me-5 mt-3">
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="*"
-                                                                onChange={handlePriceChange}
-                                                                className="me-2"
-                                                            />
-                                                            <strong>All User Report</strong>
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="0"
-                                                                onChange={handlePriceChange}
-                                                                className="ms-3 me-2"
-                                                            />
-                                                            <strong>Basic User Report</strong>
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="1"
-                                                                checked={reportType === '1'}
-                                                                onChange={handlePriceChange}
-                                                                className="ms-3 me-2"
-                                                            />
-                                                            <strong>Confirm User Report</strong>
+                                                        <strong>Report Type<span className="red-asterisk"> *</span></strong>
+                                                        <div className="d-flex flex-wrap mt-3">
+                                                            <div className="me-4 mb-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="*"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>All User Report</strong>
+                                                            </div>
+                                                            {show === 'Yes' && (
+
+                                                                <div className="me-4 mb-3">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="priceType"
+                                                                        value="0"
+                                                                        onChange={handlePriceChange}
+                                                                        className="me-2"
+                                                                    />
+                                                                    <strong>Basic User Report</strong>
+                                                                </div>
+                                                            )}
+
+
+                                                            <div className="me-4 mb-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="1"
+                                                                    checked={reportType === '1'}
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Confirm User Report</strong>
+                                                            </div>
+
+                                                            <div className="me-4 mb-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="iscomplimentary"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Complimentary User Report</strong>
+                                                            </div>
+
+                                                            <div className="me-4 mb-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="nonConfirm"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Non Confirm User Report</strong>
+                                                            </div>
+
+                                                            <div className="me-4 mb-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="cancelUser"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Cancel User Report</strong>
+                                                            </div>
+
+                                                            <div className="me-4 mb-3">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="priceType"
+                                                                    value="isCompany"
+                                                                    onChange={handlePriceChange}
+                                                                    className="me-2"
+                                                                />
+                                                                <strong>Company User Report</strong>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </Col>
-                                            </Row>
-                                            <Row>
-                                                <Col md="12" className="mb-3">
-                                                    <div className="form-group">
-                                                        <div className="me-5 mt-3">
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="iscomplimentary"
-                                                                onChange={handlePriceChange}
-                                                                className="me-2"
-                                                            />
-                                                            <strong>Complimentary User Report</strong>
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="nonConfirm"
-                                                                onChange={handlePriceChange}
-                                                                className="ms-3 me-2"
-                                                            />
-                                                            <strong>Non Confirm User Report</strong>
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="cancelUser"
-                                                                onChange={handlePriceChange}
-                                                                className="ms-3 me-2"
-                                                            />
-                                                            <strong>Cancel User Report</strong>
-                                                        </div>
+                                                        {error && <p className='d-block text-danger'>{error}</p>}
+
                                                     </div>
                                                 </Col>
                                             </Row>
 
-                                            <Row>
-                                                <Col md="12" className="mb-3">
-                                                    <div className="form-group">
-                                                        <div className="me-5 mt-3">
-
-                                                            <input
-                                                                type="radio"
-                                                                name="priceType"
-                                                                value="isCompany"
-                                                                onChange={handlePriceChange}
-                                                                className="me-2"
-                                                            />
-                                                            <strong>Company User Report</strong>
-                                                        </div>
-                                                    </div>
-                                                </Col>
-                                            </Row>
 
                                             {reportType === '1' && (
                                                 <>
@@ -604,6 +665,7 @@ const AllUserReport = () => {
                                                                         setStartDate(e.target.value); // updates local state
                                                                     }}
                                                                 />
+
                                                             </div>
                                                         )}
                                                     </Field>
@@ -611,24 +673,32 @@ const AllUserReport = () => {
 
 
                                                 <Col md="6" className="mb-3">
-                                                    <Field name="endDate">
-                                                        {({ input }) => (
+                                                    <Field
+                                                        name="endDate"
+                                                        validate={startDate ? required : undefined}
+                                                    >
+                                                        {({ input, meta }) => (
                                                             <div>
-                                                                <Label className='form-label' for="endDate"><strong>To Date</strong></Label>
+                                                                <Label className="form-label" htmlFor="endDate">
+                                                                    <strong>To Date</strong>
+                                                                </Label>
                                                                 <input
                                                                     {...input}
                                                                     className="form-control"
                                                                     id="end_date"
                                                                     type="date"
                                                                     placeholder="Enter End Date"
-                                                                    min={startDate}
+                                                                    min={startDate} // Dynamically set the minimum date
                                                                     max="9999-12-31"
                                                                 />
+                                                                {meta.error && meta.touched && (
+                                                                    <p className="d-block text-danger">{meta.error}</p> // Display validation error
+                                                                )}
                                                             </div>
                                                         )}
-
                                                     </Field>
                                                 </Col>
+
                                             </Row>
 
                                             <Row>
@@ -690,7 +760,7 @@ const AllUserReport = () => {
                     <Button color="primary" onClick={() => setModal(!modal)}>No</Button>
                 </ModalFooter>
             </Modal>
-        </Fragment>
+        </Fragment >
     );
 };
 

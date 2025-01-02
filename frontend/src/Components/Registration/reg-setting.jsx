@@ -18,6 +18,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from 'react-toastify';
 import styled from 'styled-components';
+import CertificateSetting from '../Admin/Certificate-setting';
 
 
 const RedAsterisk = styled.span`
@@ -60,10 +61,19 @@ const RegAdminSetting = () => {
 
     const [imageOpen, setImageOpen] = useState(false);
     const [iconOpen, setIconOpen] = useState(false);
+    const [header, setHeader] = useState(false);
     const [iconPreviewUrl, setIconPreviewUrl] = useState(null);
     const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
     const iconAvailableRef = useRef(null);
     // const [startDate, setStartDate] = useState('');
+    const [headerimage, setHeaderimage] = useState('');
+    const [headerPreviewUrl, setHeaderPreviewUrl] = useState(null);
+    const [selectedHeader, setSelectedHeader] = useState(null);
+    const [headerError, setHeaderError] = useState('');
+
+
+
+    console.log("Files", files);
 
 
 
@@ -110,6 +120,23 @@ const RegAdminSetting = () => {
         );
     };
 
+    const handleHeaderChange = async (event, type) => {
+        const file = event.target.files[0];
+        if (file) {
+            setFiles(prevFiles => ({ ...prevFiles, [type]: file }));
+            setSelectedHeader(file); // Update selectedImage state
+            const url = URL.createObjectURL(file);
+            setHeaderPreviewUrl(url);
+        }
+        try {
+            await ReceiptHeaderFooter(file); // Wait for the Promise to resolve
+            setHeaderError('');
+        } catch (error) {
+            setSelectedHeader(null);
+            setHeaderError(error);
+        }
+    };
+
     const handleImageChange = async (event, type) => {
         const file = event.target.files[0];
         if (file) {
@@ -119,7 +146,7 @@ const RegAdminSetting = () => {
             setIconPreviewUrl(url);
         }
         try {
-            await ReceiptHeaderFooter(file); // Wait for the Promise to resolve
+            await Img1(file); // Wait for the Promise to resolve
             setImageError('');
         } catch (error) {
             setSelectedImage(null);
@@ -180,8 +207,9 @@ const RegAdminSetting = () => {
                 const eventVenue = settings.find(setting => setting.cs_parameter === "event_venue");
                 const eventMode = settings.find(setting => setting.cs_parameter === "dynamiclogin_id");
                 const eventtime = settings.find(setting => setting.cs_parameter === "event_time");
-                const eventiconsetting = settings.find(setting => setting.cs_parameter === "payment_receipt_head");
+                const eventiconsetting = settings.find(setting => setting.cs_parameter === "event_image_url");
                 const eventbackgroundsetting = settings.find(setting => setting.cs_parameter === "payment_receipt_foot");
+                const receiptHeader = settings.find(setting => setting.cs_parameter === "payment_receipt_head")
 
                 setInitialValues({
                     eventName: eventNameSetting ? eventNameSetting.cs_value : '',
@@ -204,9 +232,10 @@ const RegAdminSetting = () => {
                     eventtime: eventtime ? eventtime.cs_value : '',
                 });
 
-            
+
 
                 setlogoimage(eventiconsetting ? eventiconsetting.cs_value : '');
+                setHeaderimage(receiptHeader ? receiptHeader.cs_value : '');
                 setbackgroundimg(eventbackgroundsetting ? eventbackgroundsetting.cs_value : '');
 
                 // Console log eventstartdate
@@ -273,6 +302,7 @@ const RegAdminSetting = () => {
         localStorage.setItem('AdminTimezone', values.timezone);
 
         formData.append('logoimage', files.logoimage);
+        formData.append('header', files.header);
         formData.append('backgroundimg', files.backgroundimg);
 
         setIsProcessing(true);
@@ -292,7 +322,7 @@ const RegAdminSetting = () => {
                 console.log('Settings updated successfully');
                 toast.dismiss(toastId);
                 toast.success(response.data.message);
-                navigate(`${process.env.PUBLIC_URL}/event/dashboard/Consoft`);
+                navigate(`${process.env.PUBLIC_URL}/registration/dashboard/Consoft`);
             } else {
                 console.error('Error updating settings:', response.data.message);
                 toast.dismiss(toastId);
@@ -315,7 +345,6 @@ const RegAdminSetting = () => {
     // };
     const handleCancel = () => {
         setModal(true);
-        navigate(`${process.env.PUBLIC_URL}/registration/dashboard/Consoft`);
     };
 
     const handleNavigation = () => {
@@ -324,7 +353,7 @@ const RegAdminSetting = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Super Admin Setting" parent="Setting" title="Super Admin Setting" />
+            <Breadcrumbs mainTitle="Super Admin Setting" parent="Setting" title="Super Admin Setting" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
@@ -380,7 +409,7 @@ const RegAdminSetting = () => {
                                                     </Field>
                                                 </Col>
 
-                                                <Col md="4" className="mb-3">
+                                                {/* <Col md="4" className="mb-3">
                                                     <Field name="eventMode" validate={required}>
                                                         {({ input, meta }) => (
                                                             <div>
@@ -420,7 +449,7 @@ const RegAdminSetting = () => {
                                                             </div>
                                                         )}
                                                     </Field>
-                                                </Col>
+                                                </Col> */}
                                                 <Col md="4" className="mb-3">
                                                     <Field name="email" validate={validateEmail}>
                                                         {({ input, meta }) => (
@@ -699,9 +728,80 @@ const RegAdminSetting = () => {
 
                                                 </Col>
 
-                                                {/* <Col md="4 mb-3">
+                                                <Col md="4" className="mb-3">
+                                                    <Field name="regstart" validate={required}>
+                                                        {({ input, meta }) => (
+                                                            <div>
+                                                                <Label className='form-label' for="regstart">
+                                                                    <strong>Admin Registration start <span className="red-asterisk">*</span></strong>
+                                                                </Label>
+                                                                <MdInfoOutline
+                                                                    id="startPopover"
+                                                                    style={{
+                                                                        cursor: 'pointer', marginLeft: '5px'
+                                                                    }}
+                                                                />
+                                                                <UncontrolledPopover
+                                                                    placement="bottom"
+                                                                    target="startPopover"
+                                                                    trigger="focus"
+                                                                >
+                                                                    <PopoverBody>
+                                                                        Set the starting number for admin registration. <br />
+                                                                        This number will increase by +1 for each user registered by the admin and will also increment for imported users without a registration number. <br />
+                                                                        Ensure this number is not assigned to any App User Login.
+                                                                    </PopoverBody>
+                                                                </UncontrolledPopover>
+                                                                <input
+                                                                    {...input}
+                                                                    className="form-control"
+                                                                    id="regstart"
+                                                                    type="number"
+                                                                    readOnly={AdminSettingPermissions?.validate === 0}
+                                                                    onChange={(e) => {
+                                                                        input.onChange(e);
+                                                                        setName(e.target.value);
+                                                                        setNameTouched(true);
+                                                                    }}
+                                                                />
+                                                                {nameValidationMessage && (
+                                                                    <FormFeedback className='d-block text-danger'>
+                                                                        {nameValidationMessage}
+                                                                    </FormFeedback>
+                                                                )}
+
+                                                                {meta.error && meta.touched && (
+                                                                    <FormFeedback className='d-block text-danger'>
+                                                                        {meta.error}
+                                                                    </FormFeedback>
+                                                                )}
+
+                                                            </div>
+                                                        )}
+                                                    </Field>
+                                                </Col>
+
+                                                <Col md="4" className="mb-3">
                                                     <div>
-                                                        <Label for="logoimage"><strong>Logo Image <span className="red-asterisk">*</span></strong></Label>
+                                                        <Label for="exhIcon">
+                                                            <strong>Event Icon <span className="red-asterisk">*</span></strong>
+                                                        </Label>
+                                                        <MdInfoOutline
+                                                            id="logo"
+                                                            style={{
+                                                                cursor: 'pointer', marginLeft: '5px'
+                                                            }}
+                                                        />
+                                                        <UncontrolledPopover
+                                                            placement="bottom"
+                                                            target="logo"
+                                                            trigger="focus"
+                                                        >
+                                                            <PopoverBody>
+                                                                The icon you upload will be displayed on both the Event App Admin Dashboard and in the Event App during event search. <br />
+                                                                Please ensure the image meets the required specifications for best display.
+                                                            </PopoverBody>
+                                                        </UncontrolledPopover>
                                                         <Input
                                                             type="file"
                                                             name="logoimage"
@@ -709,10 +809,45 @@ const RegAdminSetting = () => {
                                                             required={!selectedImage && !logoimage}
                                                         />
                                                         {imageError && <p style={{ color: 'red' }}>{imageError}</p>}
-                                                        {selectedImage && <p>Selected image: {selectedImage.name}</p>}
-                                                        {selectedImage === null && logoimage && <p style={{ color: 'green' }}>Logo Image available: {logoimage.replace('app-icon\\', '')}</p>}
+
+                                                        {/* Conditionally render the preview text */}
+                                                        {!imageError && (
+                                                            <p
+                                                                id="iconAvailable"
+                                                                style={{ color: 'green', cursor: 'pointer' }}
+                                                                onMouseEnter={() => setIconOpen(true)}
+                                                                onMouseLeave={() => setIconOpen(false)}
+                                                            >
+                                                                ✔️ Event Icon Preview
+                                                            </p>
+                                                        )}
+
+                                                        <Popover
+                                                            placement="right"
+                                                            isOpen={iconOpen}
+                                                            target="iconAvailable" // Use the id
+                                                            toggle={() => setIconOpen(!iconOpen)}
+                                                        >
+                                                            <PopoverHeader>Event Icon Preview</PopoverHeader>
+                                                            <PopoverBody>
+                                                                {iconPreviewUrl ? (
+                                                                    <img src={iconPreviewUrl} alt="Current Event logo" style={{ maxWidth: '200px' }} />
+                                                                ) : (
+                                                                    <img src={`${BackendPath}${logoimage}`} alt="Current Event logo" style={{ maxWidth: '200px' }} />
+                                                                )}
+                                                            </PopoverBody>
+                                                        </Popover>
                                                     </div>
-                                                </Col> */}
+                                                    {!selectedImage && (
+                                                        <small className="form-text text-muted">
+                                                            <strong>Image Size:</strong> 200KB Max <br />
+                                                            <strong>Dimensions:</strong> 600(H) × 600(W) <br />
+                                                            <strong>Image Type:</strong> PNG
+                                                        </small>
+                                                    )}
+                                                </Col>
+
+
 
                                                 <Col md="4" className="mb-3">
                                                     <div>
@@ -737,19 +872,19 @@ const RegAdminSetting = () => {
                                                         </UncontrolledPopover>
                                                         <Input
                                                             type="file"
-                                                            name="logoimage"
-                                                            onChange={(event) => handleImageChange(event, 'logoimage')}
-                                                            required={!selectedImage && !logoimage}
+                                                            name="header"
+                                                            onChange={(event) => handleHeaderChange(event, 'header')}
+                                                            required={!selectedHeader && !headerimage}
                                                         />
-                                                        {imageError && <p style={{ color: 'red' }}>{imageError}</p>}
+                                                        {headerError && <p style={{ color: 'red' }}>{headerError}</p>}
 
                                                         {/* Conditionally render the preview text */}
-                                                        {!imageError && (
+                                                        {!headerError && (
                                                             <p
                                                                 ref={iconAvailableRef}
                                                                 style={{ color: 'green', cursor: 'pointer' }}
-                                                                onMouseEnter={() => setIconOpen(true)}
-                                                                onMouseLeave={() => setIconOpen(false)}
+                                                                onMouseEnter={() => setHeader(true)}
+                                                                onMouseLeave={() => setHeader(false)}
                                                             >
                                                                 ✔️ Receipt Header Preview
                                                             </p>
@@ -757,26 +892,26 @@ const RegAdminSetting = () => {
 
                                                         <Popover
                                                             placement="right"
-                                                            isOpen={iconOpen}
+                                                            isOpen={header}
                                                             target={iconAvailableRef.current} // Use ref for the target
-                                                            toggle={() => setIconOpen(!iconOpen)}
+                                                            toggle={() => setHeader(!header)}
                                                         >
                                                             <PopoverHeader>Receipt Header Preview</PopoverHeader>
                                                             <PopoverBody>
-                                                                {iconPreviewUrl ? (
-                                                                    <img src={iconPreviewUrl} alt="Current Exhibitor image" style={{ maxWidth: '200px' }} />
+                                                                {headerPreviewUrl ? (
+                                                                    <img src={headerPreviewUrl} alt="Current Exhibitor image" style={{ maxWidth: '200px' }} />
                                                                 ) : (
-                                                                    <img src={`${BackendPath}${logoimage}`} alt="Current Exhibitor image" style={{ maxWidth: '200px' }} />
+                                                                    <img src={`${BackendPath}${headerimage}`} alt="Current Exhibitor image" style={{ maxWidth: '200px' }} />
                                                                 )}
                                                             </PopoverBody>
                                                         </Popover>
                                                     </div>
-                                                    {!selectedImage && (
+                                                    {!selectedHeader && (
                                                         <small className="form-text text-muted">
-                                                        <strong>Image Size:</strong> 200KB Max <br />
-                                                        <strong>Dimensions:</strong> 800(W) × 100(H) <br />
-                                                        <strong>Image Type:</strong> PNG, JPG, JPEG
-                                                    </small>
+                                                            <strong>Image Size:</strong> 200KB Max <br />
+                                                            <strong>Dimensions:</strong> 800(W) × 100(H) <br />
+                                                            <strong>Image Type:</strong> PNG, JPG, JPEG
+                                                        </small>
                                                     )}
                                                 </Col>
                                                 {/* <Col md="4 mb-3">
@@ -863,6 +998,7 @@ const RegAdminSetting = () => {
 
                                             </Row>
 
+
                                             <div>
                                                 {message && <DismissibleNotification message={message} onClose={() => setMessage('')} />}
                                                 {/* Your form and other components */}
@@ -880,6 +1016,8 @@ const RegAdminSetting = () => {
                         </Card>
                     </Col>
                 </Row>
+
+                <CertificateSetting />
             </Container>
             {/* Modal */}
             <Modal isOpen={modal} toggle={() => setModal(!modal)} centered>

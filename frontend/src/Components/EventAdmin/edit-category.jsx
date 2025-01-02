@@ -40,7 +40,7 @@ const EditEventCategory = () => {
 
 
     console.log("Data:", prodData);
-    console.log("Location",location.state);
+    console.log("Location", location.state);
 
 
     const handleShowTypeChange = (e, input) => {
@@ -247,7 +247,7 @@ const EditEventCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
 
                                                                     <input
                                                                         {...input}
@@ -281,7 +281,7 @@ const EditEventCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
+                                                                <div className="d-flex align-items-center mb-2">
 
                                                                     <input
                                                                         {...input}

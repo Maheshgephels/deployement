@@ -10,7 +10,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MdDelete, MdInfoOutline } from "react-icons/md";
 import Select from 'react-select';
 import { Field, Form } from 'react-final-form'; // Import Field and Form from react-final-form
-import { required, email, NAME, Img, PDF, option, number, radio, username1, password ,expiryDate } from '../Utils/validationUtils';
+import { required, email, NAME, Img, PDF, option, number, radio, username1, password, expiryDate } from '../Utils/validationUtils';
 import moment from 'moment';
 import { PermissionsContext } from '../../contexts/PermissionsContext';
 import useAuth from '../../Auth/protectedAuth';
@@ -28,6 +28,7 @@ const AddBasicUser = () => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(false);
+    const [sendEmail, setSendEmail] = useState(false);
     const [fieldLabels, setFieldLabels] = useState([]);
     const [fieldType, setFieldType] = useState([]);
     const [requiredfield, setRequiredField] = useState([]); // Define requiredfield state
@@ -52,6 +53,12 @@ const AddBasicUser = () => {
 
 
     console.log("Category", regCat);
+
+    
+    const toSentenceCase = (str) => {
+        if (!str) return ''; // Handle empty or undefined strings
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      };
 
 
 
@@ -120,6 +127,14 @@ const AddBasicUser = () => {
                 }
             }
 
+            if (values.cs_first_name) {
+                values.cs_first_name = toSentenceCase(values.cs_first_name);
+              }
+        
+              if (values.cs_last_name) {
+                values.cs_last_name = toSentenceCase(values.cs_last_name);
+              }
+
             // Manually add cs_reg_cat_id to the values object
             // values.cs_reg_cat_id = cs_reg_cat_id; 
 
@@ -139,7 +154,9 @@ const AddBasicUser = () => {
             if (response.data.success) {
                 SweetAlert.fire({
                     title: 'Success!',
-                    html: `Basic user created successfully!`,
+                    html: sendEmail ?
+                        `Basic User <b>${username}</b> created and mail sent successfully!` :
+                        `Basic User <b>${username}</b> created successfully!`,
                     icon: 'success',
                     timer: 3000,
                     showConfirmButton: false,
@@ -496,7 +513,7 @@ const AddBasicUser = () => {
                                                                                         matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option })) :
                                                                                         [
                                                                                             { value: '', label: 'Select' }, // Adding the "Select" option as the first item
-                                                                                            ...matchedOptions.map(option => ({ value: option.cs_field_option_value, label: option.cs_field_option }))
+                                                                                            ...matchedOptions.map(option => ({ value: option.cs_field_option, label: option.cs_field_option }))
                                                                                         ]
                                                                                     }
 
@@ -558,6 +575,11 @@ const AddBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="number"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -580,6 +602,11 @@ const AddBasicUser = () => {
                                                                                 className="form-control"
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                                 placeholder={`Enter ${label}`}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
@@ -605,6 +632,11 @@ const AddBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -671,7 +703,7 @@ const AddBasicUser = () => {
                                                             {fieldType[index] === 'Username' && (
                                                                 <Field
                                                                     name={`${fieldName[index]}`} // Use dynamic field name
-                                                                    validate={requiredfield[index] === '1' ? composeValidators(username1 ,validateUniqueUsername) : (value) => composeValidators()(value)}
+                                                                    validate={requiredfield[index] === '1' ? composeValidators(username1, validateUniqueUsername) : (value) => composeValidators()(value)}
                                                                 >
                                                                     {({ input, meta }) => (
                                                                         <div>
@@ -684,6 +716,11 @@ const AddBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -707,6 +744,11 @@ const AddBasicUser = () => {
                                                                                 id={`displayname${index}`}
                                                                                 type="text"
                                                                                 placeholder={`Enter ${label}`}
+                                                                                onBlur={(e) => {
+                                                                                    const trimmedValue = e.target.value.trim(); // Trim leading and trailing spaces on blur
+                                                                                    input.onBlur(trimmedValue);
+                                                                                    input.onChange(trimmedValue); // Update the form state with the trimmed value
+                                                                                }}
                                                                             />
                                                                             {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                         </div>
@@ -714,9 +756,34 @@ const AddBasicUser = () => {
                                                                 </Field>
                                                             )}
 
+                                                            
+
                                                         </Col>
                                                     );
                                                 })}
+
+<Field
+                                                                name="sendEmail"
+                                                                type="checkbox"
+                                                            >
+                                                                {({ input, meta }) => (
+                                                                    <div className="mb-2">
+                                                                        <input
+                                                                            {...input}
+                                                                            id="sListing"
+                                                                            checked={sendEmail} // Controlled component
+                                                                            onChange={(e) => {
+                                                                                input.onChange(e); // Trigger Field's onChange
+                                                                                setSendEmail(e.target.checked); // Update state
+                                                                            }}
+                                                                        />
+                                                                        <Label className='form-check-label' style={{ marginLeft: '10px' }} for="sListing">
+                                                                            <strong>Do you want to send a basic registration email to User ?</strong>
+                                                                        </Label>
+                                                                        {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </Field>
 
                                                 {AddUserPermissions?.add === 1 && (
                                                     <div>

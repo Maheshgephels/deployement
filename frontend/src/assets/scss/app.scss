@@ -88,3 +88,29 @@
     margin-left: 90px;
     transition: .5s;
 }
+
+
+.ql-toolbar.ql-snow {
+    background-color: white;
+}
+
+
+/* Add these styles for the receipt to ensure consistency */
+.receipt-content {
+    width: 100%;
+    max-width: 720px; /* or adjust to your desired max width */
+    margin: 0 auto;
+    box-sizing: border-box;
+    padding: 20px;
+    font-size: 16px; /* Use relative units (like rem or em) for font size */
+    line-height: 1.5;
+    background-color: #ffffff;
+    color: #000000; /* Optional: Ensure text is readable against a white background */
+  }
+  
+  @media (max-width: 720px) {
+    .receipt-content {
+      font-size: 14px;
+    }
+  }
+  

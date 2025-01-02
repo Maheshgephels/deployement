@@ -30,6 +30,7 @@ const Templates = () => {
     const [activeTab, setActiveTab] = useState('all'); // Default tab is "all"
     const [templates, setTemplates] = useState([]); // Assume this state holds your templates
     const [deletemodal, setDeleteModal] = useState(false);
+    const [clonemodal, setCloneModal] = useState(false);
     const [tempName, setTempName] = useState(null);
     const [tempId, setTempId] = useState(null);
     const navigate = useNavigate();
@@ -73,6 +74,16 @@ const Templates = () => {
 
     const handleEdit = (template) => {
         navigate(`${process.env.PUBLIC_URL}/event/email-template/Consoft`, { state: { template } });
+    };
+
+    const openCloneModal = (tempId, tempName) => {
+        setTempName(tempName);
+        setTempId(tempId);
+        setCloneModal(true);
+    };
+
+    const closeCloneModal = () => {
+        setCloneModal(false);
     };
 
 
@@ -298,12 +309,15 @@ const Templates = () => {
                                                     data.map((template) => (
                                                         <Col md="12" sm="6" xs="12" key={template.template_id} className="mb-2">
                                                             <Card className="template-card">
-                                                                <div className={`ribbon ribbon-clip-bottom-right ${template.cs_status === 1 ? 'ribbon-success' : 'ribbon-warning'}`}>
+                                                                <div className={`ribbon ribbon-clip-bottom-right ${template.cs_status !== 0 ? 'ribbon-success' : 'ribbon-warning'}`}>
                                                                     {template.cs_status === 1 ? (
                                                                         <span className="">Active</span>
+                                                                    ) : template.cs_status === 2 ? (
+                                                                        <span className="">Draft</span>
                                                                     ) : (
                                                                         <span className="">Inactive</span>
                                                                     )}
+
                                                                 </div>
 
 
@@ -317,31 +331,47 @@ const Templates = () => {
                                                                         <Label className="switch">
                                                                             <Input
                                                                                 type="checkbox"
-                                                                                checked={template.cs_status === 1} // Check if cs_status is 1 for checked state
+                                                                                checked={template.cs_status !== 0} // Check if cs_status is 1 for checked state
                                                                                 onChange={(e) => {
                                                                                     const newStatus = e.target.checked ? 1 : 0; // Set newStatus to 1 or 0 based on checkbox state
                                                                                     updateTemplateStatus(template.template_id, newStatus); // Call the update function with the template ID and new status
                                                                                 }}
                                                                             />
-                                                                            <span className={"switch-state " + (template.cs_status === 1 ? "bg-success" : "bg-danger")}></span>
+                                                                            <span className={"switch-state " + (template.cs_status !== 0 ? "bg-success" : "bg-danger")}></span>
                                                                         </Label>
                                                                     </Media>
                                                                 </div>
                                                                 <div className="template-card-footer d-flex justify-content-between p-2">
                                                                     <div className="button-group d-flex">
-                                                                        <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="Edit Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaEdit />
                                                                         </Button>
-                                                                        <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="View Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaEye />
                                                                         </Button>
-                                                                        {template.cs_isclone === 0 && (
-                                                                            <Button color="" className='circular' size="md" onClick={() => handleClone(template.template_id)}>
+                                                                        {template.cs_isclone === 0 && template.cs_status === 1 && (
+                                                                            <Button color="" className='circular' size="md" onClick={() => openCloneModal(template.template_id, template.template_name)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="Clone Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaClone />
                                                                             </Button>
                                                                         )}
                                                                         {![1, 2, 3, 4, 5].includes(template.template_id) && (
-                                                                            <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}>
+                                                                            <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="Delete Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaTrashAlt />
                                                                             </Button>
                                                                         )}
@@ -385,7 +415,7 @@ const Templates = () => {
                                                                         <p className="template-subject text-muted">{template.template_subject}</p>
                                                                     </div>
                                                                     {/* Checkbox switch for icon state */}
-                                                                    <Media body className="icon-state switch-sm align-self-start">
+                                                                    {/* <Media body className="icon-state switch-sm align-self-start">
                                                                         <Label className="switch">
                                                                             <Input
                                                                                 type="checkbox"
@@ -397,21 +427,37 @@ const Templates = () => {
                                                                             />
                                                                             <span className={"switch-state " + (template.cs_status === 1 ? "bg-success" : "bg-danger")}></span>
                                                                         </Label>
-                                                                    </Media>
+                                                                    </Media> */}
                                                                 </div>
                                                                 <div className="template-card-footer d-flex justify-content-between p-2">
                                                                     <div className="button-group d-flex">
-                                                                        <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="Edit Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaEdit />
                                                                         </Button>
-                                                                        <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="View Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaEye />
                                                                         </Button>
-                                                                        <Button color="" className='circular' size="md" onClick={() => handleClone(template.template_id)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => openCloneModal(template.template_id, template.template_name)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="Clone Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaClone />
                                                                         </Button>
                                                                         {![1, 2, 3, 4, 5].includes(template.template_id) && (
-                                                                            <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}>
+                                                                            <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="Delete Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaTrashAlt />
                                                                             </Button>
                                                                         )}
@@ -455,7 +501,7 @@ const Templates = () => {
                                                                         <p className="template-subject text-muted">{template.template_subject}</p>
                                                                     </div>
                                                                     {/* Checkbox switch for icon state */}
-                                                                    <Media body className="icon-state switch-sm align-self-start">
+                                                                    {/* <Media body className="icon-state switch-sm align-self-start">
                                                                         <Label className="switch">
                                                                             <Input
                                                                                 type="checkbox"
@@ -467,21 +513,37 @@ const Templates = () => {
                                                                             />
                                                                             <span className={"switch-state " + (template.cs_status === 1 ? "bg-success" : "bg-danger")}></span>
                                                                         </Label>
-                                                                    </Media>
+                                                                    </Media> */}
                                                                 </div>
                                                                 <div className="template-card-footer d-flex justify-content-between p-2">
                                                                     <div className="button-group d-flex">
-                                                                        <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="Edit Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaEdit />
                                                                         </Button>
-                                                                        <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="View Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaEye />
                                                                         </Button>
-                                                                        <Button color="" className='circular' size="md" onClick={() => handleClone(template.template_id)}>
+                                                                        <Button color="" className='circular' size="md" onClick={() => openCloneModal(template.template_id, template.template_name)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="Clone Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaClone />
                                                                         </Button>
                                                                         {![1, 2, 3, 4, 5].includes(template.template_id) && (
-                                                                            <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}>
+                                                                            <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="Delete Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaTrashAlt />
                                                                             </Button>
                                                                         )}
@@ -523,17 +585,33 @@ const Templates = () => {
                                                                     </div>
                                                                     <div className="template-card-footer d-flex justify-content-between p-2">
                                                                         <div className="button-group d-flex">
-                                                                            <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}>
+                                                                            <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="Edit Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaEdit />
                                                                             </Button>
-                                                                            <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}>
+                                                                            <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="View Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaEye />
                                                                             </Button>
-                                                                            <Button color="" className='circular' size="md" onClick={() => handleClone(template.template_id)}>
+                                                                            {/* <Button color="" className='circular' size="md" onClick={() => openCloneModal(template.template_id, template.template_name)}
+                                                                                data-tooltip-id="tooltip"
+                                                                                data-tooltip-content="Clone Template"
+                                                                                data-tooltip-event="click focus"
+                                                                            >
                                                                                 <FaClone />
-                                                                            </Button>
+                                                                            </Button> */}
                                                                             {![1, 2, 3, 4, 5].includes(template.template_id) && (
-                                                                                <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}>
+                                                                                <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}
+                                                                                    data-tooltip-id="tooltip"
+                                                                                    data-tooltip-content="Delete Template"
+                                                                                    data-tooltip-event="click focus"
+                                                                                >
                                                                                     <FaTrashAlt />
                                                                                 </Button>
                                                                             )}
@@ -569,14 +647,26 @@ const Templates = () => {
                                                                     <p className="template-subject text-muted">{template.template_subject}</p>
                                                                 </div>
                                                                 <div className="template-card-footer d-flex p-2">
-                                                                    <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}>
+                                                                    <Button color="" className='circular' size="md" onClick={() => handleEdit(template)}
+                                                                        data-tooltip-id="tooltip"
+                                                                        data-tooltip-content="Edit Template"
+                                                                        data-tooltip-event="click focus"
+                                                                    >
                                                                         <FaEdit />
                                                                     </Button>
-                                                                    <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}>
+                                                                    <Button color="" className='circular' size="md" onClick={() => toggleModal(template.template_id)}
+                                                                        data-tooltip-id="tooltip"
+                                                                        data-tooltip-content="View Template"
+                                                                        data-tooltip-event="click focus"
+                                                                    >
                                                                         <FaEye />
                                                                     </Button>
                                                                     {![1, 2, 3, 4, 5].includes(template.template_id) && (
-                                                                        <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}>
+                                                                        <Button color="" className="circular" size="md" onClick={() => openDeleteModal(template.template_id, template.template_name)}
+                                                                            data-tooltip-id="tooltip"
+                                                                            data-tooltip-content="Delete Template"
+                                                                            data-tooltip-event="click focus"
+                                                                        >
                                                                             <FaTrashAlt />
                                                                         </Button>
                                                                     )}
@@ -607,6 +697,8 @@ const Templates = () => {
                                     </div>
                                 )}
                             </CardBody>
+                            <Tooltip id="tooltip" globalEventOff="click" />
+
                         </Card>
                     </Col>
                 </Row>
@@ -617,6 +709,20 @@ const Templates = () => {
                 <div>
                     {parse(selectedTemplateContent)} {/* Render HTML */}
                 </div>
+            </Modal>
+
+            {/* Clone Confirmation Modal */}
+            <Modal isOpen={clonemodal} toggle={closeCloneModal} centered size="md">
+                <ModalHeader toggle={closeCloneModal}>Confirmation</ModalHeader>
+                <ModalBody>
+                    <div className='ms-2'>
+                        <p>Are you sure you want to clone the <strong>{tempName}</strong> template?</p>
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="primary" onClick={handleClone}>Yes</Button>
+                    <Button color="warning" onClick={closeCloneModal}>No</Button>
+                </ModalFooter>
             </Modal>
 
 

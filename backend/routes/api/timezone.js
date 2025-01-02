@@ -15,5 +15,5 @@ async function getFormattedTimestamp() {
     return moment().tz('UTC').format('YYYY-MM-DD HH:mm:ss'); // Default to UTC if an error occurs
   }
 }
- 
+
 module.exports = getFormattedTimestamp;

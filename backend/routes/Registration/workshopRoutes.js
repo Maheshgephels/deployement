@@ -60,7 +60,11 @@ router.get('/getWorkshop', verifyToken, async (req, res) => {
       totalPages = Math.ceil(totalItems / pageSize);
     }
 
-    res.json({ categories: userData, currentPage: parseInt(page), totalPages, pageSize, totalItems });
+    const workshopTypeQuery = 'SELECT COUNT(*) AS Count FROM cs_os_workshop_type';
+    const [totalWorkshop] = await pool.query(workshopTypeQuery);
+    const Count = totalWorkshop[0].Count;
+
+    res.json({ categories: userData, currentPage: parseInt(page), totalPages, pageSize, totalItems, Count });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });

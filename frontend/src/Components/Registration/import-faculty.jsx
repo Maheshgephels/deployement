@@ -36,6 +36,8 @@ const ImportRegFaculty = () => {
     const { permissions } = useContext(PermissionsContext);
     const [sendEmail, setSendEmail] = useState(false);
     const [titles, settitles] = useState([]);
+    const [tickets, settickets] = useState([]);
+    const [addons, setaddons] = useState([]);
 
     console.log("File data:", fileData);
     console.log("Mandatory Data:", manData);
@@ -84,6 +86,8 @@ const ImportRegFaculty = () => {
                 settitles(response.data.prefixData);
                 setFacultyid(response.data.facultyData);
                 console.log("user dataa", response.data.catData);
+                settickets(response.data.TicketData);
+                setaddons(response.data.AddonData);
 
                 // Transform the mandatory data to an array of field labels
                 const mandatoryLabels = response.data.mandatoryData.map(item => item.cs_field_label);
@@ -385,6 +389,22 @@ const ImportRegFaculty = () => {
         };
 
 
+        const validatetickets = (data) => {
+            console.log("tickets",tickets);
+            return data.filter(item => item['Ticket'] && !tickets.some(tickets => tickets.ticket_id === parseInt(item['Ticket'])));
+        };
+
+        const validateAddons = (data) => {
+            console.log("addons", addons);
+        
+            return data.filter(item => {
+                if (!item['Addons']) return false; // Skip rows without Addons
+                const addonIDs = item['Addons'].split(',').map(id => parseInt(id.trim())); // Split and parse Addons
+                return addonIDs.some(addonID => !addons.some(addon => addon.addon_id === addonID)); // Check if any ID is invalid
+            });
+        };
+
+
 
         const headers = extractHeaders(fileData);
         console.log("CSV Headers:", headers);
@@ -399,6 +419,8 @@ const ImportRegFaculty = () => {
         // const invalidCategoryIDs = validateCategoryIDs(fileData);
         const invalidtitleIDs = validatetitle(fileData);
         const invalidFacultyIDs = validateFacultyIDs(fileData);
+        const invalidticketsIDs = validatetickets(fileData);
+        const invalidaddonsIDs = validateAddons(fileData);
 
         // Check for duplicates against existing users
         const existingUserEmails = new Set(users.map(user => user.cs_email));
@@ -406,7 +428,18 @@ const ImportRegFaculty = () => {
 
         const duplicateEntries = [];
         // const wrongEntries = [...invalidEmails, ...emptyFields, ...invalidCategoryIDs]; //Changes made by omkar
-        const wrongEntries = [...emptyFields, ...invalidFacultyIDs, ...invalidtitleIDs];
+        // const wrongEntries = [...emptyFields, ...invalidFacultyIDs, ...invalidtitleIDs];
+
+        const wrongEntriesSet = new Set([
+            ...emptyFields,
+            ...invalidFacultyIDs,
+            ...invalidtitleIDs,
+            ...invalidticketsIDs,
+            ...invalidaddonsIDs
+        ]);
+        
+        // Convert Set back to an array
+        const wrongEntries = Array.from(wrongEntriesSet);
 
         setDuplicateEntries(duplicateEntries);
         setWrongEntries(wrongEntries);
@@ -490,7 +523,7 @@ const ImportRegFaculty = () => {
                 allowEscapeKey: false,
             }).then((result) => {
                 if (result.dismiss === SweetAlert.DismissReason.timer) {
-                    navigate(`${process.env.PUBLIC_URL}/registration/manage-user/Consoft`);
+                    navigate(`${process.env.PUBLIC_URL}/registration/manage-faculty/Consoft`);
                 }
             });
         } catch (error) {

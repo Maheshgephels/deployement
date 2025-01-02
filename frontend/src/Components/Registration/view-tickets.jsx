@@ -246,6 +246,8 @@ const ViewTicket = () => {
     const [processingfeeornot, setprocessingfeeornot] = useState();
     const [processingAmount, setProcessingAmount] = useState(0);
     const [processingFee, setProcessingFee] = useState(0);
+    const [isMailExpanded, setIsMailExpanded] = useState(false);
+
 
     console.log("Ticket", ticketData);
 
@@ -265,10 +267,10 @@ const ViewTicket = () => {
         if (gstfee === 'Yes') {
             if (gstinclded === 'Yes') {
                 if (processingfeeornot === 'Yes') {
-                    console.log("processinginclded",processinginclded);
+                    console.log("processinginclded", processinginclded);
                     if (processinginclded === 'Include') {
                         // Eliminate processing fee before calculating GST
-                      
+
                         let baseAmountWithoutProcessing = amount;
 
                         // Calculate processing fee if applicable
@@ -289,14 +291,14 @@ const ViewTicket = () => {
                         console.log("Adjusted regAmount after GST:", regAmount);
                     }
                 }
-                    else {
-                        // If processing fee is not included, calculate GST directly on the amount
-                        gstAmount = (amount * parseFloat(gstpercentage)) / 100;
-                        regAmount = amount - gstAmount;  // Adjust regAmount after GST
-                        console.log("GST without processing fee:", gstAmount);
-                        console.log("Adjusted regAmount without GST:", regAmount);
-                    }
-                
+                else {
+                    // If processing fee is not included, calculate GST directly on the amount
+                    gstAmount = (amount * parseFloat(gstpercentage)) / 100;
+                    regAmount = amount - gstAmount;  // Adjust regAmount after GST
+                    console.log("GST without processing fee:", gstAmount);
+                    console.log("Adjusted regAmount without GST:", regAmount);
+                }
+
             }
             else {
                 // If GST is excluded, calculate normally
@@ -347,23 +349,31 @@ const ViewTicket = () => {
     useEffect(() => {
         const fetchData = async () => {
             if (!item || !item.ticketId) return; // Ensure item and ID are valid
-
+    
             try {
                 const token = getToken();
                 const response = await axios.get(`${BackendAPI}/ticketRoutes/fetchticketData/${item.ticketId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
+    
                 const { ticket, durations } = response.data;
+    
+                // Sort durations using moment for tick_duration_start_date
+                const sortedDurations = durations.sort((a, b) => 
+                    moment(a.tick_duration_start_date).diff(moment(b.tick_duration_start_date))
+                );
+    
                 setTicketData(ticket);        // Set the ticket data to state
-                setDurationData(durations);
+                setDurationData(sortedDurations); // Set the sorted durations
             } catch (error) {
                 console.error('Error fetching ticket data:', error.message);
             }
         };
-
+    
         fetchData();
     }, [item]);
+    
+    
 
     const fetchDropdown = async () => {
         try {
@@ -418,6 +428,19 @@ const ViewTicket = () => {
             return words.slice(0, 25).join(' ') + '...';
         }
         return description;
+    };
+
+    const getTruncatedHTML = (htmlContent, charLimit) => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent; // Parse HTML content
+        const textContent = tempDiv.textContent || tempDiv.innerText || ''; // Extract plain text
+        return textContent.length > charLimit
+            ? `${textContent.slice(0, charLimit)}...` // Return truncated text
+            : textContent;
+    };
+
+    const toggleMailDescription = () => {
+        setIsMailExpanded(!isMailExpanded);
     };
 
     return (
@@ -569,6 +592,47 @@ const ViewTicket = () => {
                                                     <td>Maximum Buying Limit</td>
                                                     <td>{ticketData.ticket_max_limit || 'N/A'}</td>
                                                 </tr>
+                                                <tr>
+                                                    <td>Mail Merge Description</td>
+                                                    <td>
+                                                        {ticketData.ticket_mail_description ? (
+                                                            <div>
+                                                                {isMailExpanded ? (
+                                                                    <div>
+                                                                        {/* Render full HTML content */}
+                                                                        <div
+                                                                            dangerouslySetInnerHTML={{ __html: ticketData.ticket_mail_description }}
+                                                                        />
+                                                                        <a
+                                                                            onClick={toggleMailDescription}
+                                                                            style={{ padding: 0, cursor: 'pointer', marginLeft: '5px' }}
+                                                                        >
+                                                                            <strong>Read Less</strong>
+                                                                        </a>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div>
+                                                                        {/* Render truncated text */}
+                                                                        <span>
+                                                                            {getTruncatedHTML(ticketData.ticket_mail_description, 100)}
+                                                                        </span>
+                                                                        {ticketData.ticket_mail_description.length > 100 && (
+                                                                            <a
+                                                                                onClick={toggleMailDescription}
+                                                                                style={{ padding: 0, cursor: 'pointer', marginLeft: '5px' }}
+                                                                            >
+                                                                                <strong>Read More</strong>
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span>N/A</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+
                                             </tbody>
                                         </Table>
 
@@ -593,37 +657,39 @@ const ViewTicket = () => {
                                                 ))}
                                             </tbody>
                                         </Table> */}
+                                        <div className="table-responsive">
 
-                                        <Table className="mt-4 table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Duration Name</th>
-                                                    <th>Start Date</th>
-                                                    <th>End Date</th>
-                                                    <th>Ticket Amount</th>
-                                                    <th>GST Amount</th>
-                                                    <th>Processing Fee</th>
-                                                    <th>Total Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {durationData.map((duration, index) => {
-                                                    const { gstAmount, processingAmount, totalAmount,regAmount } = calculateAmounts(duration.tick_amount);
+                                            <Table className="mt-4 table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Duration Name</th>
+                                                        <th>Start Date</th>
+                                                        <th>End Date</th>
+                                                        <th>Ticket Amount</th>
+                                                        <th>GST Amount</th>
+                                                        <th>Processing Fee</th>
+                                                        <th>Total Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {durationData.map((duration, index) => {
+                                                        const { gstAmount, processingAmount, totalAmount, regAmount } = calculateAmounts(duration.tick_amount);
 
-                                                    return (
-                                                        <tr key={duration.tick_duration_id || index}>
-                                                            <td>{duration.tick_duration_name || 'N/A'}</td>
-                                                            <td>{duration.tick_duration_start_date ? moment(duration.tick_duration_start_date).format('DD-MM-YYYY') : 'N/A'}</td>
-                                                            <td>{duration.tick_duration_till_date ? moment(duration.tick_duration_till_date).format('DD-MM-YYYY') : 'N/A'}</td>
-                                                            <td>{regAmount > 0 ? `${regAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
-                                                            <td>{gstAmount > 0 ? `${gstAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
-                                                            <td>{processingAmount > 0 ? `${processingAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
-                                                            <td>{totalAmount > 0 ? `${totalAmount.toFixed(2)} ${currency}` : 'N/A'}</td> {/* Uncomment this line */}
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </Table>
+                                                        return (
+                                                            <tr key={duration.tick_duration_id || index}>
+                                                                <td>{duration.tick_duration_name || 'N/A'}</td>
+                                                                <td>{duration.tick_duration_start_date ? moment(duration.tick_duration_start_date).format('DD-MM-YYYY') : 'N/A'}</td>
+                                                                <td>{duration.tick_duration_till_date ? moment(duration.tick_duration_till_date).format('DD-MM-YYYY') : 'N/A'}</td>
+                                                                <td>{regAmount > 0 ? `${regAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
+                                                                <td>{gstAmount > 0 ? `${gstAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
+                                                                <td>{processingAmount > 0 ? `${processingAmount.toFixed(2)} ${currency}` : 'N/A'}</td>
+                                                                <td>{totalAmount > 0 ? `${totalAmount.toFixed(2)} ${currency}` : 'N/A'}</td> {/* Uncomment this line */}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </Table>
+                                        </div>
 
 
                                     </Fragment>

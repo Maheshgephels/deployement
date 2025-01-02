@@ -312,11 +312,21 @@ const DiscardedUser = () => {
             const updatedusers = users.map((user) =>
                 user.temppayment_id === Temp_Id ? { ...user, is_discarded: Discard } : user
             );
+            closeDuplicateModal(); // Close modal after status update
+
+            await SweetAlert.fire({
+                title: 'Success!',
+                text: 'User Restored successfully!',
+                icon: 'success',
+                timer: 3000,
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+            });
             setUsers(updatedusers);
         } catch (error) {
             console.error('Error updating status:', error);
         }
-        closeDuplicateModal(); // Close modal after status update
     };
 
     const handleSort = (column) => {
@@ -422,6 +432,7 @@ const DiscardedUser = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setSelectedItems([]);
     };
 
 
@@ -479,6 +490,8 @@ const DiscardedUser = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, 'User_Data.xlsx');
+
+        setSelectedItems([]);
     };
 
 
@@ -498,40 +511,40 @@ const DiscardedUser = () => {
         },
     ];
 
-    const actions = (users) => [
-        {
-            key: '1',
-            label: (
-                <div onClick={() => bulkoperation(0)}>Make Inactive</div>
-            ),
-        },
-        {
-            key: '2',
-            label: (
-                <div onClick={() => bulkoperation(1)}>Make Active</div>
-            ),
-        },
-        {
-            key: '3',
-            label: (
-                <div onClick={() => bulkoperation(3)}>Make Unduplicate</div>
-            ),
-        },
-        {
-            key: '4',
-            label: (
-                <div onClick={() => bulkoperation(2)}>Make Duplicate</div>
-            ),
-        },
-        {
-            key: '5',
-            label: (
-                <div onClick={() => handleResendMail(0)}>
-                    <GrPowerCycle /> Resend login mail
-                </div>
-            ),
-        },
-    ];
+    // const actions = (users) => [
+    //     {
+    //         key: '1',
+    //         label: (
+    //             <div onClick={() => bulkoperation(0)}>Make Inactive</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '2',
+    //         label: (
+    //             <div onClick={() => bulkoperation(1)}>Make Active</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '3',
+    //         label: (
+    //             <div onClick={() => bulkoperation(3)}>Make Unduplicate</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '4',
+    //         label: (
+    //             <div onClick={() => bulkoperation(2)}>Make Duplicate</div>
+    //         ),
+    //     },
+    //     {
+    //         key: '5',
+    //         label: (
+    //             <div onClick={() => handleResendMail(0)}>
+    //                 <GrPowerCycle /> Resend login mail
+    //             </div>
+    //         ),
+    //     },
+    // ];
 
     const getSettings = (user) => [
         // {
@@ -719,15 +732,12 @@ const DiscardedUser = () => {
                         trigger="focus"
                     >
                         <PopoverBody>
-                            Here you can view all users and select fields to see additional details.
-                            <br />
-                            To find a specific user, enter their name or details in the search field.
-                            <br />
-                            You can edit user information, print their badge, and reset their facility count. Additionally, you can export the data displayed on the listing page.
+                            • Users discarded from the Temporary User listing are shown here.<br/>
+                            • If an entry is considered valid, it can be restored. Restored entries will return to the Temp User listing, where they can be confirmed.
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Registration Admin" title="Manage Discarded Temp Users" />
+            } parent="Manage User" title="Manage Discarded Temp Users" />
             <Container fluid={true}>
                 <Row>
                     <Col sm="12">
@@ -789,7 +799,7 @@ const DiscardedUser = () => {
                                         )}
 
                                         {/* Actions Button with Tooltip */}
-                                        {selectedItems.length > 0 && (
+                                        {/* {selectedItems.length > 0 && (
                                             <>
                                                 <D menu={{ items: actions(users[0]) }} placement="bottomLeft" arrow trigger={['click']}>
                                                     <Button
@@ -806,7 +816,7 @@ const DiscardedUser = () => {
                                                     More Actions
                                                 </Tooltip>
                                             </>
-                                        )}
+                                        )} */}
                                     </div>
 
                                 </div>
@@ -826,6 +836,7 @@ const DiscardedUser = () => {
                                                         <input
                                                             type="checkbox"
                                                             onChange={handleSelectAll} // Function to handle 'select all' checkbox
+                                                            checked={selectedItems.length === users.length && users.length > 0} // Dynamically set checked status
                                                         />
                                                     </th>
                                                     <th scope='col' className='text-start'>{'Sr No.'}</th>
@@ -863,13 +874,13 @@ const DiscardedUser = () => {
                                                         {'Reg Type'}
                                                         {getSortIndicator('cs_email')}
                                                     </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('regamount')}>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('conference_fees')}>
                                                         {'Total Reg Amount'}
-                                                        {getSortIndicator('regamount')}
+                                                        {getSortIndicator('conference_fees')}
                                                     </th>
-                                                    <th scope='col' className='text-center' onClick={() => handleSort('total_paid_amount')}>
+                                                    <th scope='col' className='text-center' onClick={() => handleSort('current_paid_amount')}>
                                                         {'Total Paid Amount'}
-                                                        {getSortIndicator('total_paid_amount')}
+                                                        {getSortIndicator('current_paid_amount')}
                                                     </th>
                                                     <th scope='col' className='text-center' onClick={() => handleSort('cs_status')}>
                                                         {'Status'}
@@ -913,8 +924,8 @@ const DiscardedUser = () => {
                                                             </td>
 
 
-                                                            <td className='text-center'>{user.regamount}</td>
-                                                            <td className='text-center'>{user.total_paid_amount}</td>
+                                                            <td className='text-center'>{user.conference_fees}</td>
+                                                            <td className='text-center'>{user.current_paid_amount}</td>
 
                                                             {/* <td className='text-center'>
                                                             {user.cs_status === 0 ? (

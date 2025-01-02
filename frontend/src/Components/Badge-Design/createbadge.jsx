@@ -40,6 +40,7 @@ const Createbadge = () => {
     const [badgeId, setBadgeId] = useState(null);
     const [badgeCategoryId, setBadgeCategoryId] = useState(null);
     const [selectedCat, setSelectedCat] = useState(null); // Added state to store selected category
+    const [categoryError, setCategoryError] = useState('');
     const [catData, setCatData] = useState([]);
     const [prodData, setProdData] = useState([]);
     const navigate = useNavigate(); // Initialize navigate hook
@@ -112,7 +113,16 @@ const Createbadge = () => {
                 );
                 setEditingBadge(null);
                 setEditModal(false);
-                toast.success('Badge name updated successfully');
+                // toast.success('Badge name updated successfully');
+                SweetAlert.fire({
+                    title: 'Success!',
+                    text: 'Badge name updated Successfully',
+                    icon: 'success',
+                    timer: 3000,
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                })
             } else {
                 toast.error('Failed to update badge name');
             }
@@ -179,7 +189,7 @@ const Createbadge = () => {
     const handleBadgeTypeChange = (selectedOption) => {
         setBadgeType(selectedOption ? selectedOption.value : '');
     };
-    
+
     const handleDesignationChange = (event) => {
         setDesignation(event.target.value);
     };
@@ -234,6 +244,7 @@ const Createbadge = () => {
                     navigate(`${process.env.PUBLIC_URL}/onsite/badge-configration/Consoft`, {
                         state: {
                             badgeName: badgeName,
+                            badgeId: response.data.badgeId,
                             designation: designation,
                             category: categories.find(cat => cat.id === parseInt(badgeType)) // Assuming badgeType is a string
                         }
@@ -355,16 +366,19 @@ const Createbadge = () => {
 
     const closetoggleStatusModal = () => {
         setStatusModal(false);
+        setSelectedCat(null);
+        setCategoryError('');
     };
 
 
     const handleCloneBadge = async () => {
+        if (!selectedCat) {
+            setCategoryError('Please select a category.');
+            return;
+        }
+        setCategoryError(''); // Clear the error if category is selected
 
         closetoggleStatusModal();
-        // if (!selectedCategory) {
-        //     alert("Please select a category.");
-        //     return;
-        // }
         const token = getToken();
         try {
             const response = await axios.post(
@@ -378,10 +392,9 @@ const Createbadge = () => {
             );
 
             if (response.status === 200) {
-                // alert('Badge cloned successfully!');
                 SweetAlert.fire({
                     title: 'Success!',
-                    text: 'Badge Template Clone Successfully!',
+                    text: 'Badge Template Cloned Successfully!',
                     icon: 'success',
                     timer: 3000,
                     showConfirmButton: false,
@@ -392,13 +405,13 @@ const Createbadge = () => {
                         navigate(`${process.env.PUBLIC_URL}/onsite/create-badges/Consoft`);
                     }
                 });
-
             }
         } catch (error) {
             console.error("Failed to clone badge:", error);
             alert('Error cloning badge. Please try again.');
         }
     };
+
 
     const openDeleteModal = (badge) => {
         setBadgeToDelete(badge);
@@ -595,7 +608,7 @@ const Createbadge = () => {
                 <ModalHeader toggle={() => setEditModal(!editModal)}>Edit Badge Name</ModalHeader>
                 <ModalBody>
                     <div className="form-group">
-                        <label htmlFor="editBadgeName">Badge Name:</label>
+                        <label htmlFor="editBadgeName"><strong>Badge Name</strong></label>
                         <Input
                             type="text"
                             id="editBadgeName"
@@ -606,7 +619,7 @@ const Createbadge = () => {
                 </ModalBody>
                 <ModalFooter>
                     <Button color="primary" onClick={handleSaveBadgeName}>Save</Button>
-                    <Button color="secondary" onClick={() => setEditModal(!editModal)}>Cancel</Button>
+                    <Button color="warning" onClick={() => setEditModal(!editModal)}>Cancel</Button>
                 </ModalFooter>
             </Modal>
 
@@ -640,19 +653,23 @@ const Createbadge = () => {
                         <Select
                             id="categorySelect"
                             value={catData.find(option => option.value === selectedCat)}
-                            onChange={handleSelectChange}
+                            onChange={(selectedOption) => {
+                                setCategoryError(''); // Clear error on selection
+                                handleSelectChange(selectedOption);
+                            }}
                             options={catData
                                 .filter(option => option.id !== parseInt(badgeCategoryId)) // Convert to a number if necessary
                                 .map(pref => ({ value: pref.id, label: pref.Cat }))}
                             isSearchable={true}
                             classNamePrefix="react-select"
                         />
+                        {categoryError && <p className="text-danger mt-1">{categoryError}</p>}
 
                     </FormGroup>
                 </ModalBody>
                 <ModalFooter>
                     <Button color="primary" onClick={handleCloneBadge}>Clone Badge</Button>
-                    <Button color="danger" onClick={closetoggleStatusModal}>No</Button>
+                    <Button color="warning" onClick={closetoggleStatusModal}>Cancel</Button>
                 </ModalFooter>
             </Modal>
         </Fragment>

@@ -76,6 +76,7 @@ const Managediscount = () => {
     };
     const handleSearch = (value) => {
         setSearchText(value);
+        setCurrentPage(1);
     };
 
     useEffect(() => {

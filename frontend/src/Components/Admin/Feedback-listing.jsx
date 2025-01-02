@@ -1055,6 +1055,7 @@ const handlePrintCertificate = async (user) => {
                                 MultiValueRemove: MultiValueRemoveWithCondition // Use custom MultiValueRemove component
                             }}
                             isClearable={false}
+                            classNamePrefix="react-select"
                         />
 
 

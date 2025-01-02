@@ -350,7 +350,7 @@ const RegBulkEmail = () => {
                         </PopoverBody>
                     </UncontrolledPopover>
                 </>
-            } parent="Onsite App" title="Promotional Email" />
+            } parent="Registration Admin" title="Promotional Email" />
             <Container fluid>
                 <Row className='justify-content-center'>
                     <Col sm="9">

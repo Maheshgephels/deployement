@@ -1643,6 +1643,16 @@ router.post('/updatecategory', verifyToken, async (req, res) => {
     //     await pool.query(updateDesignationQuery, [name, currentTimestamp, id]);
     //   }
 
+    const updateUsersQuery = `
+    UPDATE cs_os_users 
+    SET cs_reg_category = ?
+    WHERE cs_reg_cat_id = ?
+  `;
+
+  // Execute the update query for cs_os_users
+  await pool.query(updateUsersQuery, [categoryName, catId]);
+
+
     // Send success response
     return res.status(200).json({ message: 'Category updated successfully' });
   } catch (error) {

@@ -206,8 +206,8 @@ const AddRegCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
-                                                                    
+                                                                <div className="d-flex align-items-center mb-2">
+
                                                                     <input
                                                                         {...input}
                                                                         id="sOnsite"
@@ -219,7 +219,7 @@ const AddRegCategory = () => {
                                                                     <Label className='form-check-label' style={{ marginLeft: '10px' }} for="sOnsite">
                                                                         <strong>Should the created category be visible in the Onsite admin spot registration form ?</strong>
                                                                     </Label>
-                                                                    
+
                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                 </div>
                                                             )}
@@ -239,8 +239,8 @@ const AddRegCategory = () => {
                                                             type="checkbox"
                                                         >
                                                             {({ input, meta }) => (
-                                                                <div>
-                                                                    
+                                                                <div className="d-flex align-items-center mb-2">
+
                                                                     <input
                                                                         {...input}
                                                                         id="sReg"
@@ -252,7 +252,7 @@ const AddRegCategory = () => {
                                                                     <Label className='form-check-label' style={{ marginLeft: '10px' }} for="sReg">
                                                                         <strong>Should the created category be visible in the Registration admin confernece registration form ?</strong>
                                                                     </Label>
-                                                                    
+
                                                                     {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
                                                                 </div>
                                                             )}

@@ -104,6 +104,7 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
       isPrivate,
       maxBuyingLimit,
       mailDescription,
+      selectedAccommodation,
     } = req.body;
   
     const connection = await pool.getConnection();
@@ -133,13 +134,13 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
         `INSERT INTO cs_reg_tickets (
           ticket_title, ticket_description, ticket_category, reg_typeid, ticket_type,
           ticket_count, ticket_isapprove_by_admin, ticket_ispaid, ticket_visibility,
-          ticket_status, ticket_max_limit, ticket_mail_description,ticket_isprivate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?)`,
+          ticket_status, ticket_max_limit, ticket_mail_description,ticket_isprivate,residentional_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?,?)`,
         [
           ticketTitle, ticketDescription, registrationCategoryJson, regtype, seatType,
           seatType === 'Unlimited' ? null : seatCount, // handle seatType
           isManualApproval ? '1' : '0', priceType === 'Paid' ? '1' : '0',
-          isVisible ? '1' : '0', ticketStatus, maxBuyingLimit, mailDescription,isPrivate ? '1' : '0'
+          isVisible ? '1' : '0', ticketStatus, maxBuyingLimit, mailDescription,isPrivate ? '1' : '0',selectedAccommodation
           
         ]
       );
@@ -191,16 +192,18 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
       const { page = 1, pageSize = 10, search = '', sortColumn = 'ticket_id', sortOrder = 'DESC' } = req.query;
       const offset = (page - 1) * pageSize;
   
-      const validColumns = ['ticket_id', 'ticket_title', 'ticket_visibility'];  // Add all valid column names here
+      const validColumns = ['ticket_id', 'ticket_title', 'ticket_visibility', 'userCount', 'ticket_status', 'ticket_count', 'ticket_ispaid', 'ticket_type'];  // Add all valid column names here
       const columnToSortBy = validColumns.includes(sortColumn) ? sortColumn : 'ticket_id';
   
   
-      const columnsToFetch = ['*'];
+      const columnsToFetch = ['cs_reg_tickets.*', 'COUNT(DISTINCT cs_os_users.id) AS userCount'];
   
       // Construct the SQL query to fetch specific columns with pagination and search
       let query = `
       SELECT ${columnsToFetch}
       FROM cs_reg_tickets
+      LEFT JOIN cs_os_users on cs_reg_tickets.ticket_id = cs_os_users.cs_ticket
+      WHERE 1
     `;
   
       // Append search condition if search query is provided
@@ -212,12 +215,16 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
   
       // Append pagination
       query += `
+        GROUP BY cs_reg_tickets.ticket_id
         ORDER BY ${columnToSortBy} ${sortOrder}
         LIMIT ${pageSize} OFFSET ${offset}
       `;
   
       // Execute the query to fetch user data from the table
       const [userData] = await pool.query(query);
+
+      // console.log("UserData", userData);
+
   
       // Send the user data as a response along with pagination metadata
       let totalItems = 0;
@@ -229,7 +236,6 @@ router.get('/getDropdownData', verifyToken, async (req, res) => {
         totalItems = totalCountResult[0].total;
         totalPages = Math.ceil(totalItems / pageSize);
       }
-  
       res.json({ categories: userData, currentPage: parseInt(page), totalPages, pageSize, totalItems });
     } catch (error) {
       console.error(error);
@@ -387,7 +393,8 @@ router.post('/editticket', verifyToken, async (req, res) => {
     isVisible,
     isPrivate,
     maxBuyingLimit,
-    mailDescription
+    mailDescription,
+    selectedAccommodation
   } = req.body;
 
   const connection = await pool.getConnection();
@@ -412,7 +419,8 @@ router.post('/editticket', verifyToken, async (req, res) => {
         ticket_status = ?,
         ticket_max_limit = ?,
         ticket_mail_description = ?,
-        ticket_isprivate = ?
+        ticket_isprivate = ?,
+        residentional_type = ?
       WHERE ticket_id = ?
     `;
 
@@ -430,6 +438,7 @@ router.post('/editticket', verifyToken, async (req, res) => {
       maxBuyingLimit,
       mailDescription,
       isPrivate ? '1' : '0',
+      selectedAccommodation,
       ticketId
     ]);
 

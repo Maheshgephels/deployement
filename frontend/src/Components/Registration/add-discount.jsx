@@ -41,6 +41,8 @@ const AddDiscount = () => {
     const [addedEmails, setAddedEmails] = useState([]);
     const [selectedEmails, setSelectedEmails] = useState([]);
 
+    console.log("Start Date", startDateTime);
+    console.log("End Date", endDateTime);
 
 
     const handleEmailChange = (e) => {
@@ -58,7 +60,7 @@ const AddDiscount = () => {
         // Add email to guest list
         setGuestList([...guestList, email]);
         setEmail(''); // Clear input
-        setAddedEmails(...addedEmails,email);
+        setAddedEmails(...addedEmails, email);
     };
 
     // Handler to update percentage value when slider or input field changes
@@ -171,7 +173,7 @@ const AddDiscount = () => {
 
     const toggleModal = () => {
         setModalOpen(!modalOpen);
-        
+
     };
 
     const handleNavigation = () => {
@@ -184,13 +186,13 @@ const AddDiscount = () => {
 
     const handleClose = () => {
         // Remove emails in addedEmails from guestList
-        setGuestList(prevGuestList => 
+        setGuestList(prevGuestList =>
             prevGuestList.filter(email => !addedEmails.includes(email))
         );
-        
+
         // Clear addedEmails
         setAddedEmails([]);
-        
+
         // Close the modal
         toggleModal();
     };
@@ -268,7 +270,7 @@ const AddDiscount = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs mainTitle="Create Discount" parent="Manage Addon" title="Create Discount" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Create Discount" parent="Manage Discount" title="Create Discount" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="8">
@@ -702,6 +704,7 @@ const AddDiscount = () => {
                                                             timeIntervals={15}
                                                             dateFormat="yyyy-MM-dd HH:mm"
                                                             timeCaption="Time"
+                                                            minDate={startDateTime}
                                                             className="form-control"
                                                             placeholderText="Select End Date and Time"
                                                         />
@@ -873,12 +876,31 @@ const AddDiscount = () => {
                         )}
                     </ModalBody>
                     <ModalFooter>
-                    <Button color="primary" onClick={handleSave}>
-        Save
-    </Button>
-    <Button color="warning" onClick={handleClose}>
-        Close
-    </Button>
+                        <Button color="primary" onClick={handleSave}>
+                            Save
+                        </Button>
+                        <Button color="warning" onClick={handleClose}>
+                            Close
+                        </Button>
+                    </ModalFooter>
+                </Modal>
+
+                {/* Modal */}
+                <Modal isOpen={modal} toggle={() => setModal(!modal)} centered>
+                    <ModalHeader toggle={() => setModal(!modal)}>Confirmation</ModalHeader>
+                    <ModalBody>
+                        <div>
+                            <p>
+                                Your changes will be discarded. Are you sure you want to cancel?
+                            </p>
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <button onClick={handleNavigation} className="btn btn-warning">
+                            Yes
+                        </button>
+                        {/* <Link to="/manage-facility/Consoft" className="btn btn-warning">Yes</Link> */}
+                        <Button color="primary" onClick={() => setModal(!modal)}>No</Button>
                     </ModalFooter>
                 </Modal>
             </Container>

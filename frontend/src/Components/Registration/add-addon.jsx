@@ -368,7 +368,7 @@ const AddAddon = () => {
 
     return (
         <Fragment>
-            <Breadcrumbs mainTitle="Create Add-on" parent="Manage Addon" title="Create Add-on" />
+            <Breadcrumbs parentClickHandler={handleNavigation} mainTitle="Create Add-on" parent="Manage Addon" title="Create Addon" />
             <Container fluid={true}>
                 <Row className='justify-content-center'>
                     <Col sm="8">
@@ -379,6 +379,51 @@ const AddAddon = () => {
                                     render={({ handleSubmit, form }) => (
                                         <form onSubmit={handleSubmit}>
                                             <Row>
+
+                                            <Col md="12" className="mb-3">
+                                                    <Field
+                                                        name="addonTitle"
+                                                        validate={composeValidators(required, Name)}
+                                                    >
+                                                        {({ input, meta }) => (
+                                                            <div className="form-group">
+                                                                <label className="d-flex justify-content-between align-items-center">
+                                                                    <strong>Title<span className="red-asterisk">*</span></strong>
+                                                                    <small>(0/50)</small>
+                                                                </label>                                                                <input
+                                                                    {...input}
+                                                                    type="text"
+                                                                    placeholder="Enter Addon Title"
+                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                                                />
+                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                            </div>
+                                                        )}
+                                                    </Field>
+                                                </Col>
+                                                <Col md="12" className="mb-3">
+                                                    <Field
+                                                        name="addonDescription"
+                                                        validate={required}
+                                                    >
+                                                        {({ input, meta }) => (
+                                                            <div className="form-group">
+                                                                <label className="d-flex justify-content-between align-items-center">
+                                                                    <strong>Description<span className="red-asterisk">*</span></strong><small>(0/250)</small>
+                                                                </label>
+                                                                <textarea
+                                                                    {...input}
+                                                                    placeholder="Enter Addon Description"
+                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
+                                                                />
+                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
+                                                            </div>
+                                                        )}
+                                                    </Field>
+                                                </Col>
+
+
+
                                                 <Col md="12" className="mb-3">
                                                     <Field
                                                         name={`tickets`} // Use dynamic field name
@@ -386,7 +431,7 @@ const AddAddon = () => {
                                                     >
                                                         {({ input }) => (
                                                             <div>
-                                                                <Label className='form-label' for="tickets"><strong>Available to<span className="red-asterisk">*</span> </strong></Label>
+                                                                <Label className='form-label' for="tickets"><strong>Available to tickets<span className="red-asterisk">*</span> </strong></Label>
                                                                 <Select
                                                                     {...input}
                                                                     options={[
@@ -435,7 +480,7 @@ const AddAddon = () => {
 
                                                             return (
                                                                 <div className="form-group mb-3">
-                                                                    <label><strong>Addon Category</strong></label>
+                                                                    <label><strong>Add-on Type</strong></label>
                                                                     <Select
                                                                         {...input}
                                                                         options={[
@@ -609,52 +654,6 @@ const AddAddon = () => {
                                                     )}
                                                 </Col>
 
-
-                                                <Col md="12" className="mb-3">
-                                                    <Field
-                                                        name="addonTitle"
-                                                        validate={composeValidators(required, Name)}
-                                                    >
-                                                        {({ input, meta }) => (
-                                                            <div className="form-group">
-                                                                <label className="d-flex justify-content-between align-items-center">
-                                                                    <strong>Title Name<span className="red-asterisk">*</span></strong>
-                                                                    <small>(0/50)</small>
-                                                                </label>                                                                <input
-                                                                    {...input}
-                                                                    type="text"
-                                                                    placeholder="Enter Addon Title"
-                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
-                                                                />
-                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                            </div>
-                                                        )}
-                                                    </Field>
-                                                </Col>
-                                                <Col md="12" className="mb-3">
-                                                    <Field
-                                                        name="addonDescription"
-                                                        validate={required}
-                                                    >
-                                                        {({ input, meta }) => (
-                                                            <div className="form-group">
-                                                                <label className="d-flex justify-content-between align-items-center">
-                                                                    <strong>Description<span className="red-asterisk">*</span></strong><small>(0/250)</small>
-                                                                </label>
-                                                                <textarea
-                                                                    {...input}
-                                                                    placeholder="Enter Addon Description"
-                                                                    className={`form-control ${meta.touched && meta.error ? 'error-class' : ''}`}
-                                                                />
-                                                                {meta.error && meta.touched && <p className='d-block text-danger'>{meta.error}</p>}
-                                                            </div>
-                                                        )}
-                                                    </Field>
-                                                </Col>
-
-
-
-
                                                 <Col md="12" className="mb-3">
                                                     <div className="form-group">
                                                         <label><strong>Number of Add ons</strong></label>
@@ -696,7 +695,7 @@ const AddAddon = () => {
                                                     <Field name="ticketStatus" validate={required} defaultValue="Open">
                                                         {({ input, meta }) => (
                                                             <div className="form-group">
-                                                                <label><strong>Ticket Status</strong></label>
+                                                                <label><strong>Addon Status</strong></label>
                                                                 <Select
                                                                     {...input}
                                                                     value={{ label: input.value, value: input.value }} // Pre-select value in react-select
@@ -752,10 +751,10 @@ const AddAddon = () => {
                                             {priceType === 'Paid' && (
 
                                                 <Card className='mt-3'>
-                                                    <CardHeader>
-                                                        <h5><strong>Duration Management</strong></h5>
-                                                    </CardHeader>
                                                     <CardBody>
+                                                        <Row>
+                                                            <h5><strong>Duration Management</strong></h5>
+                                                        </Row>
                                                         <Row>
                                                             <Col md="12" className='mb-2'>
                                                                 <div className="form-group">
@@ -788,6 +787,7 @@ const AddAddon = () => {
                                                                     <label><strong>End Date</strong></label>
                                                                     <DatePicker
                                                                         selected={newDuration.endDate}
+                                                                        minDate={newDuration.startDate}
                                                                         onChange={(date) => setNewDuration({ ...newDuration, endDate: date })}
                                                                         className="form-control"
                                                                     />
@@ -960,6 +960,7 @@ const AddAddon = () => {
                                                                 <label><strong>End Date</strong></label>
                                                                 <DatePicker
                                                                     selected={newDuration.endDate}
+                                                                    minDate={newDuration.startDate}
                                                                     onChange={handleDateChange}
                                                                     className="form-control"
                                                                 />

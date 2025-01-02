@@ -6,7 +6,7 @@ import BadgePDFExporter from '../BadgePDFExporter/BadgePDFExporter';
 // import AddFieldForm from '../badgedesign/AddFieldForm/AddFieldForm';
 import AddFieldForm from '../AddFieldForm/AddFieldForm';
 import axios from 'axios';
-import { Card, Col, Row } from 'reactstrap';
+import { Card, Col, Container, Row, ButtonGroup } from 'reactstrap';
 import { v4 as uuidv4 } from 'uuid';
 import Select from 'react-select';
 // import BadgePDFDownloadButton from '../../component/badgeDownlode/BadgePDFDownloadButton'; 
@@ -16,7 +16,6 @@ import { BackendPath } from '../../../api/index';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import SweetAlert from 'sweetalert2';
-import { Breadcrumb } from 'reactstrap';
 // import { getToken } from '../../Auth/Auth';
 // import useAuth from '../../Auth/protectedAuth';
 import useAuth from '../../../Auth/protectedAuth';
@@ -26,8 +25,13 @@ import { RiImageAddFill } from "react-icons/ri";
 import { CiText } from "react-icons/ci";
 import { AiOutlineBgColors } from "react-icons/ai";
 import { BiQrScan } from "react-icons/bi";
-import { GrFormDown } from 'react-icons/gr';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button, FormGroup, Label, Input, CardBody, Tooltip, CardHeader } from 'reactstrap';
+import { GrFormDown, GrFormUp } from 'react-icons/gr';
+import { MdGrid4X4, MdCancel } from "react-icons/md";
+import { FaXmark } from "react-icons/fa6";
+import { FaSearchMinus, FaSearchPlus, FaRedo } from 'react-icons/fa';
+import { Tooltip } from 'react-tooltip';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button, FormGroup, Label, Input, CardBody, CardHeader } from 'reactstrap';
+import { Breadcrumbs } from '../../../AbstractElements';
 
 const BadgeDesigner = () => {
 
@@ -44,6 +48,7 @@ const BadgeDesigner = () => {
     const designationName = badge.designation_name || designation;
     const editedBadgeName = badge.badge_name || null;
     const finalBadgeName = editedBadgeName || badgeName;
+    const [modal, setModal] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [showGrid, setShowGrid] = useState(false);
     const [activeSide, setActiveSide] = useState('front'); // Track which side is active
@@ -54,7 +59,10 @@ const BadgeDesigner = () => {
     const [catData, setCatData] = useState([]);
 
 
-
+    const orientationOptions = [
+        { value: 'Portrait', label: 'Portrait' },
+        { value: 'Landscape', label: 'Landscape' },
+    ];
 
     const toggleSide = (side) => {
         setActiveSide(side);
@@ -108,11 +116,14 @@ const BadgeDesigner = () => {
 
 
     const navigate = useNavigate(); // Initialize navigate hook
+    const [size, setSize] = useState('');
     const [badgeSize, setBadgeSize] = useState({ width: badgeData.width, height: badgeData.height });
-    const [dbadgeSize, setDBadgeSize] = useState({ width: badgeData.width, height: badgeData.height });
+    const [dbadgeSize, setDBadgeSize] = useState({ width: badgeData.width, height: badgeData.height / 2 });
     const CM_TO_PX = 37.795276;
-    const [orientation, setOrientation] = useState('landscape');
-    const [zoom, setZoom] = useState(100);
+    const [badgeWidth, setBadgeWidth] = useState(((badgeData.width / CM_TO_PX).toFixed(2)));  // Initialize with value in cm
+    const [badgeHeight, setBadgeHeight] = useState((badgeData.height / CM_TO_PX).toFixed(2));  // Initialize with value in cm
+    const [orientation, setOrientation] = useState('');
+    const [zoom, setZoom] = useState(0.60);
     // const [showGrid, setShowGrid] = useState(false);
     const [components, setComponents] = useState([]);
     const [badgeType, setBadgeType] = useState(badge.badge_type || badgeData.badgeType);
@@ -145,9 +156,18 @@ const BadgeDesigner = () => {
     // State to track the currently editable side for Double/Single badges
     const [rotateBadge, setRotateBadge] = useState(false); // For Double Badge rotation
 
+
+    const zoomIn = () => setZoom((prev) => Math.min(prev + 0.1, 2)); // Max zoom level: 200%
+    const zoomOut = () => setZoom((prev) => Math.max(prev - 0.1, 0.5)); // Min zoom level: 50%
+    const resetZoom = () => setZoom(0.60);
+
     console.log("Location : ", location.state);
 
     console.log("Component : ", components);
+    console.log("Badge Type : ", badgeType);
+    console.log("Badge Data : ", badgeData);
+    console.log("Current Orientation (before update):", orientation);
+
 
     console.log("Badge Size : ", badgeSize);
     console.log("Double badge size : ", dbadgeSize);
@@ -173,6 +193,8 @@ const BadgeDesigner = () => {
         height: badgeType === 'Double' ? dbadgeSize.height : badgeSize.height,
         transform: rotateBadge ? 'rotate(180deg)' : 'none', // Apply 180-degree rotation for Double badge
         transition: 'transform 0.3s', // Smooth transition for rotating
+        transform: `scale(${zoom})`,
+
     };
 
     // Conditional styles for each badge type
@@ -198,10 +220,11 @@ const BadgeDesigner = () => {
     // Inside your BadgeDesigner component
     useEffect(() => {
         if (badgeDatafromApi && badgeDatafromApi.badge_fields) {
-            const { width, height, orientation, badge_fields } = badgeDatafromApi;
+            const { size, width, height, orientation, badge_fields } = badgeDatafromApi;
 
-
+            console.log("Fields", badge_fields);
             // Convert pixel values to centimeters
+            setSize(size);
             const widthInCm = width * PX_TO_CM;
             const heightInCm = height * PX_TO_CM;
             // console.log("Width from badgeDatafromApi:", widthInCm);
@@ -212,7 +235,8 @@ const BadgeDesigner = () => {
                 // Extract position and size from field data
                 const position = {
                     top: parseFloat(field.cs_field_position_y),
-                    left: parseFloat(field.cs_field_position_x)
+                    left: parseFloat(field.cs_field_position_x),
+                    zIndex: field.cs_zindex
                 };
                 const size = {
                     width: parseFloat(field.cs_field_width),
@@ -233,6 +257,7 @@ const BadgeDesigner = () => {
                         fontColor: field.cs_field_color,
                         alignment: field.cs_field_alignment,
                         font: field.cs_font,
+                        textcase: field.cs_textcase,
                         fontWeight: field.cs_field_weight,
                         rotation: field.cs_field_rotate
 
@@ -283,6 +308,7 @@ const BadgeDesigner = () => {
                         fontColor: field.cs_field_color,
                         alignment: field.cs_field_alignment,
                         font: field.cs_font,
+                        textcase: field.cs_textcase,
                         fontWeight: field.cs_field_weight,
                         rotation: field.cs_field_rotate
                     };
@@ -300,6 +326,7 @@ const BadgeDesigner = () => {
                         fontColor: field.cs_field_color,
                         alignment: field.cs_field_alignment,
                         font: field.cs_font,
+                        textcase: field.cs_textcase,
                         fontWeight: field.cs_field_weight,
                         rotation: field.cs_field_rotate
                     };
@@ -317,6 +344,9 @@ const BadgeDesigner = () => {
             // Set badge size
             setBadgeSize({ width: parseFloat(width), height: parseFloat(height) });
             setDBadgeSize({ width: parseFloat(width), height: parseFloat(height) / 2 });
+
+
+            console.log("Orientation:", orientation);
 
 
 
@@ -343,6 +373,7 @@ const BadgeDesigner = () => {
     const [selectedPageSize, setSelectedPageSize] = useState('custom');
     const [customPageSize, setCustomPageSize] = useState({ width: '', height: '' });
     const pageSizes = {
+        'Custom size': { width: 10, height: 15 },
         A4: { width: 21, height: 29.7 },
         A5: { width: 14.8, height: 21 },
         A6: { width: 10.5, height: 14.8 },
@@ -365,14 +396,25 @@ const BadgeDesigner = () => {
 
     const handlePageSizeChange = (e) => {
         const newSize = e.target.value;
+        console.log("New size", newSize);
         setSelectedPageSize(newSize);
-        if (newSize === 'custom') {
-            setCustomPageSize({ width: '', height: '' });
-        } else {
+        setSize(newSize);
+        if (newSize === 'Custom size' && badgeType === 'Single') {
+            setBadgeSize({ width: 10 * CM_TO_PX, height: 15 * CM_TO_PX });
+            setDBadgeSize({ width: 10 * CM_TO_PX, height: 30 * CM_TO_PX / 2 });
+        } else if (newSize === 'Custom size' && badgeType === 'Single') {
+            setBadgeSize({ width: 10 * CM_TO_PX, height: 30 * CM_TO_PX });
+            setDBadgeSize({ width: 10 * CM_TO_PX, height: 30 * CM_TO_PX / 2 });
+        }
+        else {
             const pageSizeInCm = pageSizes[newSize];
             setBadgeSize({
                 width: pageSizeInCm.width * CM_TO_PX,
                 height: pageSizeInCm.height * CM_TO_PX
+            });
+            setDBadgeSize({
+                width: pageSizeInCm.width * CM_TO_PX,
+                height: pageSizeInCm.height * CM_TO_PX / 2
             });
         }
     };
@@ -391,12 +433,15 @@ const BadgeDesigner = () => {
         const cmValue = parseFloat(e.target.value).toFixed(3);
         const pxValue = cmValue * CM_TO_PX;
         setBadgeSize({ ...badgeSize, width: pxValue });
+        setDBadgeSize({ ...dbadgeSize, width: pxValue });
+
     };
 
     const handleHeightChange = (e) => {
         const cmValue = parseFloat(e.target.value).toFixed(3);
         const pxValue = cmValue * CM_TO_PX;
         setBadgeSize({ ...badgeSize, height: pxValue });
+        setDBadgeSize({ ...dbadgeSize, height: pxValue });
     };
 
 
@@ -407,6 +452,18 @@ const BadgeDesigner = () => {
         const updatedComponents = components.map((component) => {
             if (component.id === selectedComponent) {
                 return { ...component, content: newText };
+            }
+            return component;
+        });
+        setComponents(updatedComponents);
+    };
+
+    const handleTextCaseChange = (casetype) => {
+        // setEnteredText(newText); // Update the entered text state
+        // Update the content property of the selected component
+        const updatedComponents = components.map((component) => {
+            if (component.id === selectedComponent) {
+                return { ...component, textcase: casetype };
             }
             return component;
         });
@@ -481,7 +538,8 @@ const BadgeDesigner = () => {
             storedData,
             badgeType,
             badgeNam,
-            selectedCat
+            selectedCat,
+            size: selectedPageSize
         };
 
         try {
@@ -493,9 +551,13 @@ const BadgeDesigner = () => {
             });
 
             if (response.status === 200 || response.status === 201) {
+                const successMessage = badgeData && badgeData.length > 0
+                    ? 'Badge Template Saved Successfully!'
+                    : 'Badge Template Updated Successfully!';
+
                 SweetAlert.fire({
                     title: 'Success!',
-                    text: 'Badge Template Saved Successfully!',
+                    text: successMessage,
                     icon: 'success',
                     timer: 3000,
                     showConfirmButton: false,
@@ -530,13 +592,15 @@ const BadgeDesigner = () => {
             type: 'fullname', // Set the type to 'fullname'
             content: 'fullname', // Initialize content as empty
             // position: newPosition,
-            position: { 
-                left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 - defaultComponentSize.width / 2 : badgeSize.width / 2 - defaultComponentSize.width / 2, 
-                top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 - defaultComponentSize.height / 2 : badgeSize.height / 2 - defaultComponentSize.height / 2
+            position: {
+                left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 - defaultComponentSize.width / 2 : badgeSize.width / 2 - defaultComponentSize.width / 2,
+                top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 - defaultComponentSize.height / 2 : badgeSize.height / 2 - defaultComponentSize.height / 2,
+                zIndex: 2
             },
             size: { ...defaultComponentSize },
             side: activeSide,
-            textFontSize: 12 // Set default font size
+            textFontSize: 12, // Set default font size
+            textcase: 'titlecase'
         };
         setComponents([...components, newComponent]);
         setSelectedComponent(newComponent.id);
@@ -555,13 +619,15 @@ const BadgeDesigner = () => {
             type: 'customtext', // Set type to customtext
             content: 'New Custom Text', // Default content for custom text component
             // position: newPosition,
-            position: { 
-                left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 - defaultComponentSize.width / 2 : badgeSize.width / 2 - defaultComponentSize.width / 2, 
-                top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 - defaultComponentSize.height / 2 : badgeSize.height / 2 - defaultComponentSize.height / 2
-            }, 
+            position: {
+                left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 - defaultComponentSize.width / 2 : badgeSize.width / 2 - defaultComponentSize.width / 2,
+                top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 - defaultComponentSize.height / 2 : badgeSize.height / 2 - defaultComponentSize.height / 2,
+                zIndex: 2
+            },
             size: { ...defaultComponentSize },
             side: activeSide,
-            textFontSize: 12
+            textFontSize: 12,
+            textcase: 'titlecase'
         };
         setComponents([...components, newComponent]);
         setSelectedComponent(newComponent.id);
@@ -569,13 +635,14 @@ const BadgeDesigner = () => {
 
 
     const addFieldAsComponent = (field) => {
+        console.log("Data", field);
         const newComponent = {
             id: uuidv4(),
             type: 'text', // or the appropriate type like 'image', 'qr', etc.
             content: field.cs_field_label,
             formfield_id: field.cs_field_id,
             formfield_name: field.cs_field_label,
-            position: { top: 100, left: 100 },
+            position: { top: 100, left: 100, zIndex: 2 },
             size: { width: 100, height: 25 },
             textFontSize: 12,
             side: field.side, // Use the side passed from the field object
@@ -584,6 +651,7 @@ const BadgeDesigner = () => {
         console.log("Compo", newComponent);  // Check the side here
         console.log("field", field);  // Check the field object
         setComponents(prevComponents => [...prevComponents, newComponent]);
+
     };
 
 
@@ -640,7 +708,7 @@ const BadgeDesigner = () => {
                     top: badgeSize.height / 2 - defaultComponentSize.height / 2,
                     left: badgeSize.width / 2 - defaultComponentSize.width / 2
                 };
-                
+
 
                 // const imageUrl = data.imageUrl; // Assuming the API returns the URL of the uploaded image
                 // Create a new component with the image URL
@@ -649,10 +717,11 @@ const BadgeDesigner = () => {
                     type: 'image',
                     content: imageUrl, // Store the URL of the uploaded image
                     // position: newPosition,
-                    position: { 
-                        left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 - defaultComponentSize.width / 2 : badgeSize.width / 2 - defaultComponentSize.width / 2, 
-                        top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 - defaultComponentSize.height / 2 : badgeSize.height / 2 - defaultComponentSize.height / 2
-                    }, 
+                    position: {
+                        left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 - defaultComponentSize.width / 2 : badgeSize.width / 2 - defaultComponentSize.width / 2,
+                        top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 - defaultComponentSize.height / 2 : badgeSize.height / 2 - defaultComponentSize.height / 2,
+                        zIndex: 2
+                    },
                     size: { ...defaultComponentSize },
                     side: activeSide,
                     textFontSize: 12
@@ -713,7 +782,7 @@ const BadgeDesigner = () => {
 
 
                 // const defaultComponentSize = { width: badgeSize.width, height: badgeSize.height };
-                const defaultComponentSize = {         
+                const defaultComponentSize = {
                     width: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width : badgeSize.width,
                     height: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height : badgeSize.height
                 };
@@ -753,10 +822,11 @@ const BadgeDesigner = () => {
             type: 'qr',
             side: activeSide,
             content: 'qr', // Set content to an empty string
-            position: { 
-                left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 : badgeSize.width / 2, 
-                top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 : badgeSize.height / 2 
-            },            
+            position: {
+                left: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.width / 2 : badgeSize.width / 2,
+                top: badgeType === 'Double' || badgeType === 'Mirror' ? dbadgeSize.height / 2 : badgeSize.height / 2,
+                zIndex: 2
+            },
             size: { width: 100, height: 100 },
             textFontSize: 12
         };
@@ -788,27 +858,104 @@ const BadgeDesigner = () => {
     };
 
 
+    // const handleComponentPositionChange = (id, newPosition) => {
+    //     console.log("Get", newPosition);
+    //     const updatedComponents = components.map((component) => {
+    //         if (component.id === id) {
+    //             return { ...component, position: newPosition};
+    //         }
+    //         return component;
+    //     });
+    //     setComponents(updatedComponents);
+    // };
+
     const handleComponentPositionChange = (id, newPosition) => {
-        const updatedComponents = components.map((component) => {
-            if (component.id === id) {
-                return { ...component, position: newPosition };
-            }
-            return component;
-        });
-        setComponents(updatedComponents);
+        const { zIndex } = newPosition;
+
+        console.log("Get", newPosition);
+        // Check if any component, excluding the current one, already has zIndex 2
+        const hasZIndex2 = components.some(
+            (comp) => comp.id !== id && comp.position.zIndex === 2
+        );
+
+        // If zIndex is set to 1, adjust all other components
+        if (zIndex === 1) {
+            const updatedComponents = components.map((comp) => {
+                if (comp.id !== id && comp.type !== 'backgroundimage' && hasZIndex2) {
+                    return {
+                        ...comp,
+                        position: {
+                            ...comp.position,
+                            zIndex: (comp.position?.zIndex || 0) + 1,
+                        },
+                    };
+                }
+                return comp;
+            });
+
+
+            // Set current component's zIndex to 2
+            const finalComponents = updatedComponents.map((comp) =>
+                comp.id === id
+                    ? {
+                        ...comp,
+                        position: {
+                            ...newPosition,
+                            zIndex: 2,
+                        },
+                    }
+                    : comp
+            );
+
+            setComponents(finalComponents);
+        } else {
+            // Otherwise, update only the target component
+            const updatedComponents = components.map((comp) =>
+                comp.id === id ? { ...comp, position: newPosition } : comp
+            );
+
+            setComponents(updatedComponents);
+        }
     };
+
+
 
     const handleOrientationChange = (e) => {
         const newOrientation = e.target.value;
+
+
+        console.log("New Orientation (to be updated):", newOrientation);
+
+        // Update the orientation state
         setOrientation(newOrientation);
 
-        // Adjust badge size based on orientation
-        if (newOrientation === 'portrait') {
-            setBadgeSize({ width: 377.9527559055, height: 755.905511811 });
-        } else {
-            setBadgeSize({ width: 755.905511811, height: 377.9527559055 });
+
+        // Adjust badge size based on new orientation
+        if (newOrientation === 'Landscape') {
+            setBadgeSize({ width: badgeSize.height, height: badgeSize.width });
+            if (badgeType === 'Double') {
+                setDBadgeSize({ width: badgeSize.height, height: badgeSize.width / 2 });
+            }
+        } else if (newOrientation === 'Portrait') {
+            setBadgeSize({ width: badgeSize.width, height: badgeSize.height });
+            if (badgeType === 'Double') {
+                setDBadgeSize({ width: badgeSize.width, height: badgeSize.height / 2 });
+            }
         }
     };
+
+
+    // if (newOrientation === 'Portrait') {
+    //     setBadgeSize({ width: badgeSize.width, height: badgeSize.height });
+    //     if (badgeType === 'Double') {
+    //         setDBadgeSize({ width: dbadgeSize.width, height: dbadgeSize.height / 2 });
+    //     }
+    // } else {
+    //     setBadgeSize({ width: badgeSize.height, height: badgeSize.width });
+    //     if (badgeType === 'Double') {
+    //         setDBadgeSize({ width: dbadgeSize.height / 2, height: dbadgeSize.width });
+    //     }
+    // }
 
 
 
@@ -860,7 +1007,13 @@ const BadgeDesigner = () => {
 
 
 
+    const handleCancel = () => {
+        setModal(true);
+    };
 
+    const handleNavigation = () => {
+        navigate(`${process.env.PUBLIC_URL}/onsite/create-badges/Consoft`);
+    };
 
 
 
@@ -869,381 +1022,444 @@ const BadgeDesigner = () => {
 
     return (
         <Fragment>
-            <Card>
-                <div>
+            <Breadcrumbs mainTitle="Badge Design" parent="Manage Badge" title="Badge Design" />
 
-                    {/* <div className='row align-items-center justify-content-center'> */}
-                    {/* Card container */}
-                    <div className="card py-3">
-                        <div className="card-body p-0">
-                            <div className="row align-items-center justify-content-center">
-                                {/* First Input: Badge Name */}
-
-                                <div className="col-3">
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        id="badgeName"
-                                        value={badgeNam}
-                                        disabled // Input field disabled
-                                    />
-                                </div>
-
-                                {/* Second Input: Category Name */}
-                                <div className="col-3">
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        id="categoryName"
-                                        value={selectedCategory}
-                                        disabled // Input field disabled
-                                    />
-                                </div>
-                                <div className="col-1">
-                                    <div className='pt-2'>
-                                        <FaEdit
-                                            size={24} // Adjust size as needed
-                                            onClick={handleEdit} l
-                                            style={{ cursor: 'pointer', color: 'black' }} // Add custom styles
-
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <Container>
+                <Card className="my-4 p-3 shadow-sm border-0">
+                    <div className="zoom-control">
+                        <ButtonGroup >
+                            <Button outline onClick={zoomOut} disabled={zoom <= 0.5} className="zoom-button" color='primary'>
+                                <FaSearchMinus />
+                            </Button>
+                            <Button outline onClick={resetZoom} disabled={zoom === 1} className="zoom-button" color='primary'>
+                                <FaRedo />
+                            </Button>
+                            <Button outline onClick={zoomIn} disabled={zoom >= 2} className="zoom-button" color='primary'>
+                                <FaSearchPlus />
+                            </Button>
+                        </ButtonGroup>
                     </div>
-                    {/* </div> */}
+                    <Row className="align-items-center">
+                        <Col md="8" className="d-flex align-items-center">
+                            {/* Back Button */}
+                            {/* <span onClick={handleCancel} style={{ cursor: 'pointer', marginRight: '8px' }}>
+    <FaArrowLeft />
+  </span> */}
+
+                            <div className="mb-0 text-start d-flex align-items-center">
+                                {/* Badge Name */}
+                                <Label className="me-3"><strong>Badge Name:</strong> {badgeNam || "Not specified"}</Label>
+
+                                {/* Badge Category */}
+                                <Label><strong>Badge Category:</strong> {selectedCategory || "Not specified"}</Label>
+
+                                {/* Edit Icon */}
+                                {badgeNam && (
+                                    <span className="ms-2" onClick={handleEdit} style={{ cursor: 'pointer' }}>
+                                        <FaEdit />
+                                    </span>
+                                )}
+                            </div>
+                        </Col>
+
+                        <Col md="4" className="text-end">
+                            <Button color=""
+                                onClick={handleCancel}
+                                className='me-2 circular'
+                                data-tooltip-id="tooltip"
+                                data-tooltip-content="Cancel"
+                                data-tooltip-event="click focus"
+                            >
+                                <FaXmark className='buttonStyle' />
+                            </Button>
+                        </Col>
+
+                    </Row>
+                    <Tooltip id="tooltip" globalEventOff="click" />
+
+
+                </Card>
+                <Card>
+
+                    <div>
+
+                        {/* <div className='row align-items-center justify-content-center'> */}
+                        {/* Card container */}
+
+                        {/* </div> */}
 
 
 
-                    <div className="badge-designer-container">
-                        <Col md="4">
-                            <Card >
-                                {/* Properties Section Header */}
-                                <CardHeader>
-                                    <h6>Properties</h6>
+                        <div className="badge-designer-container">
+                            <Col md="4">
+                                <Card >
+                                    {/* Properties Section Header */}
+                                    <CardHeader>
+                                        <h6>Properties</h6>
 
-                                    {/* Layers Section */}
-                                    <div className="layer-section">
-                                        <label className="d-flex justify-content-between align-items-center">
-                                            <strong>Layers</strong>
-                                            {/* <GrFormDown onClick={() => setShowLayers(!showLayers)} style={{ cursor: 'pointer' }} /> */}
-                                        </label>
-                                        <div className="layer-property-box d-flex justify-content-between align-items-center  px-5 mb-2" style={{
-                                            border: '1px solid',
-                                            borderRadius: '5px',
-                                            backgroundColor: '#f7f7f7',
-                                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)', // Adding slight shadow for depth
-                                        }}>
-                                            <p style={{ color: '#6c757d' }}>Layer Properties</p> {/* Grey text color */}
-                                            <GrFormDown
-                                                onClick={() => setShowLayers(!showLayers)}
-                                                style={{ cursor: 'pointer', color: '#6c757d', marginLeft: '8px' }} // Use marginLeft for spacing
-                                            />
-                                        </div>
+                                        {/* Layers Section */}
+                                        {/* <div className="layer-section">
+                                            <label className="d-flex justify-content-between align-items-center">
+                                                <strong>Layers</strong>
+                                                <GrFormDown onClick={() => setShowLayers(!showLayers)} style={{ cursor: 'pointer' }} />
+                                            </label>
+                                            <div className="layer-property-box d-flex justify-content-between align-items-center  px-5 mb-2" style={{
+                                                border: '1px solid',
+                                                borderRadius: '5px',
+                                                backgroundColor: '#f7f7f7',
+                                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)', // Adding slight shadow for depth
+                                            }}>
+                                                <p style={{ color: '#6c757d' }}>Layer Properties</p> 
+                                                <GrFormDown
+                                                    onClick={() => setShowLayers(!showLayers)}
+                                                    style={{ cursor: 'pointer', color: '#6c757d', marginLeft: '8px' }} // Use marginLeft for spacing
+                                                />
+                                            </div>
 
 
-                                        {showLayers && (
-                                            <Card className="bordered-card mb-3">
-                                                <CardBody >
-                                                    {false /* Replace with your logic to check if there are layers */ ? (
-                                                        <div>Layers exist here.</div>
-                                                    ) : (
-                                                        <div>No layers till now.</div>
-                                                    )}
-                                                </CardBody>
-                                            </Card>
-                                        )}
-                                    </div>
+                                            {showLayers && (
+                                                <Card className="bordered-card mb-3">
+                                                    <CardBody >
+                                                        {false ? (
+                                                            <div>Layers exist here.</div>
+                                                        ) : (
+                                                            <div>No layers till now.</div>
+                                                        )}
+                                                    </CardBody>
+                                                </Card>
+                                            )}
+                                        </div> */}
 
-                                    {/* Text Section */}
-                                    <div className="text-section">
-                                        <label className="d-flex justify-content-between align-items-center mb-2">
-                                            <strong>Text</strong>
-                                            {/* <GrFormDown onClick={() => setShowText(!showText)} style={{ cursor: 'pointer' }} /> */}
-                                        </label>
-                                        <div className="layer-property-box d-flex justify-content-between align-items-center  px-5 mb-2" style={{
-                                            border: '1px solid',
-                                            borderRadius: '5px',
-                                            backgroundColor: '#f7f7f7',
-                                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)', // Adding slight shadow for depth
-                                        }}>
-                                            <p style={{ color: '#6c757d', margin: 0 }}>Text Properties</p> {/* Grey text color */}
-                                            <GrFormDown
-                                                onClick={() => setShowText(!showText)}
-                                                style={{ cursor: 'pointer', color: '#6c757d', marginLeft: '8px' }} // Use marginLeft for spacing
-                                            />
-                                        </div>
-                                        {(showText || selectedComponent) && (
-                                            <div>
-                                                {selectedComponent ? (
-                                                    (() => {
-                                                        // Find the selected component's data in the components array
-                                                        const selectedComponentData = components.find(c => c.id === selectedComponent);
-                                                        if (selectedComponentData) {
-                                                            return (
-                                                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
-                                                                    <ComponentSettings
-                                                                        component={selectedComponentData}
-                                                                        handleComponentSizeChange={handleComponentSizeChange}
-                                                                        handleComponentPositionChange={handleComponentPositionChange}
-                                                                        handleTextFontSizeChange={handleTextFontSizeChange}
-                                                                        handleTextContentChange={handleTextContentChange}
-                                                                        handleTextFontChange={handleTextFontChange}
-                                                                        handleTextFontWeightChange={handleTextFontWeightChange}
-                                                                        handleTextAlignmentChange={handleTextAlignmentChange}
-                                                                        handleTextRotationChange={handleTextRotationChange}
-                                                                        handleTextColorChange={handleTextColorChange}
-                                                                    />
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return null; // No component data found for the selected component
-                                                    })()
+                                        {/* Text Section */}
+                                        <div className="text-section">
+                                            {/* <label className="d-flex justify-content-between align-items-center mb-2">
+                                                <strong>Text</strong>
+                                                <GrFormDown onClick={() => setShowText(!showText)} style={{ cursor: 'pointer' }} />
+                                            </label> */}
+                                            <div
+                                                className="layer-property-box d-flex justify-content-between align-items-center px-5 mb-2"
+                                                style={{
+                                                    border: '1px solid',
+                                                    borderRadius: '5px',
+                                                    backgroundColor: '#f7f7f7',
+                                                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)', // Adding slight shadow for depth
+                                                    cursor: 'pointer', // Make the whole section clickable
+                                                }}
+                                                onClick={() => setShowText(!showText)} // Toggle state on click
+                                            >
+                                                <p style={{ color: '#6c757d', margin: 0 }}>Text Properties</p> {/* Grey text color */}
+                                                {showText ? ( // Correctly check the state variable
+                                                    <GrFormUp style={{ color: '#6c757d', marginLeft: '8px' }} />
                                                 ) : (
-                                                    <div className="non-interactive-placeholder mb-4">
-                                                        <h5>No Component Selected</h5>
-                                                        <p>Select or add a component to see its settings</p>
-                                                    </div>
+                                                    <GrFormDown style={{ color: '#6c757d', marginLeft: '8px' }} />
                                                 )}
                                             </div>
-                                        )}
 
 
-
-                                    </div>
-                                    {/* Badge Section */}
-                                    <div className="badge-section">
-                                        <label className="d-flex justify-content-between align-items-center mb-2">
-                                            <strong>Badge Section</strong>
-                                            {/* <GrFormDown onClick={() => setShowBadgeSection(!showBadgeSection)} style={{ cursor: 'pointer' }} /> */}
-                                        </label>
-                                        <div className="layer-property-box d-flex justify-content-between align-items-center  px-5 mb-2" style={{
-                                            border: '1px solid',
-                                            borderRadius: '5px',
-                                            backgroundColor: '#f7f7f7',
-                                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)', // Adding slight shadow for depth
-                                        }}>
-                                            <p style={{ color: '#6c757d', margin: 0 }}>Badge Properties</p> {/* Grey text color */}
-                                            <GrFormDown
-                                                onClick={() => setShowBadgeSection(!showBadgeSection)}
-                                                style={{ cursor: 'pointer', color: '#6c757d', marginLeft: '8px' }} // Use marginLeft for spacing
-                                            />
-                                        </div>
-
-                                        {showBadgeSection && (
-                                            <Card className="bordered-card mb-3">
-                                                <div className="badge-settings bg-transparent">
-                                                    {/* <h3>Badge Settings</h3> */}
-                                                    <div className="row">
-                                                        <div className='col-auto pe-0'>
-                                                            <label htmlFor="orientation">orientation:</label>
-                                                            <select
-                                                                id="orientation"
-                                                                value={orientation}
-                                                                onChange={handleOrientationChange}
-                                                                className='form-select'
-                                                            >
-                                                                <option value="landscape">Landscape</option>
-                                                                <option value="portrait">Portrait</option>
-                                                            </select>
+                                            {(showText || selectedComponent) && (
+                                                <div>
+                                                    {selectedComponent ? (
+                                                        (() => {
+                                                            // Find the selected component's data in the components array
+                                                            const selectedComponentData = components.find(c => c.id === selectedComponent);
+                                                            if (selectedComponentData) {
+                                                                return (
+                                                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+                                                                        <ComponentSettings
+                                                                            component={selectedComponentData}
+                                                                            handleComponentSizeChange={handleComponentSizeChange}
+                                                                            handleComponentPositionChange={handleComponentPositionChange}
+                                                                            handleTextFontSizeChange={handleTextFontSizeChange}
+                                                                            handleTextContentChange={handleTextContentChange}
+                                                                            handleTextCaseChange={handleTextCaseChange}
+                                                                            handleTextFontChange={handleTextFontChange}
+                                                                            handleTextFontWeightChange={handleTextFontWeightChange}
+                                                                            handleTextAlignmentChange={handleTextAlignmentChange}
+                                                                            handleTextRotationChange={handleTextRotationChange}
+                                                                            handleTextColorChange={handleTextColorChange}
+                                                                            AllComponent={components}
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null; // No component data found for the selected component
+                                                        })()
+                                                    ) : (
+                                                        <div className="non-interactive-placeholder mb-4">
+                                                            <h5>No Component Selected</h5>
+                                                            <p>Select or add a component to see its settings</p>
                                                         </div>
-                                                        <div className='col-auto pe-0'>
-
-                                                            <FormGroup>
-                                                                <Label for="badgeSize">Badge Size</Label>
-                                                                <Input type="select" id="badgeSize" value={badgeSize} onChange={handlePageSizeChange}>
-                                                                    <option value="Custom size">Custom size</option>
-                                                                    <option value="A4">A4</option>
-                                                                    <option value="A5">A5</option>
-                                                                    <option value="A6">A6</option>
-                                                                </Input>
-                                                            </FormGroup>
-                                                        </div>
-                                                    </div>
-                                                    <div className="row">
-                                                        <div className='col'>
-                                                            <label htmlFor="badgeWidth">Width (cm):</label>
-                                                            <input
-                                                                id="badgeWidth"
-                                                                type="number"
-                                                                value={(badgeSize.width / CM_TO_PX).toFixed(1)}
-                                                                onChange={handleWidthChange} // Handle changes in centimeters
-                                                                className='form-control'
-                                                            />
-                                                        </div>
-                                                        <div className='col'>
-                                                            <label htmlFor="badgeHeight">Height (cm):</label>
-                                                            <input
-                                                                id="badgeHeight"
-                                                                type="number"
-                                                                value={(badgeSize.height / CM_TO_PX).toFixed(1)}
-                                                                onChange={handleHeightChange} // Handle changes in centimeters
-                                                                className='form-control'
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="row">
-                                                        <div className="col">
-                                                            <FormGroup>
-                                                                <Label for="badgeType">Badge Type</Label>
-                                                                <Input type="select" id="badgeType" value={badgeType} onChange={handleBadgeTypeChange}>
-                                                                    <option value="Single">Single</option>
-                                                                    <option value="Double">Double</option>
-                                                                    <option value="Mirror">Mirror</option>
-                                                                </Input>
-                                                            </FormGroup>
-                                                        </div>
-                                                        <div className="col">
-
-                                                        </div>
-                                                    </div>
+                                                    )}
                                                 </div>
-                                            </Card>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                            </Card>
-                        </Col>
-                        <Col md="7" className='container-col-wrap'>
-                            <AddFieldForm addFieldAsComponent={addFieldAsComponent} badgeType={badgeType} activeside={activeSide} />
-
-                            {/* Toggle Rotate Badge Button (Only for Double Type) */}
-                            {badgeType === 'Double' && (
-                                <div className="toggle-buttons mt-3 mb-3">
-                                    <Button
-                                        color="primary"
-                                        outline={activeSide !== 'front'} // Makes it outlined if not active
-                                        className={activeSide === 'front' ? 'active' : ''}
-                                        onClick={() => toggleSide('front')}
-                                    >
-                                        Front Side
-                                    </Button>
-                                    <Button
-                                        color="primary"
-                                        outline={activeSide !== 'back'} // Makes it outlined if not active
-                                        className={`ms-2 ${activeSide === 'back' ? 'active' : ''}`}
-                                        onClick={() => toggleSide('back')}
-                                    >
-                                        Back Side
-                                    </Button>
-                                </div>
-                            )}
+                                            )}
 
 
 
-                            {/* Badge Container */}
-                            <div
-                                className={`badge-container ${showGrid ? 'grid-active' : ''} ${rotateBadge ? 'rotate-180' : ''}`}
-                                style={badgeContainerStyle}
-                            >
-                                {/* Single Badge */}
-                                {badgeType === 'Single' && (
-                                    <div className="badge-content-single">
-                                        <h5 className='type-title'>Single Badge</h5>
-                                        {components
-                                            // .filter(component => component.side === 'front') // Ensure only front elements are shown
-                                            .map(component => (
-                                                <BadgeElement
-                                                    key={component.id}
-                                                    {...component}
-                                                    font={component.font} // Pass the font to BadgeElement
-                                                    onTextFontChange={handleTextFontChange} // Make sure the handler is passed
-                                                    alignment={component.alignment}  // Pass alignment prop
-                                                    fontWeight={component.fontWeight}  // Pass font weight prop
-                                                    isSelected={component.id === selectedComponent}
-                                                    onSelect={handleComponentClick}
-                                                    onSizeChange={handleComponentSizeChange}
-                                                    onPositionChange={handleComponentPositionChange}
-                                                    onContentChange={handleComponentContentChange}
-                                                    onAlignmentChange={handleTextAlignmentChange}
-                                                    onTextFontWeightChange={handleTextFontWeightChange}
-                                                    onRotationChange={handleTextRotationChange}
-                                                    onColorChange={handleTextColorChange}
-                                                    onDelete={onDelete}
-                                                    badgeSize={badgeSize}
-                                                    showGrid={showGrid}
-                                                />
+                                        </div>
+                                        {/* Badge Section */}
+                                        <div className="badge-section">
+                                            {/* <label className="d-flex justify-content-between align-items-center mb-2">
+                                                <strong>Badge Section</strong>
+                                                <GrFormDown onClick={() => setShowBadgeSection(!showBadgeSection)} style={{ cursor: 'pointer' }} />
+                                            </label> */}
+                                            <div
+                                                className="layer-property-box d-flex justify-content-between align-items-center px-5 mb-2"
+                                                style={{
+                                                    border: '1px solid',
+                                                    borderRadius: '5px',
+                                                    backgroundColor: '#f7f7f7',
+                                                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)', // Adding slight shadow for depth
+                                                    cursor: 'pointer', // Make the whole section clickable
+                                                }}
+                                                onClick={() => setShowBadgeSection(!showBadgeSection)} // Toggle state on click
+                                            >
+                                                <p style={{ color: '#6c757d', margin: 0 }}>Badge Properties</p> {/* Grey text color */}
+                                                {showBadgeSection ? (
+                                                    <GrFormUp style={{ color: '#6c757d', marginLeft: '8px' }} />
+                                                ) : (
+                                                    <GrFormDown style={{ color: '#6c757d', marginLeft: '8px' }} />
+                                                )}
+                                            </div>
 
-                                            ))}
+
+
+                                            {showBadgeSection && (
+                                                <Card className="bordered-card mb-3">
+                                                    <div className="badge-settings bg-transparent">
+                                                        {/* <h3>Badge Settings</h3> */}
+                                                        <div className="row">
+                                                            <div className='col-auto pe-0'>
+                                                                <label htmlFor="orientation">Orientation:</label>
+                                                                <select
+                                                                    id="orientation"
+                                                                    value={badgeData.orientation || orientation}
+                                                                    onChange={handleOrientationChange}
+                                                                    className='form-select'
+                                                                >
+                                                                    <option value="Landscape">Landscape</option>
+                                                                    <option value="Portrait">Portrait</option>
+                                                                </select>
+                                                            </div>
+                                                            {/* <FormGroup>
+                                                                <Label for="orientation">
+                                                                    <strong>Orientation</strong>
+                                                                </Label>
+                                                                <Select
+                                                                    id="orientation"
+                                                                    options={orientationOptions}
+                                                                    value={orientationOptions.find((option) => option.value === orientation)}
+                                                                    onChange={handleOrientationChange}
+                                                                    classNamePrefix="react-select"
+                                                                />
+                                                            </FormGroup> */}
+                                                            <div className='col-auto pe-0'>
+
+                                                                <FormGroup>
+                                                                    <Label for="badgeSize">Badge Size</Label>
+                                                                    <Input type="select" id="badgeSize" value={badgeData.badgeSize || size} onChange={handlePageSizeChange}>
+                                                                        <option value="Custom size">Custom size</option>
+                                                                        <option value="A4">A4</option>
+                                                                        <option value="A5">A5</option>
+                                                                        <option value="A6">A6</option>
+                                                                    </Input>
+                                                                </FormGroup>
+                                                            </div>
+                                                        </div>
+                                                        {size === 'Custom size' && (
+
+                                                            <div className="row">
+                                                                <div className='col'>
+                                                                    <label htmlFor="badgeWidth">Width (cm):</label>
+                                                                    <input
+                                                                        id="badgeWidth"
+                                                                        type="number"
+                                                                        value={(badgeSize.width / CM_TO_PX).toFixed(1)}
+                                                                        onChange={handleWidthChange} // Handle changes in centimeters
+                                                                        className='form-control'
+                                                                    />
+                                                                </div>
+                                                                <div className='col'>
+                                                                    <label htmlFor="badgeHeight">Height (cm):</label>
+                                                                    <input
+                                                                        id="badgeHeight"
+                                                                        type="number"
+                                                                        value={(badgeSize.height / CM_TO_PX).toFixed(1)}
+                                                                        onChange={handleHeightChange} // Handle changes in centimeters
+                                                                        className='form-control'
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                        )}
+
+                                                        <div className="row">
+                                                            <div className="col">
+                                                                <FormGroup>
+                                                                    <Label for="badgeType">Badge Type</Label>
+                                                                    <Input type="select" id="badgeType" value={badgeType} onChange={handleBadgeTypeChange}>
+                                                                        <option value="Single">Single</option>
+                                                                        <option value="Double">Double</option>
+                                                                        <option value="Mirror">Mirror</option>
+                                                                    </Input>
+                                                                </FormGroup>
+                                                            </div>
+                                                            <div className="col">
+
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            )}
+                                        </div>
+                                    </CardHeader>
+                                </Card>
+                            </Col>
+                            <Col md="7" className='container-col-wrap'>
+                                <AddFieldForm addFieldAsComponent={addFieldAsComponent} badgeType={badgeType} activeside={activeSide} />
+
+                                {/* Toggle Rotate Badge Button (Only for Double Type) */}
+                                {badgeType === 'Double' && (
+                                    <div className="toggle-buttons mt-3 mb-3">
+                                        <Button
+                                            color="primary"
+                                            outline={activeSide !== 'front'} // Makes it outlined if not active
+                                            className={activeSide === 'front' ? 'active' : ''}
+                                            onClick={() => toggleSide('front')}
+                                        >
+                                            Front Side
+                                        </Button>
+                                        <Button
+                                            color="primary"
+                                            outline={activeSide !== 'back'} // Makes it outlined if not active
+                                            className={`ms-2 ${activeSide === 'back' ? 'active' : ''}`}
+                                            onClick={() => toggleSide('back')}
+                                        >
+                                            Back Side
+                                        </Button>
                                     </div>
                                 )}
 
-                                {/* Front Side */}
-                                {badgeType === 'Double' && activeSide === 'front' && (
 
-                                    <div
-                                        className={`badge-front ${showGrid ? 'grid-active' : ''} editable`}
-                                        style={{
-                                            flex: 1
-                                        }}
-                                    >
-                                        <h5 className="type-title">Front Side (Editable)</h5>
-                                        {components
-                                            .filter((component) => component.side === 'front')
-                                            .map((component) => (
-                                                <BadgeElement
-                                                    key={component.id}
-                                                    {...component}
-                                                    font={component.font}
-                                                    onTextFontChange={handleTextFontChange}
-                                                    alignment={component.alignment}
-                                                    fontWeight={component.fontWeight}
-                                                    isSelected={component.id === selectedComponent}
-                                                    onSelect={handleComponentClick}
-                                                    onSizeChange={handleComponentSizeChange}
-                                                    onPositionChange={handleComponentPositionChange}
-                                                    onContentChange={handleComponentContentChange}
-                                                    onAlignmentChange={handleTextAlignmentChange}
-                                                    onTextFontWeightChange={handleTextFontWeightChange}
-                                                    onRotationChange={handleTextRotationChange}
-                                                    onColorChange={handleTextColorChange}
-                                                    onDelete={onDelete}
-                                                    badgeSize={dbadgeSize}
-                                                    showGrid={showGrid}
-                                                />
-                                            ))}
-                                    </div>
-                                )}
 
-                                {/* Back Side */}
-                                {badgeType === 'Double' && activeSide === 'back' && (
-                                    <div
-                                        className={`badge-back ${showGrid ? 'grid-active' : ''} editable`}
-                                        style={{
-                                            flex: 1
-                                        }}
-                                    >
-                                        <h5 className="type-title">Back Side (Editable)</h5>
-                                        {components
-                                            .filter((component) => component.side === 'back')
-                                            .map((component) => (
-                                                <BadgeElement
-                                                    key={component.id}
-                                                    {...component}
-                                                    font={component.font}
-                                                    onTextFontChange={handleTextFontChange}
-                                                    alignment={component.alignment}
-                                                    fontWeight={component.fontWeight}
-                                                    isSelected={component.id === selectedComponent}
-                                                    onSelect={handleComponentClick}
-                                                    onSizeChange={handleComponentSizeChange}
-                                                    onPositionChange={handleComponentPositionChange}
-                                                    onContentChange={handleComponentContentChange}
-                                                    onAlignmentChange={handleTextAlignmentChange}
-                                                    onTextFontWeightChange={handleTextFontWeightChange}
-                                                    onRotationChange={handleTextRotationChange}
-                                                    onColorChange={handleTextColorChange}
-                                                    onDelete={onDelete}
-                                                    badgeSize={dbadgeSize}
-                                                    showGrid={showGrid}
-                                                />
-                                            ))}
-                                    </div>
-                                )}
+                                {/* Badge Container */}
+                                <div
+                                    className={`badge-container ${showGrid ? 'grid-active' : ''} ${rotateBadge ? 'rotate-180' : ''}`}
+                                    style={badgeContainerStyle}
+                                >
+                                    {/* Single Badge */}
+                                    {badgeType === 'Single' && (
+                                        <div className="badge-content-single">
+                                            <h5 className='type-title'>Single Badge</h5>
+                                            {components
+                                                // .filter(component => component.side === 'front') // Ensure only front elements are shown
+                                                .map(component => (
+                                                    <BadgeElement
+                                                        key={component.id}
+                                                        {...component}
+                                                        font={component.font} // Pass the font to BadgeElement
+                                                        onTextFontChange={handleTextFontChange} // Make sure the handler is passed
+                                                        alignment={component.alignment}  // Pass alignment prop
+                                                        fontWeight={component.fontWeight}  // Pass font weight prop
+                                                        letterCasing={component.textcase}
+                                                        isSelected={component.id === selectedComponent}
+                                                        onSelect={handleComponentClick}
+                                                        onSizeChange={handleComponentSizeChange}
+                                                        onPositionChange={handleComponentPositionChange}
+                                                        onContentChange={handleComponentContentChange}
+                                                        onAlignmentChange={handleTextAlignmentChange}
+                                                        onTextFontWeightChange={handleTextFontWeightChange}
+                                                        onRotationChange={handleTextRotationChange}
+                                                        onColorChange={handleTextColorChange}
+                                                        onDelete={onDelete}
+                                                        badgeSize={badgeSize}
+                                                        showGrid={showGrid}
+                                                        zoom={zoom}
 
-                                {/* Double Badge - Front Side */}
-                                {/* {badgeType === 'Double' && (
+                                                    />
+
+                                                ))}
+                                        </div>
+                                    )}
+
+                                    {/* Front Side */}
+                                    {badgeType === 'Double' && activeSide === 'front' && (
+
+                                        <div
+                                            className={`badge-front ${showGrid ? 'grid-active' : ''} editable`}
+                                            style={{
+                                                flex: 1
+                                            }}
+                                        >
+                                            <h5 className="type-title">Front Side (Editable)</h5>
+                                            {components
+                                                .filter((component) => component.side === 'front')
+                                                .map((component) => (
+                                                    <BadgeElement
+                                                        key={component.id}
+                                                        {...component}
+                                                        font={component.font}
+                                                        onTextFontChange={handleTextFontChange}
+                                                        alignment={component.alignment}
+                                                        fontWeight={component.fontWeight}
+                                                        letterCasing={component.textcase}
+                                                        isSelected={component.id === selectedComponent}
+                                                        onSelect={handleComponentClick}
+                                                        onSizeChange={handleComponentSizeChange}
+                                                        onPositionChange={handleComponentPositionChange}
+                                                        onContentChange={handleComponentContentChange}
+                                                        onAlignmentChange={handleTextAlignmentChange}
+                                                        onTextFontWeightChange={handleTextFontWeightChange}
+                                                        onRotationChange={handleTextRotationChange}
+                                                        onColorChange={handleTextColorChange}
+                                                        onDelete={onDelete}
+                                                        badgeSize={dbadgeSize}
+                                                        showGrid={showGrid}
+                                                        zoom={zoom}
+                                                    />
+                                                ))}
+                                        </div>
+                                    )}
+
+                                    {/* Back Side */}
+                                    {badgeType === 'Double' && activeSide === 'back' && (
+                                        <div
+                                            className={`badge-back ${showGrid ? 'grid-active' : ''} editable`}
+                                            style={{
+                                                flex: 1
+                                            }}
+                                        >
+                                            <h5 className="type-title">Back Side (Editable)</h5>
+                                            {components
+                                                .filter((component) => component.side === 'back')
+                                                .map((component) => (
+                                                    <BadgeElement
+                                                        key={component.id}
+                                                        {...component}
+                                                        font={component.font}
+                                                        onTextFontChange={handleTextFontChange}
+                                                        alignment={component.alignment}
+                                                        fontWeight={component.fontWeight}
+                                                        letterCasing={component.textcase}
+                                                        isSelected={component.id === selectedComponent}
+                                                        onSelect={handleComponentClick}
+                                                        onSizeChange={handleComponentSizeChange}
+                                                        onPositionChange={handleComponentPositionChange}
+                                                        onContentChange={handleComponentContentChange}
+                                                        onAlignmentChange={handleTextAlignmentChange}
+                                                        onTextFontWeightChange={handleTextFontWeightChange}
+                                                        onRotationChange={handleTextRotationChange}
+                                                        onColorChange={handleTextColorChange}
+                                                        onDelete={onDelete}
+                                                        badgeSize={dbadgeSize}
+                                                        showGrid={showGrid}
+                                                        zoom={zoom}
+                                                    />
+                                                ))}
+                                        </div>
+                                    )}
+
+                                    {/* Double Badge - Front Side */}
+                                    {/* {badgeType === 'Double' && (
                                     <div
                                         className={`badge-front ${showGrid ? 'grid-active' : ''} ${!rotateBadge ? 'editable' : ''}`}
                                         style={frontStyle}
@@ -1276,10 +1492,10 @@ const BadgeDesigner = () => {
                                     </div>
                                 )} */}
 
-                                <div className="divider-line"></div>
+                                    <div className="divider-line"></div>
 
-                                {/* Double Badge - Back Side */}
-                                {/* {badgeType === 'Double' && (
+                                    {/* Double Badge - Back Side */}
+                                    {/* {badgeType === 'Double' && (
                                     <div
                                         className={`badge-back ${showGrid ? 'grid-active' : ''} ${rotateBadge ? 'editable' : ''}`}
                                         style={backStyle}
@@ -1314,72 +1530,79 @@ const BadgeDesigner = () => {
                                     </div>
                                 )} */}
 
-                                {/* Mirror Badge */}
-                                {badgeType === 'Mirror' && (
-                                    <div className="badge-content-mirror">
-                                        <div className="badge-front editable" style={frontStyle}>
-                                            <h5 className='type-title'>Front Side (Editable)</h5>
-                                            {components
-                                                .filter(component => component.side === 'front') // Only front components
-                                                .map(component => (
-                                                    <BadgeElement
-                                                        key={component.id}
-                                                        {...component}
-                                                        font={component.font} // Pass the font to BadgeElement
-                                                        onTextFontChange={handleTextFontChange} // Make sure the handler is passed
-                                                        alignment={component.alignment}  // Pass alignment prop
-                                                        fontWeight={component.fontWeight}  // Pass font weight prop
-                                                        isSelected={component.id === selectedComponent}
-                                                        onSelect={handleComponentClick}
-                                                        onSizeChange={handleComponentSizeChange}
-                                                        onPositionChange={handleComponentPositionChange}
-                                                        onContentChange={handleComponentContentChange}
-                                                        onAlignmentChange={handleTextAlignmentChange}
-                                                        onTextFontWeightChange={handleTextFontWeightChange}
-                                                        onRotationChange={handleTextRotationChange}
-                                                        onColorChange={handleTextColorChange}
-                                                        onDelete={onDelete}
-                                                        badgeSize={dbadgeSize}
-                                                        showGrid={showGrid}
-                                                    />
-                                                ))}
+                                    {/* Mirror Badge */}
+                                    {badgeType === 'Mirror' && (
+                                        <div className="badge-content-mirror">
+                                            <div className="badge-front editable" style={frontStyle}>
+                                                <h5 className='type-title'>Front Side (Editable)</h5>
+                                                {components
+                                                    .filter(component => component.side === 'front') // Only front components
+                                                    .map(component => (
+                                                        <BadgeElement
+                                                            key={component.id}
+                                                            {...component}
+                                                            font={component.font} // Pass the font to BadgeElement
+                                                            onTextFontChange={handleTextFontChange} // Make sure the handler is passed
+                                                            alignment={component.alignment}  // Pass alignment prop
+                                                            fontWeight={component.fontWeight}  // Pass font weight prop
+                                                            letterCasing={component.textcase}
+                                                            isSelected={component.id === selectedComponent}
+                                                            onSelect={handleComponentClick}
+                                                            onSizeChange={handleComponentSizeChange}
+                                                            onPositionChange={handleComponentPositionChange}
+                                                            onContentChange={handleComponentContentChange}
+                                                            onAlignmentChange={handleTextAlignmentChange}
+                                                            onTextFontWeightChange={handleTextFontWeightChange}
+                                                            onRotationChange={handleTextRotationChange}
+                                                            onColorChange={handleTextColorChange}
+                                                            onDelete={onDelete}
+                                                            badgeSize={dbadgeSize}
+                                                            showGrid={showGrid}
+                                                            zoom={zoom}
+                                                        />
+                                                    ))}
+                                            </div>
+
+                                            <div className="divider-line"></div>
+
+                                            <div className="badge-back mirrored" style={{ ...backStyle, transform: 'rotate(180deg)', opacity: 0.5 }}>
+                                                <h5 className='type-title'>Back Side (Mirrored)</h5>
+                                                {components
+                                                    .filter(component => component.side === 'front') // Mirror front components
+                                                    .map(component => (
+                                                        <BadgeElement
+                                                            key={component.id}
+                                                            {...component}
+                                                            isSelected={false} // Back side is not selectable
+                                                            font={component.font}
+                                                            alignment={component.alignment}  // Pass alignment prop
+                                                            fontWeight={component.fontWeight}  // Pass font weight prop
+                                                            letterCasing={component.textcase}
+                                                            badgeSize={dbadgeSize}
+                                                            showGrid={showGrid}
+                                                            zoom={zoom}
+                                                            style={{ ...component.style, transform: 'rotate(180deg)' }} // Mirror element rotation
+                                                        />
+                                                    ))}
+                                            </div>
                                         </div>
+                                    )}
+                                </div>
+                            </Col>
 
-                                        <div className="divider-line"></div>
-
-                                        <div className="badge-back mirrored" style={{ ...backStyle, transform: 'rotate(180deg)', opacity: 0.5 }}>
-                                            <h5 className='type-title'>Back Side (Mirrored)</h5>
-                                            {components
-                                                .filter(component => component.side === 'front') // Mirror front components
-                                                .map(component => (
-                                                    <BadgeElement
-                                                        key={component.id}
-                                                        {...component}
-                                                        isSelected={false} // Back side is not selectable
-                                                        badgeSize={dbadgeSize}
-                                                        showGrid={showGrid}
-                                                        style={{ ...component.style, transform: 'rotate(180deg)' }} // Mirror element rotation
-                                                    />
-                                                ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </Col>
-
-                        <Modal isOpen={modalOpen} toggle={toggleModal}>
-                            <ModalHeader toggle={toggleModal}>Edit Badge Information</ModalHeader>
-                            <ModalBody>
-                                <FormGroup>
-                                    <Label for="editBadgeName"><strong>Badge Name</strong></Label>
-                                    <Input
-                                        type="text"
-                                        id="editBadgeName"
-                                        value={badgeNam}
-                                        onChange={(e) => setBadgeName(e.target.value)}
-                                    />
-                                </FormGroup>
-                                {/* <FormGroup>
+                            <Modal isOpen={modalOpen} toggle={toggleModal}>
+                                <ModalHeader toggle={toggleModal}>Edit Badge Information</ModalHeader>
+                                <ModalBody>
+                                    <FormGroup>
+                                        <Label for="editBadgeName"><strong>Badge Name</strong></Label>
+                                        <Input
+                                            type="text"
+                                            id="editBadgeName"
+                                            value={badgeNam}
+                                            onChange={(e) => setBadgeName(e.target.value)}
+                                        />
+                                    </FormGroup>
+                                    {/* <FormGroup>
                                     <Label for="editCategoryName">Category Name</Label>
                                     <Input
                                         type="text"
@@ -1388,165 +1611,210 @@ const BadgeDesigner = () => {
                                         onChange={(e) => setCategoryName(e.target.value)}
                                     />
                                 </FormGroup> */}
-                                <FormGroup>
-                                    <Label for="categorySelect"><strong>Select Badge Category</strong></Label>
-                                    <Select
-                                        id="categorySelect"
-                                        value={catData.find(option => option.value === selectedCat)}
-                                        onChange={handleSelectChange}
-                                        options={catData
-                                            .filter(option => option.id !== parseInt(badge.category_id)) // Convert to a number if necessary
-                                            .map(pref => ({ value: pref.id, label: pref.Cat }))}
-                                        isSearchable={true}
-                                        classNamePrefix="react-select"
-                                    />
+                                    <FormGroup>
+                                        <Label for="categorySelect"><strong>Select Badge Category</strong></Label>
+                                        <Select
+                                            id="categorySelect"
+                                            value={catData.find(option => option.value === selectedCat)}
+                                            onChange={handleSelectChange}
+                                            options={catData
+                                                .filter(option => option.id !== parseInt(badge.category_id)) // Convert to a number if necessary
+                                                .map(pref => ({ value: pref.id, label: pref.Cat }))}
+                                            isSearchable={true}
+                                            classNamePrefix="react-select"
+                                        />
 
-                                </FormGroup>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="primary" onClick={handleSave}>Save</Button>
-                                <Button color="warning" onClick={toggleModal}>Cancel</Button>
-                            </ModalFooter>
-                        </Modal>
+                                    </FormGroup>
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="primary" onClick={handleSave}>Save</Button>
+                                    <Button color="warning" onClick={toggleModal}>Cancel</Button>
+                                </ModalFooter>
+                            </Modal>
 
-                        <Col md="1">
-                            <div className="component-settings-container">
-                                <Card>
-                                    <CardBody>
-                                        <div className="d-flex flex-column align-items-start">
-                                            {/* Grid Icon */}
+                            <Col md="1">
+                                <div className="component-settings-container">
+                                    <Card>
+                                        <CardBody>
+                                            <div className="d-flex flex-column align-items-start">
+                                                {/* Grid Icon */}
 
-                                            <div className="grid-icon">
-                                                <i
-                                                    className="fa fa-th"
-                                                    aria-hidden="true"
-                                                    style={{ fontSize: '24px', padding: '2px 0px', cursor: 'pointer' }}
-                                                    onClick={toggleGrid}
-                                                />
+                                                <div className="grid-icon">
+                                                    <button
+                                                        className="add-button"
+                                                        id="addCustomTextTooltip"
+                                                        onClick={toggleGrid}
+                                                        data-tooltip-id="grid"
+                                                        style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'black', padding: '2px 0px' }}
+                                                    >
+                                                        <MdGrid4X4 />
+                                                        {/* Custom Text icon */}
+                                                    </button>
+                                                    <Tooltip id="grid" place="top" effect="solid">
+                                                        Grid View
+                                                    </Tooltip>
+                                                </div>
+
+                                                {/* Add Custom Text Button */}
+                                                <div className="">
+                                                    <button
+                                                        className="add-button"
+                                                        id="addCustomTextTooltip"
+                                                        onClick={addCustomTextComponent}
+                                                        data-tooltip-id="custom_field"
+                                                        style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'black', padding: '2px 0px' }}
+                                                    >
+                                                        <CiText /> {/* Custom Text icon */}
+                                                    </button>
+                                                    <Tooltip id="custom_field" place="top" effect="solid">
+                                                        Custom Field
+                                                    </Tooltip>
+                                                </div>
+
+                                                {/* Add Full Name Button */}
+                                                <div className="">
+                                                    <button
+                                                        className="add-button"
+                                                        id="addFullNameTooltip"
+                                                        onClick={addFullNameComponent}
+                                                        data-tooltip-id="full_name"
+                                                        style={{ background: 'transparent', border: 'none', fontSize: '21px', color: 'black', padding: '2px 0px' }}
+                                                    >
+                                                        FN
+                                                    </button>
+                                                    <Tooltip id="full_name" place="top" effect="solid">
+                                                        Full Name
+                                                    </Tooltip>
+                                                </div>
+
+                                                {/* Select Image Button */}
+                                                {/* Select Image Button */}
+                                                <div>
+                                                    <label
+                                                        htmlFor="image-upload"
+                                                        className="add-button"
+                                                        id="selectImageTooltip"
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            fontSize: '24px',
+                                                            color: 'black',
+                                                            padding: '2px 0px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                        }}
+                                                        data-tooltip-id="img"
+                                                    >
+                                                        <RiImageAddFill style={{ fontSize: '24px', color: 'black' }} /> {/* Image add icon */}
+                                                    </label>
+                                                    <input
+                                                        id="image-upload"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={handleImageChange}
+                                                    />
+                                                    <Tooltip id="img" place="top" effect="solid">
+                                                        Image
+                                                    </Tooltip>
+                                                </div>
+
+                                                {/* Select Background Image Button */}
+                                                <div>
+                                                    <label
+                                                        htmlFor="background-image-upload"
+                                                        className="add-button"
+                                                        id="selectBackgroundImageTooltip"
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            fontSize: '24px',
+                                                            color: 'black',
+                                                            padding: '2px 0px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                        }}
+                                                        data-tooltip-id="bgimg"
+                                                    >
+                                                        <AiOutlineBgColors style={{ fontSize: '24px', color: 'black' }} /> {/* Background color icon */}
+                                                    </label>
+                                                    <input
+                                                        id="background-image-upload"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={handleBackgroundImageChange}
+                                                    />
+                                                    <Tooltip id="bgimg" place="top" effect="solid">
+                                                        Custom Background Image
+                                                    </Tooltip>
+                                                </div>
+
+
+
+                                                <div className="">
+                                                    <button
+                                                        className="add-button"
+                                                        id="addQRCodeTooltip"
+                                                        onClick={addComponentQRCode}
+                                                        data-tooltip-id="qr"
+                                                        style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'black', padding: '2px 0px' }}
+                                                    >
+                                                        <BiQrScan /> {/* QR code icon */}
+                                                    </button>
+                                                    <Tooltip id="qr" place="top" effect="solid">
+                                                        Add QR Code
+                                                    </Tooltip>
+                                                </div>
+
+
+                                                {/* Save Button */}
+                                                {/* <button className="save-button" onClick={saveBadgeDesign}>Save</button> */}
+                                                {/* Save Button using Reactstrap */}
+                                                <div className="mt-3 me-3">
+                                                    <Button
+                                                        color="success" // Reactstrap predefined color
+                                                        onClick={saveBadgeDesign}
+                                                        style={{
+                                                            width: '100%', // Optional: Adjust width to match other buttons
+                                                        }}
+                                                    >
+                                                        Save
+                                                    </Button>
+                                                </div>
                                             </div>
+                                        </CardBody>
+                                    </Card>
 
-                                            {/* Add Custom Text Button */}
-                                            <div className="">
-                                                <button
-                                                    className="add-button"
-                                                    id="addCustomTextTooltip"
-                                                    onClick={addCustomTextComponent}
-                                                    style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'black', padding: '2px 0px' }}
-                                                >
-                                                    <CiText /> {/* Custom Text icon */}
-                                                </button>
-                                                <Tooltip
-                                                    placement="top"
-                                                    isOpen={tooltipOpen.addCustomText}
-                                                    target="addCustomTextTooltip"
-                                                    toggle={() => toggleTooltip('addCustomText')}
-                                                >
-                                                    Custom Field
-                                                </Tooltip>
-                                            </div>
-
-                                            {/* Add Full Name Button */}
-                                            <div className="">
-                                                <button
-                                                    className="add-button"
-                                                    id="addFullNameTooltip"
-                                                    onClick={addFullNameComponent}
-                                                    style={{ background: 'transparent', border: 'none', fontSize: '21px', color: 'black', padding: '2px 0px' }}
-                                                >
-                                                    FN
-                                                </button>
-                                                <Tooltip
-                                                    placement="top"
-                                                    isOpen={tooltipOpen.addFullName}
-                                                    target="addFullNameTooltip"
-                                                    toggle={() => toggleTooltip('addFullName')}
-                                                >
-                                                    Add Full Name
-                                                </Tooltip>
-                                            </div>
-
-                                            {/* Select Image Button */}
-                                            <div className="">
-                                                <label htmlFor="image-upload" className="add-button" id="selectImageTooltip" style={{ cursor: 'pointer', padding: '2px 0px' }}>
-                                                    <RiImageAddFill style={{ fontSize: '24px', color: 'black' }} /> {/* Image add icon */}
-                                                </label>
-                                                <input
-                                                    id="image-upload"
-                                                    type="file"
-                                                    accept="image/*"
-                                                    style={{ display: 'none' }}
-                                                    onChange={handleImageChange}
-                                                />
-                                                <Tooltip
-                                                    placement="top"
-                                                    isOpen={tooltipOpen.selectImage}
-                                                    target="selectImageTooltip"
-                                                    toggle={() => toggleTooltip('selectImage')}
-                                                >
-                                                    Select Image
-                                                </Tooltip>
-                                            </div>
+                                </div>
+                            </Col>
 
 
-                                            {/* Select Background Image Button */}
-                                            <div className="">
-                                                <label htmlFor="background-image-upload" className="add-button" id="selectBackgroundImageTooltip" style={{ cursor: 'pointer', padding: '2px 0px' }}>
-                                                    <AiOutlineBgColors style={{ fontSize: '24px', color: 'black' }} /> {/* Background color icon */}
-                                                </label>
-                                                <input
-                                                    id="background-image-upload"
-                                                    type="file"
-                                                    accept="image/*"
-                                                    style={{ display: 'none' }}
-                                                    onChange={handleBackgroundImageChange}
-                                                />
-                                                <Tooltip
-                                                    placement="top"
-                                                    isOpen={tooltipOpen.selectBackgroundImage}
-                                                    target="selectBackgroundImageTooltip"
-                                                    toggle={() => toggleTooltip('selectBackgroundImage')}
-                                                >
-                                                    Select Background Image
-                                                </Tooltip>
-                                            </div>
-
-
-                                            <div className="">
-                                                <button
-                                                    className="add-button"
-                                                    id="addQRCodeTooltip"
-                                                    onClick={addComponentQRCode}
-                                                    style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'black', padding: '2px 0px' }}
-                                                >
-                                                    <BiQrScan /> {/* QR code icon */}
-                                                </button>
-                                                <Tooltip
-                                                    placement="top"
-                                                    isOpen={tooltipOpen.addQRCode}
-                                                    target="addQRCodeTooltip"
-                                                    toggle={() => toggleTooltip('addQRCode')}
-                                                >
-                                                    Add QR Code
-                                                </Tooltip>
-                                            </div>
-
-
-                                            {/* Save Button */}
-                                            <button className="save-button" onClick={saveBadgeDesign}>Save</button>
-                                        </div>
-                                    </CardBody>
-                                </Card>
-
-                            </div>
-                        </Col>
+                        </div>
+                        {/* {isBadgeDesignSaved && <BadgePDFDownloadButton badgeSize={badgeSize} components={components} />} */}
 
 
                     </div>
-                    {/* {isBadgeDesignSaved && <BadgePDFDownloadButton badgeSize={badgeSize} components={components} />} */}
+                </Card>
 
+                {/* Modal */}
+                <Modal isOpen={modal} toggle={() => setModal(!modal)} centered>
+                    <ModalHeader toggle={() => setModal(!modal)}>Confirmation</ModalHeader>
+                    <ModalBody>
+                        <div>
+                            <p>
+                                Your changes will be discarded. Are you sure you want to cancel? Please remember save your changes to avoid losing any work.
+                            </p>
 
-                </div>
-            </Card>
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button onClick={handleNavigation} color="warning">
+                            Yes
+                        </Button>
+                        {/* <Link to="/manage-facility/Consoft" className="btn btn-warning">Yes</Link> */}
+                        <Button color="primary" onClick={() => setModal(!modal)}>No</Button>
+                    </ModalFooter>
+                </Modal>
+            </Container>
         </Fragment>
     );
 };

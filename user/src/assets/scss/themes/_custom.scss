@@ -1,0 +1,9 @@
+/**=====================
+ custom CSS Start
+==========================**/
+// you can add your custom css here
+
+.page-wrapper.compact-wrapper .page-body-wrapper div.sidebar-wrapper.close_icon~.page-body, .page-wrapper.compact-wrapper .page-body-wrapper div.sidebar-wrapper.close_icon~footer {
+    margin-left: 90px !important;
+    transition: .5s;
+}

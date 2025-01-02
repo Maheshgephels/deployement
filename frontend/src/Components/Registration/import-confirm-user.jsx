@@ -27,6 +27,8 @@ const ImportConfirmRegUser = () => {
     const [maxNumber, setMaxNumber] = useState(0); // State for maximum registration number
     const [catid, setCatid] = useState([]);
     const [titles, settitles] = useState([]);
+    const [tickets, settickets] = useState([]);
+    const [addons, setaddons] = useState([]);
     const [workshopid, setWorkshopid] = useState([]);
     const [manData, setManData] = useState([]);
     const [fileData, setfileData] = useState([]);
@@ -81,6 +83,9 @@ const ImportConfirmRegUser = () => {
                 setCatid(response.data.catData);
                 setWorkshopid(response.data.workshopData);
                 settitles(response.data.prefixData);
+                settickets(response.data.TicketData);
+                setaddons(response.data.AddonData);
+                    
                 console.log("user dataa", response.data.catData);
 
                 // Transform the mandatory data to an array of field labels
@@ -200,6 +205,21 @@ const ImportConfirmRegUser = () => {
             return data.filter(item => item['Title'] && !titles.some(title => title.cs_prefix_id === parseInt(item['Title'])));
         };
 
+        const validatetickets = (data) => {
+            console.log("tickets",tickets);
+            return data.filter(item => item['Ticket'] && !tickets.some(tickets => tickets.ticket_id === parseInt(item['Ticket'])));
+        };
+
+        const validateAddons = (data) => {
+            console.log("addons", addons);
+        
+            return data.filter(item => {
+                if (!item['Addons']) return false; // Skip rows without Addons
+                const addonIDs = item['Addons'].split(',').map(id => parseInt(id.trim())); // Split and parse Addons
+                return addonIDs.some(addonID => !addons.some(addon => addon.addon_id === addonID)); // Check if any ID is invalid
+            });
+        };
+
 
         // Apply normalization
         fileData.forEach(item => {
@@ -222,6 +242,8 @@ const ImportConfirmRegUser = () => {
         const emptyFields = validateNonEmptyFields(fileData);
         const invalidCategoryIDs = validateCategoryIDs(fileData);
         const invalidtitleIDs = validatetitle(fileData);
+        const invalidticketsIDs = validatetickets(fileData);
+        const invalidaddonsIDs = validateAddons(fileData);
 
         // Convert userRegnos array to a Set
         const userRegnoSet = new Set(users.map((user) => String(user.cs_regno)));
@@ -230,7 +252,18 @@ const ImportConfirmRegUser = () => {
 
         const duplicateEntries = [...duplicateregnoInFile, ...duplicateregnoFromExistingUsers];
         // const wrongEntries = [...invalidEmails, ...emptyFields, ...invalidCategoryIDs]; //Changes made by omkar
-        const wrongEntries = [...emptyFields, ...invalidCategoryIDs, ...invalidtitleIDs];
+        // const wrongEntries = [...emptyFields, ...invalidCategoryIDs, ...invalidtitleIDs];
+        const wrongEntriesSet = new Set([
+            ...emptyFields,
+            ...invalidCategoryIDs,
+            ...invalidtitleIDs,
+            ...invalidticketsIDs,
+            ...invalidaddonsIDs
+        ]);
+        
+        // Convert Set back to an array
+        const wrongEntries = Array.from(wrongEntriesSet);
+
 
 
         setDuplicateEntries(duplicateEntries);

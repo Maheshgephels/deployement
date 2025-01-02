@@ -323,12 +323,13 @@ router.post('/addUser', verifyToken, async (req, res) => {
 
     // Construct the SQL query to insert a new user into the cs_os_users table
     const insertQuery = `
-            INSERT INTO cs_os_users (cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_username, cs_password, cs_reg_category, cs_reg_cat_id, cs_isfaculty, cs_module)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cs_os_users (cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_username, cs_password, cs_reg_category, cs_reg_cat_id, cs_isfaculty, cs_module, cs_source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
+    //cs_source define from where user inserted into a database
 
     // Execute the query to insert the new user into the cs_os_users table
-    const [result] = await pool.query(insertQuery, [prefix.value, fName, lname, mobile, email, uName, pass, regcat.label, regcat.value, isFaculty, 2
+    const [result] = await pool.query(insertQuery, [prefix.value, fName, lname, mobile, email, uName, pass, regcat.label, regcat.value, isFaculty, 2, 2
     ]);
 
     const userId = result.insertId; // Get the ID of the newly created user
@@ -653,8 +654,8 @@ router.post('/addBulkUser', verifyToken, async (req, res) => {
 
       // Insert the user
       const insertUserQuery = `
-        INSERT INTO cs_os_users (cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_module)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO cs_os_users (cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_module, cs_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const [result] = await pool.query(insertUserQuery, [
         processedUser['Title'],
@@ -664,7 +665,8 @@ router.post('/addBulkUser', verifyToken, async (req, res) => {
         processedUser['Email'],
         processedUser['Registration Category'],
         processedUser['Registration Category ID'],
-        2
+        2,
+        4
       ]);
 
       const newUserId = result.insertId;
@@ -1499,9 +1501,12 @@ router.post('/addBulkConfirmUser', verifyToken, async (req, res) => {
 
       // Insert the user without the password and username
       const insertUserQuery = `
-        INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_module)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_module, cs_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
+
+        //cs_source define from where user inserted into a database
+
 
       const [result] = await pool.query(insertUserQuery, [
         processedUser['Registration Number'],
@@ -1513,7 +1518,8 @@ router.post('/addBulkConfirmUser', verifyToken, async (req, res) => {
         processedUser['Registration Category'],
         processedUser['Registration Category ID'],
         1, // Example default value for cs_status
-        2
+        2,
+        4
       ]);
 
       const newUserId = result.insertId;
@@ -1735,8 +1741,8 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, async (req, res) => {
 
       // Insert the user without the password and username
       const insertUserQuery = `
-        INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_module)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_module, cs_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const [result] = await pool.query(insertUserQuery, [
@@ -1749,7 +1755,8 @@ router.post('/addBulkConfirmUserwithputreg', verifyToken, async (req, res) => {
         categoryName,
         trimmedUser['Registration Category ID'],
         1, // Example default value for cs_status
-        2
+        2,
+        4
       ]);
 
       const newUserId = result.insertId;
@@ -1996,8 +2003,8 @@ router.post('/importfaculty', verifyToken, async (req, res) => {
 
       // Insert the user without the password and username
       const insertUserQuery = `
-      INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_isfaculty, cs_module)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO cs_os_users (cs_regno, cs_title, cs_first_name, cs_last_name, cs_phone, cs_email, cs_reg_category, cs_reg_cat_id, cs_isconfirm, cs_isfaculty, cs_module, cs_source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
 
@@ -2013,6 +2020,7 @@ router.post('/importfaculty', verifyToken, async (req, res) => {
         1, // Example default value for cs_status
         1, // Example default value for cs_isconfir
         2,
+        4
       ]);
 
       const newUserId = result.insertId;

@@ -22,7 +22,7 @@ const UserRegistrationGraph = () => {
     const fetchDataFromBackend = async () => {
       const token = getToken();
       try {
-        const response = await fetch(`${BackendAPI}/eventdata/userCountByDate`, {
+        const response = await fetch(`${BackendAPI}/regWidgets/userCountByDate`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

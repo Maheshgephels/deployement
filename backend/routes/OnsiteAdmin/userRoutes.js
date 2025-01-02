@@ -441,7 +441,7 @@ router.get('/getFeedbackData', verifyToken, async (req, res) => {
 
     const [userData] = await pool.query(query);
 
-   
+
     let totalCountQuery = `
       SELECT COUNT(*) AS total
       FROM cs_os_feedback_form_data
@@ -953,9 +953,10 @@ router.post('/addUser', verifyToken, async (req, res) => {
 
     // Perform insertion into cs_os_users table with current timestamp for created_at and updated_at
     const insertUserQuery = `
-      INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ? ,cs_isbadge_created = ?
+      INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?, cs_source = ?, cs_onspot = ? ,cs_isbadge_created = ?
     `;
-    const insertResult = await pool.query(insertUserQuery, [userData, 1, 3, 1]);
+    //cs_source define from where user inserted into a database
+    const insertResult = await pool.query(insertUserQuery, [userData, 1, 3, 2, 1, 1]);
     console.log('Insert result:', insertResult);
     const newUserId = insertResult[0].insertId;
 
@@ -1627,11 +1628,13 @@ router.post('/addBulkUser', verifyToken, queueMiddleware, async (req, res) => {
 
       // Insert the user data into the database
       const insertUserQuery = `
-        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ? , cs_isbadge_created = ?
+        INSERT INTO cs_os_users SET ?, cs_isconfirm = ?, cs_module = ?, cs_source = ?, cs_onspot = ?,  cs_isbadge_created = ?
       `;
+      //cs_source define from where user inserted into a database
+
 
       // await pool.query(insertUserQuery, [userDataWithFields, 1, currentTimestamp, currentTimestamp]);
-      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 1, 3, 1]);
+      const [insertResult] = await pool.query(insertUserQuery, [userDataWithFields, 1, 3, 4, 0, 1]);
 
       const newUserId = insertResult.insertId;
 

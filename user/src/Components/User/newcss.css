@@ -1,0 +1,44 @@
+.step-circle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;  /* Size of the circle */
+    height: 40px; /* Size of the circle */
+    border-radius: 50%; /* Make it a circle */
+    background-color: #e9ecef; /* Default background color */
+    color: #000;
+    font-weight: bold;
+    font-size: 1.2rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .step-circle.active {
+    background-color: #007bff; /* Active step color */
+    color: white; /* White text when active */
+  }
+  
+  .step-circle.completed {
+    background-color: #28a745; /* Green color when completed */
+    color: white; /* White text when completed */
+  }
+  
+  .step-number {
+    display: block;
+  }
+  
+  .step-line {
+    width: 50px;
+    height: 4px;
+    background-color: #e9ecef; /* Line between steps */
+    margin-top: 18px;
+  }
+  
+  .step-line.active {
+    background-color: #007bff; /* Active line color */
+  }
+  
+  .step-circle:hover {
+    background-color: #007bff; /* Optional: Change color on hover */
+    cursor: pointer;
+  }
+  
