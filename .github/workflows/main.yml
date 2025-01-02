@@ -31,31 +31,38 @@ jobs:
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
 
-    # Check for Frontend Changes
+  # Separate Jobs for Frontend and User Module Builds
+  frontend_build:
+    runs-on: ubuntu-latest
+    needs: deploy  # Wait for SSH setup before starting
+
+    steps:
     - name: Check for Frontend Changes
       id: check_frontend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- frontend || echo "Admin changes detected"
+        git diff --quiet HEAD~1 HEAD -- frontend || echo "Frontend changes detected"
         frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)
         echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
       continue-on-error: true
 
-    # Build Frontend if changes are detected
-    - name: Build Frontend
+    - name: Build Frontend if changes are detected
       if: env.frontend_changes != ''
       run: |
         cd frontend
         CI=false npm install  # Install frontend dependencies with CI mode off
         CI=false npm run build  # Build the frontend app with CI mode off
 
-    # Deploy Frontend if changes are detected
     - name: Deploy Frontend via SSH
       if: env.frontend_changes != ''
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/admin/"
-          scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/admin/
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/admin/
 
-    # Check for User Module Changes
+  user_module_build:
+    runs-on: ubuntu-latest
+    needs: deploy  # Wait for SSH setup before starting
+
+    steps:
     - name: Check for User Module Changes
       id: check_user_changes
       run: |
@@ -64,22 +71,24 @@ jobs:
         echo "user_changes=$user_changes" >> $GITHUB_ENV
       continue-on-error: true
 
-    # Build User Module if changes are detected
-    - name: Build User Module
+    - name: Build User Module if changes are detected
       if: env.user_changes != ''
       run: |
         cd user
         CI=false npm install  # Install user dependencies with CI mode off
         CI=false npm run build  # Build the user folder with CI mode off
 
-    # Deploy User Folder if changes are detected
     - name: Deploy User Folder via SSH
       if: env.user_changes != ''
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
         scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
 
-    # Check for Backend Changes
+  backend_deploy:
+    runs-on: ubuntu-latest
+    needs: deploy  # Wait for SSH setup before starting
+
+    steps:
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
@@ -88,7 +97,6 @@ jobs:
         echo "backend_changes=$backend_changes" >> $GITHUB_ENV
       continue-on-error: true
 
-    # Deploy Backend if changes are detected
     - name: Deploy Backend via SSH
       if: env.backend_changes != ''
       run: |
