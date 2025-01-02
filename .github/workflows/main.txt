@@ -1,0 +1,105 @@
+name: Deploy via SSH
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 2  # Fetch 2 commits (previous commit and current commit)
+
+    # Set up SSH with New Key
+    - name: Set up SSH with New Key
+      run: |
+        set -e
+        mkdir -p ~/.ssh
+        echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
+        chmod 600 ~/.ssh/consoft_ssh_new
+        ssh-keyscan -H s1346.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+
+    # Test SSH Connection
+    - name: Test SSH Connection
+      run: |
+        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
+
+    # Check for Frontend Changes
+    - name: Check for Frontend Changes
+      id: check_frontend_changes
+      run: |
+        git diff --quiet HEAD~1 HEAD -- frontend || echo "Admin changes detected"
+        frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)
+        echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
+      continue-on-error: true
+
+    # Build Frontend if changes are detected
+    - name: Build Frontend
+      if: env.frontend_changes != ''
+      run: |
+        cd frontend
+        CI=false npm install  # Install frontend dependencies with CI mode off
+        CI=false npm run build  # Build the frontend app with CI mode off
+
+    # Deploy Frontend if changes are detected
+    - name: Deploy Frontend via SSH
+      if: env.frontend_changes != ''
+      run: |
+        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/admin/"
+          scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/admin/
+
+    # Check for User Module Changes
+    - name: Check for User Module Changes
+      id: check_user_changes
+      run: |
+        git diff --quiet HEAD~1 HEAD -- user || echo "User Module changes detected"
+        user_changes=$(git diff --name-only HEAD~1 HEAD -- user)
+        echo "user_changes=$user_changes" >> $GITHUB_ENV
+      continue-on-error: true
+
+    # Build User Module if changes are detected
+    - name: Build User Module
+      if: env.user_changes != ''
+      run: |
+        cd user
+        CI=false npm install  # Install user dependencies with CI mode off
+        CI=false npm run build  # Build the user folder with CI mode off
+
+    # Deploy User Folder if changes are detected
+    - name: Deploy User Folder via SSH
+      if: env.user_changes != ''
+      run: |
+        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
+
+    # Check for Backend Changes
+    - name: Check for Backend Changes
+      id: check_backend_changes
+      run: |
+        git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
+        backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
+        echo "backend_changes=$backend_changes" >> $GITHUB_ENV
+      continue-on-error: true
+
+    # Deploy Backend if changes are detected
+    - name: Deploy Backend via SSH
+      if: env.backend_changes != ''
+      run: |
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
+
+    - name: Restart Node.js Application Using npm start
+      if: env.backend_changes != ''
+      run: |
+        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
+          source /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/activate && 
+          cd /home/allevent/reacttest.gephelssystems.com &&
+          npm install &&
+          npm start
+        "
