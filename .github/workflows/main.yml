@@ -37,8 +37,12 @@ jobs:
     - name: Check for Changes in Module
       id: check_changes
       run: |
+        # Log the changes in the module directory
+        echo "Checking changes in ${{ matrix.module }}..."
         module_changes=$(git diff --name-only HEAD~1 HEAD -- ${{ matrix.module }})
-        echo "Changes in ${{ matrix.module }}: $module_changes"
+        echo "Changes detected in ${{ matrix.module }}: $module_changes"
+
+        # If no changes are detected, it will echo none
         if [ -z "$module_changes" ]; then
           echo "${{ matrix.module }}_changes=none" >> $GITHUB_ENV
         else
@@ -49,6 +53,7 @@ jobs:
     - name: Build Module
       if: env.${{ matrix.module }}_changes == 'detected'
       run: |
+        echo "Building the ${{ matrix.module }} module..."
         cd ${{ matrix.module }}
         CI=false npm install  # Install dependencies with CI mode off
         CI=false npm run build  # Build the module with CI mode off
@@ -57,6 +62,7 @@ jobs:
     - name: Deploy Module via SSH
       if: env.${{ matrix.module }}_changes == 'detected'
       run: |
+        echo "Deploying ${{ matrix.module }} module via SSH..."
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/${{ matrix.module }}/"
         scp -v -i ~/.ssh/consoft_ssh_new -r ./${{ matrix.module }}/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/${{ matrix.module }}/
 
@@ -89,6 +95,7 @@ jobs:
       run: |
         # Check if there are enough commits to use HEAD~1 (if not, compare with the initial commit)
         commit_count=$(git rev-list --count HEAD)
+        echo "commit_count=$commit_count"  # Log commit count for debugging
         if [ "$commit_count" -gt 1 ]; then
           backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
         else
@@ -101,6 +108,7 @@ jobs:
     - name: Deploy Backend via SSH
       if: env.backend_changes != ''
       run: |
+        echo "Deploying backend module via SSH..."
         scp -v -i ~/.ssh/consoft_ssh_new -r ./backend/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
 
     - name: Restart Node.js Application Using npm start
