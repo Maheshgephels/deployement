@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon --watch server.js --ignore node_modules --ext js,json server.js"
+    "start": "npx nodemon --watch server.js --ignore node_modules --ext js,json server.js"
   },
   "watch": true,
   "keywords": [],
