@@ -7,7 +7,7 @@ const moment = require('moment-timezone');
 const verifyToken = require('../api/middleware/authMiddleware');
 const queueMiddleware = require('../api/middleware/queueMiddleware');
 //Category Access API
-// Define the route to fetch Facility data from the cs_os_badgeapp_userlogin
+// Define the route to fetch Facility data from the cs_os_badgeapp_userlogin 
 router.get('/getCategory', verifyToken, async (req, res) => {
   try {
     // Extract page number, page size, and search query from request query parameters
