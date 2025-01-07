@@ -123,9 +123,9 @@ jobs:
           echo 'Changes detected in package.json. Running npm install...';
           npm install &&
           echo 'npm install completed. Starting application...' &&
-          nohup npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
+          npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
         else
           echo 'No changes in package.json. Skipping npm install. Starting application...' &&
-          nohup npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
+          npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
         fi
         "
