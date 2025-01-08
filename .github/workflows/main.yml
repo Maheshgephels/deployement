@@ -1,4 +1,4 @@
-name: Deploy via SSH
+name: Consoft Module Deployment On CPanel via SSH
 
 on:
   push:
