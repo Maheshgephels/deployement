@@ -129,3 +129,54 @@ jobs:
           npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
         fi
         "
+    # GitHub Releases after Deployment
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: "v${{ github.run_number }}" # Dynamic version tag based on workflow run number
+        release_name: "Deployment v${{ github.run_number }}"
+        body: |
+          ### Deployment Details
+          - **Frontend Changes:** ${{ env.frontend_changes }}
+          - **User Module Changes:** ${{ env.user_changes }}
+          - **Backend Changes:** ${{ env.backend_changes }}
+          - **Package.json Updated:** ${{ env.package_json_changed }}
+        draft: false
+        prerelease: false
+
+# Use rsync instead of scp to preserve the folder structure. rsync is more flexible and efficient for this purpose.
+    # - name: Deploy Backend with Changed and New Files Only
+    #   if: env.backend_changes != ''
+    #   run: |
+    #     # Identify changed and new backend files
+    #     changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
+    #     new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)  # New files only
+    #     files_to_upload="$changed_backend_files $new_backend_files"
+
+    #     # Deploy only if there are files to upload
+    #     if [ -n "$files_to_upload" ]; then
+    #       for file in $files_to_upload; do
+    #         rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/$file
+    #       done
+    #     fi
+
+
+# If rsync is unavailable, use scp with a directory creation step:
+#     - name: Deploy Backend with Changed and New Files Only
+#       if: env.backend_changes != ''
+#       run: |
+#         changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
+#         new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)
+#         files_to_upload="$changed_backend_files $new_backend_files"
+
+#         if [ -n "$files_to_upload" ]; then
+#           for file in $files_to_upload; do
+#             remote_dir=$(dirname "/home/allevent/reacttest.gephelssystems.com/$file")
+#             ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p $remote_dir"
+#             scp -i ~/.ssh/consoft_ssh_new $file allevent@s1346.use1.mysecurecloudhost.com:$remote_dir/
+#           done
+#         fi
+
+  
