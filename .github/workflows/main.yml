@@ -117,37 +117,23 @@ jobs:
           done
         fi
 
-
-    # - name: Deploy Backend via SSH
+    # Restart Node.js Application with Conditional npm install
+    # - name: Restart Node.js Application
     #   if: env.backend_changes != ''
     #   run: |
-    #     # Identify changed and new backend files
-    #     changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-    #     new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)  # New files only
-    #     files_to_upload="$changed_backend_files $new_backend_files"
-        
-    #     # Deploy only if there are files to upload
-    #     if [ -n "$files_to_upload" ]; then
-    #       scp -v -i ~/.ssh/consoft_ssh_new -r $files_to_upload allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/
+    #     ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
+    #     source /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/activate &&
+    #     cd /home/allevent/reacttest.gephelssystems.com &&
+    #     if [ '${{ env.package_json_changed }}' = 'true' ]; then
+    #       echo 'Changes detected in package.json. Running npm install...';
+    #       npm install &&
+    #       echo 'npm install completed. Starting application...' &&
+    #       npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
+    #     else
+    #       echo 'No changes in package.json. Skipping npm install. Starting application...' &&
+    #       npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
     #     fi
-
-    # Restart Node.js Application with Conditional npm install
-    - name: Restart Node.js Application
-      if: env.backend_changes != ''
-      run: |
-        ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
-        source /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/activate &&
-        cd /home/allevent/reacttest.gephelssystems.com &&
-        if [ '${{ env.package_json_changed }}' = 'true' ]; then
-          echo 'Changes detected in package.json. Running npm install...';
-          npm install &&
-          echo 'npm install completed. Starting application...' &&
-          npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
-        else
-          echo 'No changes in package.json. Skipping npm install. Starting application...' &&
-          npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
-        fi
-        "
+    #     "
 
 
     # GitHub Releases after Deployment
