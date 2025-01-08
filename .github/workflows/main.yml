@@ -111,9 +111,12 @@ jobs:
         # Deploy only if there are files to upload
         if [ -n "$files_to_upload" ]; then
           for file in $files_to_upload; do
-            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/$file
+            # Remove "backend/" prefix from file path for uploading to the root directory
+            target_path=$(echo $file | sed 's|^backend/||')
+            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/$target_path
           done
         fi
+
 
     # - name: Deploy Backend via SSH
     #   if: env.backend_changes != ''

@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer'); // Import nodemailer
    
-
+   
 // Create a transporter using Gmail SMTP
 const transporter = nodemailer.createTransport({
   service: 'gmail',
