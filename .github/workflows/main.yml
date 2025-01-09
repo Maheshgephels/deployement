@@ -128,17 +128,20 @@ jobs:
             echo "backend_changes=$backend_changes" >> $GITHUB_ENV
           fi
 
+      # Deploy Backend with Changed and New Files Only
       - name: Deploy Backend
         if: env.backend_changes != ''
         run: |
+          # Identify changed and new backend files
           changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-          new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)
+          new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend) # New files only
           files_to_upload="$changed_backend_files $new_backend_files"
-
+      
+          # Deploy only if there are files to upload
           if [ -n "$files_to_upload" ]; then
             for file in $files_to_upload; do
+              # Remove "backend/" prefix from file path for uploading to the root directory
               target_path=$(echo $file | sed 's|^backend/||')
-              ssh -o StrictHostKeyChecking=no -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path" && \
-              rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
+              rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
             done
           fi
