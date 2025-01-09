@@ -4,7 +4,7 @@ const { pool } = require('../../config/database'); // Adjust the path to your db
 
 // Middleware to verify token
 const verifyToken = require('../api/middleware/authMiddleware');
-  
+     
 // Route to fetch colors
 router.get('/colors', verifyToken, async (req, res) => {
     try {
