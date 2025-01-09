@@ -1,3 +1,5 @@
+name: Deploy to cPanel
+
 on:
   push:
     branches:
@@ -8,14 +10,13 @@ jobs:
     name: Setup Environment
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code (Setup)
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
         fetch-depth: 2
 
     - name: Set up SSH with New Key
       run: |
-        set -e
         mkdir -p ~/.ssh
         echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
         chmod 600 ~/.ssh/consoft_ssh_new
@@ -25,14 +26,14 @@ jobs:
 
     - name: Test SSH Connection
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
+        ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
   frontend:
     name: Frontend Deployment
     needs: setup
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code (Frontend)
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
         fetch-depth: 2
@@ -40,29 +41,30 @@ jobs:
     - name: Check for Frontend Changes
       id: check_frontend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- frontend || echo "Frontend changes detected"
         frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)
-        echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
+        if [ -n "$frontend_changes" ]; then
+          echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
+        fi
 
     - name: Build Frontend
       if: env.frontend_changes != ''
       run: |
         cd frontend
-        npm install --no-audit
+        npm ci
         npm run build
 
     - name: Deploy Frontend
       if: env.frontend_changes != ''
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/"
-        scp -r -i ~/.ssh/consoft_ssh_new ./frontend/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/
+        ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/"
+        rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" ./frontend/build/ ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/
 
   user:
     name: User Module Deployment
     needs: setup
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code (User)
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
         fetch-depth: 2
@@ -70,29 +72,30 @@ jobs:
     - name: Check for User Module Changes
       id: check_user_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- user || echo "User Module changes detected"
         user_changes=$(git diff --name-only HEAD~1 HEAD -- user)
-        echo "user_changes=$user_changes" >> $GITHUB_ENV
+        if [ -n "$user_changes" ]; then
+          echo "user_changes=$user_changes" >> $GITHUB_ENV
+        fi
 
     - name: Build User Module
       if: env.user_changes != ''
       run: |
         cd user
-        npm install --no-audit
+        npm ci
         npm run build
 
     - name: Deploy User Module
       if: env.user_changes != ''
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/"
-        scp -r -i ~/.ssh/consoft_ssh_new ./user/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/
+        ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/"
+        rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" ./user/build/ ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/
 
   backend:
     name: Backend Deployment
     needs: setup
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code (Backend)
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
         fetch-depth: 2
@@ -100,17 +103,9 @@ jobs:
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
         backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
-        echo "backend_changes=$backend_changes" >> $GITHUB_ENV
-
-    - name: Check for Changes in backend/package.json
-      id: check_package_json_changes
-      run: |
-        if git diff --name-only HEAD~1 HEAD | grep -q "backend/package.json"; then
-          echo "package_json_changed=true" >> $GITHUB_ENV
-        else
-          echo "package_json_changed=false" >> $GITHUB_ENV
+        if [ -n "$backend_changes" ]; then
+          echo "backend_changes=$backend_changes" >> $GITHUB_ENV
         fi
 
     - name: Deploy Backend
