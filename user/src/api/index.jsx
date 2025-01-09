@@ -1,7 +1,7 @@
 const api = `${process.env.PUBLIC_URL}/api`;
 // const backendapi = `192.168.30.43:4000/api`;
 // const backendpath = `192.168.30.43:4000/`;
-const backendapi = `/api`;
+const backendapi = `/api`;  
 const backendpath = `https://reacttest.gephelssystems.com/`;
 // const backendapi = `http://localhost:4000/api`;
 // const backendpath = `http://localhost:4000/`;
