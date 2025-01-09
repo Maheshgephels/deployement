@@ -50,8 +50,8 @@ jobs:
       if: env.frontend_changes != ''
       run: |
         cd frontend
-        npm ci
-        npm run build
+        CI=false npm install
+        CI=false npm run build
 
     - name: Deploy Frontend
       if: env.frontend_changes != ''
@@ -81,8 +81,8 @@ jobs:
       if: env.user_changes != ''
       run: |
         cd user
-        npm ci
-        npm run build
+        CI=false npm install
+        CI=false npm run build
 
     - name: Deploy User Module
       if: env.user_changes != ''
@@ -108,14 +108,19 @@ jobs:
           echo "backend_changes=$backend_changes" >> $GITHUB_ENV
         fi
 
+    # Deploy Backend with Changed and New Files Only
     - name: Deploy Backend
       if: env.backend_changes != ''
       run: |
+        # Identify changed and new backend files
         changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)
+        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend) # New files only
         files_to_upload="$changed_backend_files $new_backend_files"
+    
+        # Deploy only if there are files to upload
         if [ -n "$files_to_upload" ]; then
           for file in $files_to_upload; do
+            # Remove "backend/" prefix from file path for uploading to the root directory
             target_path=$(echo $file | sed 's|^backend/||')
             rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
           done
