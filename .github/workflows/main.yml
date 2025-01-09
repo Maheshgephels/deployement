@@ -79,15 +79,22 @@ jobs:
         ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
         scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
 
-    # Check for Backend Changes
+      # Check for Backend Changes
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
-        backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
+        # Use git status with --porcelain option for efficient change detection
+        git status --porcelain --untracked-files=no | grep -E "^(M|A)" backend/ > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+          echo "Backend changes detected"
+          backend_changes=true
+        else
+          echo "No backend changes detected"
+          backend_changes=false
+        fi
         echo "backend_changes=$backend_changes" >> $GITHUB_ENV
       continue-on-error: true
-
+    
     # Check for Changes in backend/package.json
     - name: Check for Changes in backend/package.json
       id: check_package_json_changes
@@ -97,24 +104,27 @@ jobs:
         else
           echo "package_json_changed=false" >> $GITHUB_ENV
         fi
-
+    
     # Deploy Backend with Changed and New Files Only
-
     - name: Deploy Backend with Changed and New Files Only
-      if: env.backend_changes != ''
+      if: env.backend_changes == 'true'
       run: |
-        # Identify changed and new backend files
-        changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)  # New files only
+        # Identify changed and new backend files using git diff with --diff-filter option
+        changed_backend_files=$(git diff --name-only --diff-filter=d HEAD~1 HEAD backend/)
+        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD backend/)
         files_to_upload="$changed_backend_files $new_backend_files"
-
+    
         # Deploy only if there are files to upload
         if [ -n "$files_to_upload" ]; then
+          echo "Uploading changed and new backend files:"
           for file in $files_to_upload; do
-            # Remove "backend/" prefix from file path for uploading to the root directory
-            target_path=$(echo $file | sed 's|^backend/||')
-            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/$target_path
+            # Remove "backend/" prefix and handle potential path issues
+            target_path=$(echo "$file" | sed 's|^backend/||' | tr '/' '-')
+            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/"$target_path
+            echo "  * $file"
           done
+        else
+          echo "No backend changes to deploy."
         fi
 
     # Restart Node.js Application with Conditional npm install
