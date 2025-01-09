@@ -179,26 +179,3 @@ jobs:
             fi
           EOF
 
-
-      # # Restart Node.js Application with Conditional npm install
-      # - name: Restart Node.js Application
-      #   if: env.backend_changes != ''
-      #   run: |
-      #     ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
-      #       set -e
-      #       echo "Activating Node.js virtual environment..."
-      #       source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate
-      #       cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-
-      #       if [ "${{ env.package_json_changed }}" = "true" ]; then
-      #         echo "Changes detected in package.json. Running npm install..."
-      #         npm install
-      #         echo "npm install completed."
-      #       else
-      #         echo "No changes in package.json. Skipping npm install."
-      #       fi
-
-      #       echo "Restarting Node.js application..."
-      #       cloudlinux-selector restart --json --interpreter nodejs --user allevent --app-root /home/allevent/reacttest.gephelssystems.com
-      #       echo "Node.js application restarted successfully."
-      #     EOF
