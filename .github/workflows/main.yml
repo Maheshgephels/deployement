@@ -6,16 +6,15 @@ on:
       - main
 
 jobs:
-  deploy:
+  setup:
+    name: Setup Environment
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v3
       with:
-        fetch-depth: 2  # Fetch 2 commits (previous commit and current commit)
+        fetch-depth: 2
 
-    # Set up SSH with New Key
     - name: Set up SSH with New Key
       run: |
         set -e
@@ -24,73 +23,74 @@ jobs:
         chmod 600 ~/.ssh/consoft_ssh_new
         ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
         eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+        ssh-add ~/.ssh/consoft_ssh_new
 
-    # Test SSH Connection
     - name: Test SSH Connection
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
-    # Check for Frontend Changes
+  frontend:
+    name: Frontend Deployment
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
     - name: Check for Frontend Changes
       id: check_frontend_changes
       run: |
-        git diff --quiet HEAD~1 HEAD -- frontend || echo "Admin changes detected"
+        git diff --quiet HEAD~1 HEAD -- frontend || echo "Frontend changes detected"
         frontend_changes=$(git diff --name-only HEAD~1 HEAD -- frontend)
         echo "frontend_changes=$frontend_changes" >> $GITHUB_ENV
-      continue-on-error: true
 
-    # Build Frontend if changes are detected
     - name: Build Frontend
       if: env.frontend_changes != ''
       run: |
         cd frontend
-        CI=false npm install  # Install frontend dependencies with CI mode off
-        CI=false npm run build  # Build the frontend app with CI mode off
+        npm install --no-audit
+        npm run build
 
-    # Deploy Frontend if changes are detected
-    - name: Deploy Frontend via SSH
+    - name: Deploy Frontend
       if: env.frontend_changes != ''
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/"
-          scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/
+        scp -r -i ~/.ssh/consoft_ssh_new ./frontend/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/
 
-    # Check for User Module Changes
+  user:
+    name: User Module Deployment
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
     - name: Check for User Module Changes
       id: check_user_changes
       run: |
         git diff --quiet HEAD~1 HEAD -- user || echo "User Module changes detected"
         user_changes=$(git diff --name-only HEAD~1 HEAD -- user)
         echo "user_changes=$user_changes" >> $GITHUB_ENV
-      continue-on-error: true
 
-    # Build User Module if changes are detected
     - name: Build User Module
       if: env.user_changes != ''
       run: |
         cd user
-        CI=false npm install  # Install user dependencies with CI mode off
-        CI=false npm run build  # Build the user folder with CI mode off
+        npm install --no-audit
+        npm run build
 
-    # Deploy User Folder if changes are detected
-    - name: Deploy User Folder via SSH
+    - name: Deploy User Module
       if: env.user_changes != ''
       run: |
         ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/"
-        scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/
+        scp -r -i ~/.ssh/consoft_ssh_new ./user/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/
 
-    # Check for Backend Changes
-
-    # Check for Backend Changes
+  backend:
+    name: Backend Deployment
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
         git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
         backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
         echo "backend_changes=$backend_changes" >> $GITHUB_ENV
-      continue-on-error: true
-    
-    # Check for Changes in backend/package.json
+
     - name: Check for Changes in backend/package.json
       id: check_package_json_changes
       run: |
@@ -98,94 +98,16 @@ jobs:
           echo "package_json_changed=true" >> $GITHUB_ENV
         else
           echo "package_json_changed=false" >> $GITHUB_ENV
-        fi
-    
-    # Deploy Backend with Changed and New Files Only
-    - name: Deploy Backend with Changed and New Files Only
+
+    - name: Deploy Backend
       if: env.backend_changes != ''
       run: |
-        # Identify changed and new backend files
         changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend) # New files only
+        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)
         files_to_upload="$changed_backend_files $new_backend_files"
-    
-        # Deploy only if there are files to upload
         if [ -n "$files_to_upload" ]; then
           for file in $files_to_upload; do
-            # Remove "backend/" prefix from file path for uploading to the root directory
             target_path=$(echo $file | sed 's|^backend/||')
             rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
           done
         fi
-    
-
-    # Restart Node.js Application with Conditional npm install
-    # - name: Restart Node.js Application
-    #   if: env.backend_changes != ''
-    #   run: |
-    #     ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "
-    #     source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate &&
-    #     cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }} &&
-    #     if [ '${{ env.package_json_changed }}' = 'true' ]; then
-    #       echo 'Changes detected in package.json. Running npm install...';
-    #       npm install &&
-    #       echo 'npm install completed. Starting application...' &&
-    #       npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
-    #     else
-    #       echo 'No changes in package.json. Skipping npm install. Starting application...' &&
-    #       npx nodemon --watch server.js --ignore node_modules --ext js,json server.js > app.log 2>&1 &
-    #     fi
-    #     "
-
-
-    # GitHub Releases after Deployment
-    # - name: Create GitHub Release
-    #   uses: actions/create-release@v1
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   with:
-    #     tag_name: "v${{ github.run_number }}" # Dynamic version tag based on workflow run number
-    #     release_name: "Deployment v${{ github.run_number }}"
-    #     body: |
-    #       ### Deployment Details
-    #       - **Frontend Changes:** ${{ env.frontend_changes }}
-    #       - **User Module Changes:** ${{ env.user_changes }}
-    #       - **Backend Changes:** ${{ env.backend_changes }}
-    #       - **Package.json Updated:** ${{ env.package_json_changed }}
-    #     draft: false
-    #     prerelease: false
-
-# Use rsync instead of scp to preserve the folder structure. rsync is more flexible and efficient for this purpose.
-    # - name: Deploy Backend with Changed and New Files Only
-    #   if: env.backend_changes != ''
-    #   run: |
-    #     # Identify changed and new backend files
-    #     changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-    #     new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)  # New files only
-    #     files_to_upload="$changed_backend_files $new_backend_files"
-
-    #     # Deploy only if there are files to upload
-    #     if [ -n "$files_to_upload" ]; then
-    #       for file in $files_to_upload; do
-    #         rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$file
-    #       done
-    #     fi
-
-
-# If rsync is unavailable, use scp with a directory creation step:
-#     - name: Deploy Backend with Changed and New Files Only
-#       if: env.backend_changes != ''
-#       run: |
-#         changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-#         new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend)
-#         files_to_upload="$changed_backend_files $new_backend_files"
-
-#         if [ -n "$files_to_upload" ]; then
-#           for file in $files_to_upload; do
-#             remote_dir=$(dirname "/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$file")
-#             ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p $remote_dir"
-#             scp -i ~/.ssh/consoft_ssh_new $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:$remote_dir/
-#           done
-#         fi
-
-  
