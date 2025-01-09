@@ -111,6 +111,7 @@ jobs:
           echo "package_json_changed=true" >> $GITHUB_ENV
         else
           echo "package_json_changed=false" >> $GITHUB_ENV
+        fi
 
     - name: Deploy Backend
       if: env.backend_changes != ''
