@@ -1,7 +1,7 @@
 const api = `${process.env.PUBLIC_URL}/api`;
 // const backendapi = `http://192.168.1.5:4000/api`;
 // const backendpath = `http://192.168.1.5:4000/`;
-const backendapi = `/api`;  
+const backendapi = `/api`;
 const backendpath = `https://reacttest.gephelssystems.com/`;
 // const backendapi = `/api`;
 // const backendpath = `https://register.stridebyavant.com/`;
