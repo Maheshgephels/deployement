@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  setup:
-    name: Setup Environment
+  frontend:
+    name: Frontend Deployment
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 2
 
-       # Set up SSH with New Key
+      # Set up SSH with New Key
       - name: Set up SSH with New Key
         run: |
           set -e
@@ -29,16 +29,6 @@ jobs:
       - name: Test SSH Connection
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
-
-  frontend:
-    name: Frontend Deployment
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
 
       - name: Check for Frontend Changes
         id: check_frontend_changes
@@ -63,13 +53,27 @@ jobs:
 
   user:
     name: User Module Deployment
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+
+      # Set up SSH with New Key
+      - name: Set up SSH with New Key
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
+          chmod 600 ~/.ssh/consoft_ssh_new
+          ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
       - name: Check for User Module Changes
         id: check_user_changes
@@ -94,13 +98,27 @@ jobs:
 
   backend:
     name: Backend Deployment
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+
+      # Set up SSH with New Key
+      - name: Set up SSH with New Key
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
+          chmod 600 ~/.ssh/consoft_ssh_new
+          ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
       - name: Check for Backend Changes
         id: check_backend_changes
