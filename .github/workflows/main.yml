@@ -132,27 +132,24 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
-      # Check for Changes in backend/package.json
+      # Check for Backend Changes
       - name: Check for Backend Changes
         id: check_backend_changes
         run: |
+          git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
           backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
-          if [ -n "$backend_changes" ]; then
-            # Store each file change in a specific environment variable or format
-            echo "backend_changes=$backend_changes" >> $GITHUB_ENV
-          else
-            echo "No backend changes detected." >> $GITHUB_ENV
-          fi
-    
+          echo "backend_changes=$backend_changes" >> $GITHUB_ENV
+        continue-on-error: true
+
       # Deploy Backend with Changed and New Files Only
       - name: Deploy Backend
-        if: env.backend_changes != ''
+        if: ${{ env.backend_changes != '' }}  # Check the environment variable properly
         run: |
           # Identify changed and new backend files
           changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
           new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend) # New files only
           files_to_upload="$changed_backend_files $new_backend_files"
-      
+          
           # Deploy only if there are files to upload
           if [ -n "$files_to_upload" ]; then
             for file in $files_to_upload; do
@@ -161,7 +158,6 @@ jobs:
               rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
             done
           fi
-
 
       # Restart Node.js Application with Conditional npm install
       - name: Restart Node.js Application
