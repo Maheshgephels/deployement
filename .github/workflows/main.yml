@@ -120,24 +120,18 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
+      # Check for Changes in backend/package.json
       - name: Check for Backend Changes
         id: check_backend_changes
         run: |
           backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
           if [ -n "$backend_changes" ]; then
+            # Store each file change in a specific environment variable or format
             echo "backend_changes=$backend_changes" >> $GITHUB_ENV
-          fi
-
-      # Check for Changes in backend/package.json
-      - name: Check for Changes in backend/package.json
-        id: check_package_json_changes
-        run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q "backend/package.json"; then
-            echo "package_json_changed=true" >> $GITHUB_ENV
           else
-            echo "package_json_changed=false" >> $GITHUB_ENV
+            echo "No backend changes detected." >> $GITHUB_ENV
           fi
-
+    
       # Deploy Backend with Changed and New Files Only
       - name: Deploy Backend
         if: env.backend_changes != ''
