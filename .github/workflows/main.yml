@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  frontend:
-    name: Frontend Deployment
+  admin:
+    name: Admin Module Deployment
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -145,3 +145,60 @@ jobs:
               rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
             done
           fi
+
+
+      # Restart Node.js Application with Conditional npm install
+      - name: Restart Node.js Application
+        if: env.backend_changes != ''
+        run: |
+          ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
+            set -e
+            echo "Activating Node.js virtual environment..."
+            source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate
+            cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+
+            # If package.json has changed, stop the application and run npm install
+            if [ "${{ env.package_json_changed }}" = "true" ]; then
+              echo "Changes detected in package.json. Stopping the application..."
+              cloudlinux-selector stop --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+              echo "Application stopped."
+
+              echo "Running npm install..."
+              npm install
+              echo "npm install completed."
+
+              # Start the application after npm install
+              echo "Starting the application..."
+              cloudlinux-selector start --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+              echo "Application started."
+            else
+              # If no changes in package.json, just restart the application
+              echo "No changes in package.json. Restarting the application..."
+              cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+              echo "Application restarted."
+            fi
+          EOF
+
+
+      # # Restart Node.js Application with Conditional npm install
+      # - name: Restart Node.js Application
+      #   if: env.backend_changes != ''
+      #   run: |
+      #     ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
+      #       set -e
+      #       echo "Activating Node.js virtual environment..."
+      #       source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate
+      #       cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+
+      #       if [ "${{ env.package_json_changed }}" = "true" ]; then
+      #         echo "Changes detected in package.json. Running npm install..."
+      #         npm install
+      #         echo "npm install completed."
+      #       else
+      #         echo "No changes in package.json. Skipping npm install."
+      #       fi
+
+      #       echo "Restarting Node.js application..."
+      #       cloudlinux-selector restart --json --interpreter nodejs --user allevent --app-root /home/allevent/reacttest.gephelssystems.com
+      #       echo "Node.js application restarted successfully."
+      #     EOF
