@@ -51,11 +51,11 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/" && \
           rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/consoft_ssh_new" ./frontend/build/ ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/
 
-      - name: Update .htaccess for Correct RewriteBase
-        run: |
-          # Modify the .htaccess file to change RewriteBase from /admin to /
-          sed -i 's|RewriteBase /admin|RewriteBase /|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/.htaccess
-          sed -i 's|RewriteRule . /admin/index.html [L]|RewriteRule . /index.html [L]|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/.htaccess
+      # - name: Update .htaccess for Correct RewriteBase
+      #   run: |
+      #     # Modify the .htaccess file to change RewriteBase from /admin to /
+      #     sed -i 's|RewriteBase /admin|RewriteBase /|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/.htaccess
+      #     sed -i 's|RewriteRule . /admin/index.html [L]|RewriteRule . /index.html [L]|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/.htaccess
 
   user:
     name: User Module Deployment
@@ -102,11 +102,11 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/" && \
           rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/consoft_ssh_new" ./user/build/ ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/
 
-      - name: Update .htaccess for Correct RewriteBase
-        run: |
-          # Modify the .htaccess file to change RewriteBase from /user to /
-          sed -i 's|RewriteBase /user|RewriteBase /|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/.htaccess
-          sed -i 's|RewriteRule . /user/index.html [L]|RewriteRule . /index.html [L]|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/.htaccess
+      # - name: Update .htaccess for Correct RewriteBase
+      #   run: |
+      #     # Modify the .htaccess file to change RewriteBase from /user to /
+      #     sed -i 's|RewriteBase /user|RewriteBase /|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/.htaccess
+      #     sed -i 's|RewriteRule . /user/index.html [L]|RewriteRule . /index.html [L]|g' /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/.htaccess
 
   backend:
     name: Backend Deployment
