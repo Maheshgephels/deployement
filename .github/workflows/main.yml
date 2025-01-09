@@ -15,11 +15,16 @@ jobs:
         with:
           fetch-depth: 2
 
+       # Set up SSH with New Key
       - name: Set up SSH with New Key
-        uses: shivammathur/setup-ssh@v3
-        with:
-          known_hosts: ${{ secrets.CPANEL_HOST }}
-          ssh_private_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
+          chmod 600 ~/.ssh/consoft_ssh_new
+          ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
 
       - name: Test SSH Connection
         run: |
@@ -104,12 +109,6 @@ jobs:
           if [ -n "$backend_changes" ]; then
             echo "backend_changes=$backend_changes" >> $GITHUB_ENV
           fi
-
-      - name: Build Backend (optional if any backend build steps are required)
-        if: env.backend_changes != ''
-        run: |
-          cd backend
-          npm install  # or any other build steps for backend
 
       - name: Deploy Backend
         if: env.backend_changes != ''
