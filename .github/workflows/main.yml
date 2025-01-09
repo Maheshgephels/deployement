@@ -83,16 +83,15 @@ jobs:
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
-        # Use git status with --porcelain option for efficient change detection
-        git status --porcelain --untracked-files=no | grep -E "^(M|A)" backend/ > /dev/null 2>&1
-        if [ $? -eq 0 ]; then
-          echo "Backend changes detected"
-          backend_changes=true
-        else
-          echo "No backend changes detected"
-          backend_changes=false
-        fi
-        echo "backend_changes=$backend_changes" >> $GITHUB_ENV
+          # Check for modified or added files in the backend directory
+          if git status --porcelain --untracked-files=no | grep -E "^(M|A)" backend/ > /dev/null 2>&1; then
+            echo "Backend changes detected"
+            backend_changes=true
+          else
+            echo "No backend changes detected"
+            backend_changes=false
+          fi
+          echo "backend_changes=$backend_changes" >> $GITHUB_ENV
       continue-on-error: true
     
     # Check for Changes in backend/package.json
