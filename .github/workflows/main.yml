@@ -22,14 +22,14 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
         chmod 600 ~/.ssh/consoft_ssh_new
-        ssh-keyscan -H s1346.use1.mysecurecloudhost.com >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
         eval "$(ssh-agent -s)"
         ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
 
     # Test SSH Connection
     - name: Test SSH Connection
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "echo 'Connection successful'"
+        ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
     # Check for Frontend Changes
     - name: Check for Frontend Changes
@@ -52,8 +52,8 @@ jobs:
     - name: Deploy Frontend via SSH
       if: env.frontend_changes != ''
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/admin/"
-          scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/admin/
+        ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/"
+          scp -v -i ~/.ssh/consoft_ssh_new -r ./frontend/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/admin/
 
     # Check for User Module Changes
     - name: Check for User Module Changes
@@ -76,22 +76,18 @@ jobs:
     - name: Deploy User Folder via SSH
       if: env.user_changes != ''
       run: |
-        ssh -v -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p /home/allevent/reacttest.gephelssystems.com/user/"
-        scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/user/
+        ssh -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/"
+        scp -v -i ~/.ssh/consoft_ssh_new -r ./user/build/* ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/user/
 
-      # Check for Backend Changes
+    # Check for Backend Changes
+
+    # Check for Backend Changes
     - name: Check for Backend Changes
       id: check_backend_changes
       run: |
-          # Check for modified or added files in the backend directory
-          if git status --porcelain --untracked-files=no | grep -E "^(M|A)" backend/ > /dev/null 2>&1; then
-            echo "Backend changes detected"
-            backend_changes=true
-          else
-            echo "No backend changes detected"
-            backend_changes=false
-          fi
-          echo "backend_changes=$backend_changes" >> $GITHUB_ENV
+        git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
+        backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
+        echo "backend_changes=$backend_changes" >> $GITHUB_ENV
       continue-on-error: true
     
     # Check for Changes in backend/package.json
@@ -106,33 +102,30 @@ jobs:
     
     # Deploy Backend with Changed and New Files Only
     - name: Deploy Backend with Changed and New Files Only
-      if: env.backend_changes == 'true'
+      if: env.backend_changes != ''
       run: |
-        # Identify changed and new backend files using git diff with --diff-filter option
-        changed_backend_files=$(git diff --name-only --diff-filter=d HEAD~1 HEAD backend/)
-        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD backend/)
+        # Identify changed and new backend files
+        changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
+        new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend) # New files only
         files_to_upload="$changed_backend_files $new_backend_files"
     
         # Deploy only if there are files to upload
         if [ -n "$files_to_upload" ]; then
-          echo "Uploading changed and new backend files:"
           for file in $files_to_upload; do
-            # Remove "backend/" prefix and handle potential path issues
-            target_path=$(echo "$file" | sed 's|^backend/||' | tr '/' '-')
-            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/"$target_path
-            echo "  * $file"
+            # Remove "backend/" prefix from file path for uploading to the root directory
+            target_path=$(echo $file | sed 's|^backend/||')
+            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
           done
-        else
-          echo "No backend changes to deploy."
         fi
+    
 
     # Restart Node.js Application with Conditional npm install
     # - name: Restart Node.js Application
     #   if: env.backend_changes != ''
     #   run: |
-    #     ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "
-    #     source /home/allevent/nodevenv/reacttest.gephelssystems.com/20/bin/activate &&
-    #     cd /home/allevent/reacttest.gephelssystems.com &&
+    #     ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "
+    #     source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate &&
+    #     cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }} &&
     #     if [ '${{ env.package_json_changed }}' = 'true' ]; then
     #       echo 'Changes detected in package.json. Running npm install...';
     #       npm install &&
@@ -174,7 +167,7 @@ jobs:
     #     # Deploy only if there are files to upload
     #     if [ -n "$files_to_upload" ]; then
     #       for file in $files_to_upload; do
-    #         rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file allevent@s1346.use1.mysecurecloudhost.com:/home/allevent/reacttest.gephelssystems.com/$file
+    #         rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$file
     #       done
     #     fi
 
@@ -189,9 +182,9 @@ jobs:
 
 #         if [ -n "$files_to_upload" ]; then
 #           for file in $files_to_upload; do
-#             remote_dir=$(dirname "/home/allevent/reacttest.gephelssystems.com/$file")
-#             ssh -i ~/.ssh/consoft_ssh_new allevent@s1346.use1.mysecurecloudhost.com "mkdir -p $remote_dir"
-#             scp -i ~/.ssh/consoft_ssh_new $file allevent@s1346.use1.mysecurecloudhost.com:$remote_dir/
+#             remote_dir=$(dirname "/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$file")
+#             ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "mkdir -p $remote_dir"
+#             scp -i ~/.ssh/consoft_ssh_new $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:$remote_dir/
 #           done
 #         fi
 
