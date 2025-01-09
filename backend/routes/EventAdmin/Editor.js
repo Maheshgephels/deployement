@@ -59,7 +59,7 @@ router.post('/uploads', verifyToken, upload.single('file'), (req, res) => {
   // });
 });
 
-
+    
 router.post('/savetemplate', verifyToken, async (req, res) => {
   const { design, html, tempName, tempSubject } = req.body;
   const status = 1;
