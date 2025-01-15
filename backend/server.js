@@ -6,6 +6,7 @@ const { pool, pool2 } = require('./config/database'); // Import the connection p
 const port = process.env.PORT || 4000;
 const app = express();
 const path = require('path');
+require('newrelic');
 
 // Import the API router
 const userRouter = require('./routes/api/users');
