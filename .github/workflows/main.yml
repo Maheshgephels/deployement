@@ -131,60 +131,62 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
-      - name: Fetch Server File List
-        id: fetch_server_files
+      - name: Get Last Commit for Backend
+        id: get_last_commit_backend
         run: |
-          ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
-          cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-          find . -type f -exec stat --format='%n %Y' {} \; > /tmp/server_file_list.txt
-          EOF
-          scp -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/tmp/server_file_list.txt ./server_file_list.txt
+          last_commit=$(ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} \
+          "cat /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/backend_last_commit.txt 2>/dev/null || echo 'HEAD~5'")
+          echo "last_commit=$last_commit" >> $GITHUB_ENV
 
-      - name: Compare Files and Prepare Upload List
-        id: compare_files
+      - name: Get Modified Files for Backend
+        id: get_modified_files_backend
         run: |
-          git_files=$(find backend -type f -exec stat --format='%n %Y' {} \;)
-          upload_list=""
-          declare -A server_files
-          while IFS= read -r line; do
-            file=$(echo $line | cut -d' ' -f1)
-            mod_time=$(echo $line | cut -d' ' -f2)
-            server_files["$file"]="$mod_time"
-          done < server_file_list.txt
-          while IFS= read -r line; do
-            file=$(echo $line | cut -d' ' -f1)
-            mod_time=$(echo $line | cut -d' ' -f2)
-            if [[ ! -v "server_files[$file]" ]] || [[ "$mod_time" -gt "${server_files[$file]}" ]]; then
-              upload_list+="$file\n"
-            fi
-          done <<< "$git_files"
-          echo -e "$upload_list" > upload_list.txt
-          echo "files_to_upload=$(cat upload_list.txt | tr '\n' ' ')" >> $GITHUB_ENV
+          git diff --name-only ${{ env.last_commit }} HEAD | grep '^backend/' > backend_upload_list.txt || true
+          echo "backend_files_to_upload=$(cat backend_upload_list.txt | tr '\n' ' ')" >> $GITHUB_ENV
 
-      - name: Debug Upload List
+      - name: Deploy Backend Files
+        if: env.backend_files_to_upload != ''
         run: |
-          ls -al
-          cat upload_list.txt
-
-      - name: Deploy Updated and New Files
-        run: |
-          if [[ ! -s upload_list.txt ]]; then
-            echo "No files to upload. Skipping deployment."
-            exit 0
-          fi
-      
-          while IFS= read -r file; do
+          for file in ${{ env.backend_files_to_upload }}; do
             target_path=$(echo "$file" | sed 's|^backend/||')
-            rsync -avz --ignore-missing-args -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
-          done < upload_list.txt
-        shell: bash
-        
+            echo "Uploading $file to $target_path"
+            rsync -avz --progress -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" \
+              ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
+          done
 
-        
+      - name: Update Backend Last Commit
+        run: |
+          ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} \
+          "echo $(git rev-parse HEAD) > /home/${{ secrets.CPANEL_USERNAME }}/backend_last_commit.txt"
+      
+      # Restart Node.js Application with Conditional npm install
       - name: Restart Node.js Application
+        if: env.backend_changes != ''
         run: |
           ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
-            source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate
-            cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-            cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+            set -e
+            echo "Activating Node.js virtual environment..."
+            source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ vars.CPANEL_FOLDER_NAME }}/20/bin/activate
+            cd /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+
+            # If package.json has changed, stop the application and run npm install
+            if [ "${{ env.package_json_changed }}" = "true" ]; then
+              echo "Changes detected in package.json. Stopping the application..."
+              cloudlinux-selector stop --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+              echo "Application stopped."
+
+              echo "Running npm install..."
+              npm install
+              echo "npm install completed."
+
+              # Start the application after npm install
+              echo "Starting the application..."
+              cloudlinux-selector start --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+              echo "Application started."
+            else
+              # If no changes in package.json, just restart the application
+              echo "No changes in package.json. Restarting the application..."
+              cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+              echo "Application restarted."
+            fi
           EOF
