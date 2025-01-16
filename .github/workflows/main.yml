@@ -183,7 +183,7 @@ jobs:
             # Use rsync to copy files
             rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
           done < file-list.txt
-        shell: /usr/bin/bash
+        shell: bash
         
       - name: Restart Node.js Application
         run: |
