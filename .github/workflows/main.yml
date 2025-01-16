@@ -176,10 +176,16 @@ jobs:
       - name: Deploy Updated and New Files
         if: env.files_to_upload != ''
         run: |
+          # Use IFS to handle file names with spaces
+          IFS=$'\n'  # Set IFS to newline
           for file in ${{ env.files_to_upload }}; do
-            target_path=$(echo $file | sed 's|^backend/||')
+            # Ensure the target path is sanitized (removes 'backend/' prefix)
+            target_path=$(echo "$file" | sed 's|^backend/||')
+            
+            # Run rsync for each file
             rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
           done
+      
 
       - name: Restart Node.js Application
         run: |
