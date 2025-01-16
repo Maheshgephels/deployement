@@ -36,7 +36,7 @@ const LayoutRoutes = () => {
     // console.log("path", path);
     const match = path.match(/^\/([^/]+)\/([^/]+)/); // Matches the first two segments after the root
     // console.log("match", match);
-    return match ? match[1] : ''; // Return the first segment as product_value
+    return match ? match[2] : ''; // Return the first segment as product_value
   };
 
   // const getProductValueFromPath = (path) => {
