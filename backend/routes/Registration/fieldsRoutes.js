@@ -5,8 +5,6 @@ const { pool } = require('../../config/database');
 const verifyToken = require('../api/middleware/authMiddleware');
 
 
-
-
 // Define the route to fetch Facility data from the cs_os_badgeapp_userlogin
 router.get('/getBasicFields', verifyToken, async (req, res) => {
   try {
