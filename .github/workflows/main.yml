@@ -157,7 +157,7 @@ jobs:
       - name: Update Backend Last Commit
         run: |
           ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} \
-          "echo $(git rev-parse HEAD) > /home/${{ secrets.CPANEL_USERNAME }}/backend_last_commit.txt"
+          "echo $(git rev-parse HEAD) > /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/backend_last_commit.txt"
       
       # Restart Node.js Application with Conditional npm install
       - name: Restart Node.js Application
