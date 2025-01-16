@@ -174,24 +174,17 @@ jobs:
           echo "files_to_upload=$(cat upload_list.txt | tr '\n' ' ')" >> $GITHUB_ENV
 
       - name: Deploy Updated and New Files
-        if: env.files_to_upload != ''
         run: |
-          # Use IFS to handle file names with spaces
-          IFS=$'\n'  # Set IFS to newline
-          set -f  # Disable file name expansion (globbing)
-          
-          # Loop over each file in the list
-          for file in ${{ env.files_to_upload }}; do
-            # Ensure the target path is sanitized (removes 'backend/' prefix)
+          # Read file paths from the file
+          while IFS= read -r file; do
+            # Sanitize the target path (remove 'backend/' prefix)
             target_path=$(echo "$file" | sed 's|^backend/||')
       
-            # Ensure file paths with special characters are quoted
+            # Use rsync to copy files
             rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
-          done
-        shell: /usr/bin/bash -e {0}
+          done < file-list.txt
+        shell: /usr/bin/bash
         
-        
-
       - name: Restart Node.js Application
         run: |
           ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
