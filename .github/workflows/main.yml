@@ -117,15 +117,20 @@ jobs:
         with:
           fetch-depth: 2
 
+    # Set up SSH with New Key
       - name: Set up SSH with New Key
         run: |
           set -e
           mkdir -p ~/.ssh
           echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
-          chmod 600 ~ /.ssh/consoft_ssh_new
+          chmod 600 ~/.ssh/consoft_ssh_new
           ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
           eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/consoft_ssh_new
+          ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
       - name: Fetch Server File List
         id: fetch_server_files
