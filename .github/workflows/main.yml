@@ -122,7 +122,7 @@ jobs:
           set -e
           mkdir -p ~/.ssh
           echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
-          chmod 600 ~/.ssh/consoft_ssh_new
+          chmod 600 ~ /.ssh/consoft_ssh_new
           ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/consoft_ssh_new
@@ -139,23 +139,29 @@ jobs:
       - name: Compare Files and Prepare Upload List
         id: compare_files
         run: |
+          # Get a list of local files and their modification times
           git_files=$(find backend -type f -exec stat --format='%n %Y' {} \;)
           upload_list=""
 
+          # Read the server file list into an associative array
+          declare -A server_files
           while IFS= read -r line; do
             file=$(echo $line | cut -d' ' -f1)
             mod_time=$(echo $line | cut -d' ' -f2)
-            server_file_info=$(grep "$file" server_file_list.txt || true)
+            server_files["$file"]="$mod_time"
+          done < server_file_list.txt
 
-            if [ -z "$server_file_info" ]; then
-              # File does not exist on the server
+          # Compare local files against server files
+          while IFS= read -r line; do
+            file=$(echo $line | cut -d' ' -f1)
+            mod_time=$(echo $line | cut -d' ' -f2)
+
+            if [[ ! -v "server_files[$file]" ]]; then
+              # File is not on the server
               upload_list+="$file\n"
-            else
-              server_mod_time=$(echo $server_file_info | cut -d' ' -f2)
-              if [ "$mod_time" -gt "$server_mod_time" ]; then
-                # Local file is newer
-                upload_list+="$file\n"
-              fi
+            elif [[ "$mod_time" -gt "${server_files[$file]}" ]]; then
+              # Local file is newer
+              upload_list+="$file\n"
             fi
           done <<< "$git_files"
 
@@ -167,7 +173,7 @@ jobs:
         run: |
           for file in ${{ env.files_to_upload }}; do
             target_path=$(echo $file | sed 's|^backend/||')
-            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
+            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
           done
 
       - name: Restart Node.js Application
@@ -177,4 +183,3 @@ jobs:
             cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
             cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
           EOF
-
