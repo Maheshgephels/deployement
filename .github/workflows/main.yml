@@ -117,7 +117,6 @@ jobs:
         with:
           fetch-depth: 2
 
-      # Set up SSH with New Key
       - name: Set up SSH with New Key
         run: |
           set -e
@@ -126,68 +125,56 @@ jobs:
           chmod 600 ~/.ssh/consoft_ssh_new
           ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
           eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/consoft_ssh_new  # No passphrase needed now
+          ssh-add ~/.ssh/consoft_ssh_new
 
-      - name: Test SSH Connection
-        run: |
-          ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
-
-      # Check for Backend Changes
-      - name: Check for Backend Changes
-        id: check_backend_changes
-        run: |
-          git diff --quiet HEAD~1 HEAD -- backend || echo "Backend changes detected"
-          backend_changes=$(git diff --name-only HEAD~1 HEAD -- backend)
-          echo "backend_changes=$backend_changes" >> $GITHUB_ENV
-        continue-on-error: true
-
-      # Deploy Backend with Changed and New Files Only
-      - name: Deploy Backend
-        if: ${{ env.backend_changes != '' }}  # Check the environment variable properly
-        run: |
-          # Identify changed and new backend files
-          changed_backend_files=$(git diff --name-only HEAD~1 HEAD -- backend)
-          new_backend_files=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- backend) # New files only
-          files_to_upload="$changed_backend_files $new_backend_files"
-          
-          # Deploy only if there are files to upload
-          if [ -n "$files_to_upload" ]; then
-            for file in $files_to_upload; do
-              # Remove "backend/" prefix from file path for uploading to the root directory
-              target_path=$(echo $file | sed 's|^backend/||')
-              rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
-            done
-          fi
-
-      # Restart Node.js Application with Conditional npm install
-      - name: Restart Node.js Application
-        if: env.backend_changes != ''
+      - name: Fetch Server File List
+        id: fetch_server_files
         run: |
           ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
-            set -e
-            echo "Activating Node.js virtual environment..."
+          cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
+          find . -type f -exec stat --format='%n %Y' {} \; > /tmp/server_file_list.txt
+          EOF
+          scp -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/tmp/server_file_list.txt ./server_file_list.txt
+
+      - name: Compare Files and Prepare Upload List
+        id: compare_files
+        run: |
+          git_files=$(find backend -type f -exec stat --format='%n %Y' {} \;)
+          upload_list=""
+
+          while IFS= read -r line; do
+            file=$(echo $line | cut -d' ' -f1)
+            mod_time=$(echo $line | cut -d' ' -f2)
+            server_file_info=$(grep "$file" server_file_list.txt || true)
+
+            if [ -z "$server_file_info" ]; then
+              # File does not exist on the server
+              upload_list+="$file\n"
+            else
+              server_mod_time=$(echo $server_file_info | cut -d' ' -f2)
+              if [ "$mod_time" -gt "$server_mod_time" ]; then
+                # Local file is newer
+                upload_list+="$file\n"
+              fi
+            fi
+          done <<< "$git_files"
+
+          echo -e "$upload_list" > upload_list.txt
+          echo "files_to_upload=$(cat upload_list.txt | tr '\n' ' ')" >> $GITHUB_ENV
+
+      - name: Deploy Updated and New Files
+        if: env.files_to_upload != ''
+        run: |
+          for file in ${{ env.files_to_upload }}; do
+            target_path=$(echo $file | sed 's|^backend/||')
+            rsync -avz -e "ssh -i ~/.ssh/consoft_ssh_new" $file ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/$target_path
+          done
+
+      - name: Restart Node.js Application
+        run: |
+          ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
             source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate
             cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-
-            # If package.json has changed, stop the application and run npm install
-            if [ "${{ env.package_json_changed }}" = "true" ]; then
-              echo "Changes detected in package.json. Stopping the application..."
-              cloudlinux-selector stop --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-              echo "Application stopped."
-
-              echo "Running npm install..."
-              npm install
-              echo "npm install completed."
-
-              # Start the application after npm install
-              echo "Starting the application..."
-              cloudlinux-selector start --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-              echo "Application started."
-            else
-              # If no changes in package.json, just restart the application
-              echo "No changes in package.json. Restarting the application..."
-              cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
-              echo "Application restarted."
-            fi
+            cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
           EOF
 
