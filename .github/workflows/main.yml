@@ -124,69 +124,50 @@ jobs:
           echo "${{ secrets.CPANEL_SSH_PRIVATE_KEY }}" > ~/.ssh/consoft_ssh_new
           chmod 600 ~/.ssh/consoft_ssh_new
           ssh-keyscan -H ${{ secrets.CPANEL_HOST }} >> ~/.ssh/known_hosts
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/consoft_ssh_new
 
       - name: Test SSH Connection
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
-      - name: Get Last Commit for Backend
-        id: get_last_commit_backend
+      - name: Deploy Backend
         run: |
-          last_commit=$(ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} \
-          "cat /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/backend_last_commit.txt 2>/dev/null || echo 'HEAD~5'")
-          echo "last_commit=$last_commit" >> $GITHUB_ENV
+          # Define local and remote paths
+          LOCAL_PATH="backend/"
+          REMOTE_PATH="/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"
+          SSH_OPTIONS="-e 'ssh -i ~/.ssh/consoft_ssh_new'"
 
-      - name: Get Modified Files for Backend
-        id: get_modified_files_backend
-        run: |
-          git diff --name-only ${{ env.last_commit }} HEAD | grep '^backend/' > backend_upload_list.txt || true
-          echo "backend_files_to_upload=$(cat backend_upload_list.txt | tr '\n' ' ')" >> $GITHUB_ENV
+          # Use rsync to sync only updated or new files
+          rsync -avz --update --progress \
+            --exclude '.git/' \         # Exclude .git folder
+            --exclude 'node_modules/' \ # Exclude node_modules folder
+            $SSH_OPTIONS \
+            $LOCAL_PATH \
+            ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:$REMOTE_PATH
 
-      - name: Deploy Backend Files
-        if: env.backend_files_to_upload != ''
-        run: |
-          for file in ${{ env.backend_files_to_upload }}; do
-            target_path=$(echo "$file" | sed 's|^backend/||')
-            echo "Uploading $file to $target_path"
-            rsync -avz --progress -e "ssh -i ~/.ssh/consoft_ssh_new" "$file" \
-              ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"$target_path"
-          done
-
-      - name: Update Backend Last Commit
-        run: |
-          ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} \
-          "echo $(git rev-parse HEAD) > /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/backend_last_commit.txt"
-      
-      # Restart Node.js Application with Conditional npm install
       - name: Restart Node.js Application
-        if: env.backend_changes != ''
         run: |
           ssh -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} << 'EOF'
             set -e
             echo "Activating Node.js virtual environment..."
-            source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ vars.CPANEL_FOLDER_NAME }}/20/bin/activate
-            cd /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+            source /home/${{ secrets.CPANEL_USERNAME }}/nodevenv/${{ secrets.CPANEL_FOLDER_NAME }}/20/bin/activate
+            cd /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
 
-            # If package.json has changed, stop the application and run npm install
-            if [ "${{ env.package_json_changed }}" = "true" ]; then
+            # If package.json has changed, install dependencies and restart
+            if rsync --dry-run --update backend/package.json /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/ | grep -q "package.json"; then
               echo "Changes detected in package.json. Stopping the application..."
-              cloudlinux-selector stop --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+              cloudlinux-selector stop --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
               echo "Application stopped."
 
               echo "Running npm install..."
               npm install
               echo "npm install completed."
 
-              # Start the application after npm install
               echo "Starting the application..."
-              cloudlinux-selector start --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+              cloudlinux-selector start --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
               echo "Application started."
             else
-              # If no changes in package.json, just restart the application
               echo "No changes in package.json. Restarting the application..."
-              cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ vars.CPANEL_FOLDER_NAME }}
+              cloudlinux-selector restart --json --interpreter nodejs --user ${{ secrets.CPANEL_USERNAME }} --app-root /home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}
               echo "Application restarted."
             fi
           EOF
