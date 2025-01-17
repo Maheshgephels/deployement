@@ -129,7 +129,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
-      - name: Verify Backend Directory
+      - name: Verify Backend Directory 
         run: |
           echo "Checking if backend directory exists..."
           ls -al backend
