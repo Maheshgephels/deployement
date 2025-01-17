@@ -6,7 +6,7 @@ const verifyToken = require('../api/middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs'); // For file system operations
- 
+      
 router.get('/getUserAndFieldData', verifyToken, async (req, res) => {
     try {
         const userId = req.query.user_id; // Get user_id from query parameters
