@@ -133,15 +133,26 @@ jobs:
         run: |
           echo "Checking if backend directory exists..."
           ls -al backend
-  
+
       - name: Deploy Backend to Root Directory
         run: |
           rsync -avz \
             -e "ssh -i ~/.ssh/consoft_ssh_new -o StrictHostKeyChecking=no" \
+            --update \
+            --checksum \
             --exclude '.git/' \
             --exclude 'node_modules/' \
             backend/ \
             ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/
+        
+      # - name: Deploy Backend to Root Directory
+      #   run: |
+      #     rsync -avz \
+      #       -e "ssh -i ~/.ssh/consoft_ssh_new -o StrictHostKeyChecking=no" \
+      #       --exclude '.git/' \
+      #       --exclude 'node_modules/' \
+      #       backend/ \
+      #       ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/
         
 
       - name: Restart Node.js Application
