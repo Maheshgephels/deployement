@@ -133,21 +133,15 @@ jobs:
         run: |
           echo "Checking if backend directory exists..."
           ls -al backend
-        
-      - name: Deploy Backend
+  
+      - name: Deploy Backend to Root Directory
         run: |
-          # Define local and remote paths
-          LOCAL_PATH="backend/"
-          REMOTE_PATH="/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"
-          SSH_OPTIONS="-e 'ssh -i ~/.ssh/consoft_ssh_new'"
-      
-          # Use rsync to sync only updated or new files
-          rsync -avz --update --progress \
-            --exclude '.git/' \         # Exclude .git folder
-            --exclude 'node_modules/' \ # Exclude node_modules folder
-            $SSH_OPTIONS \
-            $LOCAL_PATH \
-            ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:$REMOTE_PATH
+          rsync -avz \
+            -e "ssh -i ~/.ssh/consoft_ssh_new -o StrictHostKeyChecking=no" \
+            --exclude '.git/' \
+            --exclude 'node_modules/' \
+            backend/ \
+            ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/
         
 
       - name: Restart Node.js Application
