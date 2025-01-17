@@ -129,13 +129,18 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -v -i ~/.ssh/consoft_ssh_new ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }} "echo 'Connection successful'"
 
+          - name: Verify Backend Directory
+          run: |
+            echo "Checking if backend directory exists..."
+            ls -al backend
+        
       - name: Deploy Backend
         run: |
           # Define local and remote paths
           LOCAL_PATH="backend/"
           REMOTE_PATH="/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/"
           SSH_OPTIONS="-e 'ssh -i ~/.ssh/consoft_ssh_new'"
-
+      
           # Use rsync to sync only updated or new files
           rsync -avz --update --progress \
             --exclude '.git/' \         # Exclude .git folder
@@ -143,6 +148,7 @@ jobs:
             $SSH_OPTIONS \
             $LOCAL_PATH \
             ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:$REMOTE_PATH
+        
 
       - name: Restart Node.js Application
         run: |
