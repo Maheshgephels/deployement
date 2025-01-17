@@ -142,6 +142,7 @@ jobs:
             --checksum \
             --exclude '.git/' \
             --exclude 'node_modules/' \
+            --dirs \
             backend/ \
             ${{ secrets.CPANEL_USERNAME }}@${{ secrets.CPANEL_HOST }}:/home/${{ secrets.CPANEL_USERNAME }}/${{ secrets.CPANEL_FOLDER_NAME }}/
         
